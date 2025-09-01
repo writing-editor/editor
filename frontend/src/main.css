@@ -45,8 +45,115 @@ body.theme-dark {
   --color-shadow: rgba(0, 0, 0, 0.65);
 }
 
+body.theme-nord {
+  --color-text: #d8dee9;              /* Grayish-white text */
+  --color-text-muted: #8190a5;        /* Muted blue-gray */
+  --color-background: #2e3440;        /* Dark slate background */
+  --color-surface-light: #3b4252;     /* Lighter surface */
+  --color-surface-medium: #434c5e;    /* Hover and inputs */
+  --color-border: #4c566a;            /* Subtle borders */
+
+  /* Accent colors */
+  --color-primary: #88c0d0;           /* Frosty cyan */
+  --color-success: #a3be8c;           /* Aurora green */
+  --color-danger: #bf616a;            /* Aurora red */
+
+  /* Background tints */
+  --color-danger-bg: #4b2c30;
+  --color-success-bg: #415039;
+
+  /* Shadows */
+  --color-shadow: rgba(0, 0, 0, 0.4);
+}
+
+/* --- NEW THEME: Solarized Dark (High-contrast, low eye-strain) --- */
+body.theme-solarized-dark {
+  --color-text: #93a1a1;              /* Main text */
+  --color-text-muted: #657b83;        /* Muted comments/placeholders */
+  --color-background: #002b36;        /* Deep cyan-blue background */
+  --color-surface-light: #073642;     /* Lighter content background */
+  --color-surface-medium: #586e75;    /* Hover and inputs */
+  --color-border: #073642;            /* Borders are the same as surface */
+
+  /* Accent colors */
+  --color-primary: #268bd2;           /* Vivid blue */
+  --color-success: #859900;           /* Olive green */
+  --color-danger: #dc322f;            /* Bright red */
+
+  /* Background tints */
+  --color-danger-bg: #3c2f2f;
+  --color-success-bg: #3a4623;
+
+  /* Shadows */
+  --color-shadow: rgba(0, 0, 0, 0.5);
+}
+
+/* --- NEW THEME: Monokai (Classic, vibrant code editor theme) --- */
+body.theme-monokai {
+  --color-text: #f8f8f2;              /* Very light text */
+  --color-text-muted: #75715e;        /* Muted gray-green */
+  --color-background: #272822;        /* Classic Monokai background */
+  --color-surface-light: #3e3d32;     /* Lighter surface */
+  --color-surface-medium: #49483e;    /* Hover and inputs */
+  --color-border: #75715e;            /* Borders match muted text */
+
+  /* Accent colors */
+  --color-primary: #66d9ef;           /* Bright cyan */
+  --color-success: #a6e22e;           /* Vibrant lime green */
+  --color-danger: #f92672;            /* Hot pink */
+
+  /* Background tints */
+  --color-danger-bg: #492a36;
+  --color-success-bg: #3e4d25;
+
+  /* Shadows */
+  --color-shadow: rgba(0, 0, 0, 0.6);
+}
 
 
+body.theme-lime {
+  --color-text: #1a2a00;              /* Dark, slightly desaturated green text for readability */
+  --color-text-muted: #4a5933;        /* Muted olive text */
+  --color-background: #f7ffe5;        /* Very light, almost white lime background */
+  --color-surface-light: #ffffff;     /* Pure white for surfaces */
+  --color-surface-medium: #e8f5d0;    /* Soft lime for hovers */
+  --color-border: #d2e0b8;            /* Desaturated lime border */
+
+  /* Accent colors */
+  --color-primary: oklch(65% 0.2 130);  /* A darker, more saturated lime for primary actions */
+  --color-success: #2b8a3e;           /* A standard, compatible green */
+  --color-danger: #c92a2a;            /* A standard, compatible red */
+
+  /* Background tints (using your base color for success) */
+  --color-danger-bg: #ffe3e3;
+  --color-success-bg: oklch(98.6% 0.031 120.757);
+
+  /* Shadows */
+  --color-shadow: rgba(50, 80, 0, 0.1);
+}
+
+body.theme-cyan-light {
+  /* YOUR color is the foundation for the background */
+  --color-background: oklch(98.4% 0.019 200.873); /* Subtle, cool off-white */
+  
+  --color-text: #012a36;              /* Very dark, saturated cyan for high contrast text */
+  --color-text-muted: #41616a;        /* Muted, soft cyan-gray */
+  --color-surface-light: #ffffff;     /* Pure white for raised surfaces and cards */
+  --color-surface-medium: #e6f7fb;    /* Very light cyan for hovers */
+  --color-border: #ccecf4;            /* Soft, light cyan border */
+
+  /* Accent colors */
+  --color-primary: oklch(65% 0.15 200); /* A vibrant, accessible cyan for buttons and links */
+  --color-success: #2b8a3e;           /* Standard green for consistency */
+  --color-danger: #c92a2a;            /* Standard red */
+
+  /* Background tints */
+  --color-danger-bg: #ffe3e3;
+  --color-success-bg: #d4fdf0;
+
+  /* Shadows */
+  --color-shadow: rgba(0, 80, 100, 0.1);
+}
 
 /* --- 2. GLOBAL & LAYOUT STYLES --- */
 body, html {
@@ -123,6 +230,17 @@ body.right-drawer-is-open #main-container {
   min-height: 0; /* ADD: CRITICAL for flexbox scrolling to work correctly */
 }
 
+#assistant-drawer,
+#search-results-container {
+  flex-grow: 1; /* Allows this element to expand and fill the space */
+  overflow-y: auto; /* Enables scrolling on this element */
+  min-height: 0; /* A critical rule to make scrolling work inside a flex container */
+}
+
+/* We also need to ensure the headers of these drawers do not shrink */
+.search-header {
+  flex-shrink: 0;
+}
 /* src/main.css */
 
 /* --- 3. GLOBAL CONTROL BUTTONS & ICONS (ENHANCED ANIMATIONS VERSION) --- */
@@ -183,7 +301,6 @@ body.right-drawer-is-open #main-container {
   z-index: 1004;
 }
 #top-right-controls,
-#bottom-left-controls,
 #bottom-right-controls {
   position: absolute;
   pointer-events: all;
@@ -191,7 +308,6 @@ body.right-drawer-is-open #main-container {
   gap: 8px;
 }
 #top-right-controls { top: var(--spacing-md); right: var(--spacing-md); }
-#bottom-left-controls { bottom: var(--spacing-md); left: var(--spacing-md); }
 #bottom-right-controls { bottom: var(--spacing-md); right: var(--spacing-md); }
 
 
@@ -364,121 +480,50 @@ body.drawer-is-open .icon-hamburger span:nth-child(3) {
   scrollbar-width: none;
 }
 
-/* ICON 5: Gear (Settings) — bigger */
-.icon-gear {
-  position: relative;
-  width: 40px;   /* increased */
-  height: 40px;  /* increased */
-  display: inline-block;
+/* --- Style for the new main settings icon --- */
+#settings-toggle-btn .settings-icon {
+  width: 24px;
+  height: 24px;
+  stroke: currentColor; /* Makes the icon theme-aware */
+  stroke-width: 1.5;
+  fill: none;
+  transition: transform 0.3s ease;
 }
 
-/* shared */
-.icon-gear .gear-center,
-.icon-gear .tooth {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform-origin: 50% 50%;
+#settings-toggle-btn:hover .settings-icon {
+  transform: rotate(45deg); /* Add a nice rotation on hover */
 }
 
-/* center ring (bigger) */
-.icon-gear .gear-center {
-  width: 8px;                     /* was 8px */
-  height: 8px;
-  border-radius: 50%;
-  border: 3.5px solid var(--color-text);
-  background: transparent;
-  transform: translate(-50%, -50%);
-}
-
-/* teeth bars (longer & thicker) */
-.icon-gear .tooth {
-  width: 20px;                     /* was 14px */
-  height: 3px;                     /* was 2px */
-  border-radius: 2px;
-  background: var(--color-text);
-  transform: translate(-50%, -50%) rotate(0deg);
-}
-.icon-gear .tooth.v {
-  transform: translate(-50%, -50%) rotate(90deg);
-}
-
-/* optional diagonal teeth (scaled up as well) */
-.icon-gear::before,
-.icon-gear::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 20px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--color-text);
-  transform-origin: 50% 50%;
-}
-.icon-gear::before { transform: translate(-50%, -50%) rotate(45deg); }
-.icon-gear::after  { transform: translate(-50%, -50%) rotate(-45deg); }
-
-/* === NEW: Icons for Data Management Buttons === */
-
-.icon-cloud {
-  position: relative;
-  width: 20px;
-  height: 12px;
-  background: currentColor;
-  border-radius: 6px;
-  margin-right: 8px;
-  transform: translateY(-2px);
-}
-.icon-cloud::before {
-  content: '';
-  position: absolute;
-  background: currentColor;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  top: -4px;
-  left: 3px;
-}
-.icon-cloud::after {
-  content: '';
-  position: absolute;
-  background: currentColor;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  top: -6px;
-  right: 2px;
-}
-
-.icon-file-doc {
-  position: relative;
-  width: 14px;
-  height: 18px;
-  border: 2px solid currentColor;
-  border-radius: 2px;
-  margin-right: 8px;
-}
-.icon-file-doc::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 8px;
-  height: 8px;
+/* --- REVISED: Offline Indicator --- */
+#offline-indicator {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 32px;
+  height: 32px;
   background-color: var(--color-background);
-  border-bottom: 2px solid currentColor;
-  border-left: 2px solid currentColor;
-  border-radius: 0 0 0 8px;
+  color:  var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  /* Start hidden and scaled down */
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none; /* Can't be clicked */
 }
-.icon-file-doc::after {
-  content: '';
-  position: absolute;
-  top: 4px;
-  left: 2px;
-  width: 8px;
-  height: 2px;
-  background-color: currentColor;
-  box-shadow: 0 4px 0 currentColor, 0 8px 0 currentColor;
+
+#offline-indicator.is-visible {
+  opacity: 1;
+  transform: scale(1); /* Animate into view */
+}
+
+/* Style for the SVG icon we will add */
+#offline-indicator svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+  stroke: currentColor;
 }
 

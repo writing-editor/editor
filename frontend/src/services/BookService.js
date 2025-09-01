@@ -1,6 +1,6 @@
 // frontend/src/services/BookService.js
 
-import { request, debounce } from '../utils/api.js';
+import { debounce } from '../utils/api.js';
 // We no longer import request here, as BookService should not make API calls for core ops.
 // It will only be used for optional sync/backup features later.
 
@@ -42,7 +42,7 @@ export class BookService {
     // --- State Management ---
     this.currentBook = null;
     this.currentViewId = null;
-    this.pinnedBook = null; 
+    this.pinnedBook = null;
     this.availableBooks = [];
     this.navigatorView = 'contents';
     this.metadata = {};
@@ -56,7 +56,7 @@ export class BookService {
       navigatorView: this.navigatorView,
       availableBooks: this.availableBooks,
       currentBook: this.currentBook,
-      pinnedBook: this.pinnedBook 
+      pinnedBook: this.pinnedBook
     };
   }
 
@@ -108,8 +108,8 @@ export class BookService {
     this.pinnedBook = await this.storageService.getFile('pinned.txt');
     const bookFiles = await this.storageService.getAllFilesBySuffix('.book');
     this.availableBooks = bookFiles.map(file => ({
-        filename: file.id.replace('.book', ''),
-        title: file.content.metadata.title,
+      filename: file.id.replace('.book', ''),
+      title: file.content.metadata.title,
     }));
     this.appController.renderNavigator(this.getStateForNavigator());
   }
@@ -257,6 +257,12 @@ export class BookService {
 
 
   async saveCurrentView(editorContent) {
+    const isEditable = this.currentViewId !== 'full_book';
+    if (!isEditable) {
+      console.log("Save prevented: Current view is not editable.");
+      return; // Stop execution immediately.
+    }
+
     if (!this.currentBook || !this.currentViewId) return;
     const indicatorId = this.appController.showIndicator('Saving...');
     const { updatedBookData, navigateToId } = this._intelligentSave(this.currentViewId, editorContent);
@@ -319,10 +325,15 @@ export class BookService {
       if (startIndex !== -1) {
         let endIndex = startIndex + 1;
         while (endIndex < allFutureNodes.length &&
-          (allFutureNodes[endIndex].type !== 'heading' ||
-            (viewId.includes('_sec') && (allFutureNodes[endIndex].attrs?.level || 0) < 3))) {
+          (
+            allFutureNodes[endIndex].type !== 'heading' ||
+            (viewId.includes('_sec') && allFutureNodes[endIndex].attrs?.level >= 3) ||
+            (!viewId.includes('_sec') && allFutureNodes[endIndex].attrs?.level > 2)
+          )
+        ) {
           endIndex++;
         }
+
         allFutureNodes.splice(startIndex, endIndex - startIndex, ...(editorContent.content || []));
       }
     }

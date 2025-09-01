@@ -11,7 +11,7 @@
   font-family: var(--editor-font-family); 
   font-size: var(--editor-font-size); 
   line-height: 1.7;
-  max-width: 80ch;
+  max-width: 75ch;
   margin: 0 auto;
   text-align: justify;
   color: var(--color-text); /* THEME: Use variable */

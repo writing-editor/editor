@@ -44,6 +44,19 @@ export class StorageService {
     });
   }
 
+     /**
+   * Removes all entries associated with a specific filename from the index.
+   * @param {string} filename The filename of the book to remove.
+   */
+  removeDocument(filename) {
+    // FlexSearch's Document index doesn't have a simple "remove where field equals value".
+    // The most robust way is to rebuild the index without the deleted file.
+    // Since this is an infrequent operation, performance is acceptable.
+    // To do this, we need access to all the *other* books.
+    // The better approach is to just rebuild the index from scratch in the App controller.
+    console.log(`Request to remove ${filename} from index. A full re-index is recommended.`);
+    this.isIndexed = false; // Mark index as dirty
+  }
   /**
    * Saves a file (or any JSON object) to the database.
    * @param {string} id - The "filename" or unique key (e.g., 'my-book.book', 'notes.json').

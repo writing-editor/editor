@@ -9,7 +9,8 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "vite": "^7.1.2"
+    "vite": "^7.1.2",
+    "vite-plugin-pwa": "^1.0.3"
   },
   "dependencies": {
     "@tiptap/core": "^3.1.0",
@@ -19,6 +20,7 @@
     "@tiptap/starter-kit": "^3.1.0",
     "docx": "^8.5.0",
     "file-saver": "^2.0.5",
+    "flexsearch": "^0.8.205",
     "marked": "^16.1.2"
   }
 }

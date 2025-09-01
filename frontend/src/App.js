@@ -18,6 +18,10 @@ import { SyncService } from './services/SyncService.js';
 import { LatexConverter } from './utils/LatexConverter.js';
 import { DocxConverter } from './utils/DocxConverter.js';
 import { GoogleSyncService } from './services/GoogleSyncService.js';
+import { SearchService } from './services/SearchService.js';
+import { SearchPane } from './components/SearchPane.js';
+import { OfflineIndicator } from './utils/OfflineIndicator.js';
+import { DataManager } from './components/DataManager.js'; 
 
 
 let instance = null;
@@ -33,7 +37,7 @@ export class App {
     // ====================================================================
 
     
-
+    this.searchService = new SearchService(); 
     this.storageService = new StorageService();
     // The googleSyncService only needs a small part of the controller
     const gSyncController = { 
@@ -85,13 +89,16 @@ export class App {
     //  STEP 2: INITIALIZE UI COMPONENTS THAT DEPEND ON SERVICES
     // ====================================================================
     this.navigator = new Navigator(this, this.bookService); // NOW this.bookService is defined!
-    this.editor = new Editor(this); // Editor might need bookService soon, good practice
+    this.editor = new Editor(this, this.bookService);
     this.palette = new CommandPalette(this, this.bookService, this.storageService);
     this.modalInput = new ModalInput();
     this.assistantPane = new AssistantPane(this, this.bookService);
     this.notebookPane = new NotebookPane(this, this.storageService);
     this.confirmationModal = new ConfirmationModal();
+    this.searchPane = new SearchPane(this);
     this.settingsPalette = new SettingsPalette(this);
+    this.dataManager = new DataManager(this); 
+    new OfflineIndicator(); 
 
     // ====================================================================
     //  STEP 3: POPULATE THE APP CONTROLLER with UI references
@@ -101,14 +108,14 @@ export class App {
     appController.renderNavigator = (state) => this.navigator.render(state);
     appController.renderAssistantPane = (blocks) => this.assistantPane.render(blocks);
 
-
-    this.settingsPalette.initialize();
+    
 
     // --- UI State Management (remains in App.js) ---
     this.activeRightDrawer = null;
     this.drawers = {
       assistant: document.getElementById('assistant-drawer'),
       notebook: document.getElementById('notebook-drawer'),
+      search: document.getElementById('search-drawer'),
     };
 
     // ====================================================================
@@ -116,11 +123,14 @@ export class App {
     // ====================================================================
 
     this.setupGlobalListeners();
-    this.storageService.open().then(() => {
+    this.storageService.open().then(async () => {
       console.log("Database is ready.");
       this.googleSyncService.initialize();
+      const bookFiles = await this.storageService.getAllFilesBySuffix('.book');
+      this.searchService.buildIndex(bookFiles);
       this.bookService.loadInitialBook();
       this.notebookPane.initialize();
+      this.settingsPalette.initialize(); 
     });
   }
 
@@ -149,6 +159,13 @@ export class App {
         this.navigator.close();
         document.body.classList.remove('drawer-is-open');
       }
+      if (this.activeRightDrawer === 'search') {
+        const searchDrawerEl = this.drawers.search;
+        // If the click was NOT on the search drawer itself...
+        if (!searchDrawerEl.contains(e.target)) {
+          this.closeRightDrawer();
+        }
+      }
       if (assistantToggleBtn.contains(e.target)) {
         this.toggleRightDrawer('assistant');
       } else if (notebookToggleBtn.contains(e.target)) {
@@ -169,6 +186,10 @@ export class App {
             e.preventDefault();
             this.palette.show();
             break;
+          case 'f': // --- NEW: Ctrl+F for Search ---
+            e.preventDefault();
+            this.searchPane.show();
+            break;
           case 'b':
             e.preventDefault();
             this.navigator.toggle();
@@ -177,6 +198,17 @@ export class App {
         }
       }
     });
+  }
+
+  async navigateTo(filename, viewId) {
+    await this.bookService.switchBook(filename);
+    await this.bookService.changeView(viewId);
+    this.closeRightDrawer();
+  }
+
+  async rebuildSearchIndex() {
+    const bookFiles = await this.storageService.getAllFilesBySuffix('.book');
+    await this.searchService.buildIndex(bookFiles);
   }
 
   toggleRightDrawer(drawerName) {

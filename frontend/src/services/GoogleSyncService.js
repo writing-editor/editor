@@ -176,4 +176,30 @@ export class GoogleSyncService {
     });
     return response.body;
   }
+
+  // --- ADD THESE TWO NEW METHODS ---
+  async listBackupFiles() {
+    const response = await this.gapi.client.drive.files.list({
+      spaces: 'appDataFolder',
+      fields: 'files(id, name, modifiedTime)',
+    });
+    return response.result.files;
+  }
+
+  async deleteAllFiles() {
+    const files = await this.listBackupFiles();
+    if (files && files.length > 0) {
+      const batch = this.gapi.client.newBatch();
+      files.forEach(file => {
+        batch.add(this.gapi.client.drive.files.delete({ fileId: file.id }));
+      });
+      await batch;
+    }
+    // Also, disconnect the user
+    if (this.gis && this.gapi.client.getToken()) {
+        this.gis.revokeToken(this.gapi.client.getToken().access_token, () => {
+            console.log('Access token revoked.');
+        });
+    }
+  }
 }

@@ -252,4 +252,30 @@ export class SyncService {
     });
   }
 
+  // --- NEW METHODS FOR DATA MANAGEMENT ---
+
+  async getCloudFileList() {
+    try {
+      await this.googleSyncService.authorize();
+      return await this.googleSyncService.listBackupFiles();
+    } catch (error) {
+      console.error("Failed to get cloud file list:", error);
+      this.appController.showIndicator('Failed to connect to Drive.', { isError: true });
+      return null;
+    }
+  }
+
+  async deleteAllCloudFiles() {
+    const indicatorId = this.appController.showIndicator('Deleting cloud data...');
+    try {
+      await this.googleSyncService.authorize();
+      await this.googleSyncService.deleteAllFiles();
+      this.appController.showIndicator('All cloud data deleted successfully.', { duration: 4000 });
+    } catch (error) {
+      console.error("Failed to delete all cloud files:", error);
+      this.appController.showIndicator('Deletion failed. See console.', { isError: true });
+    } finally {
+      this.appController.hideIndicator(indicatorId);
+    }
+  }
 }

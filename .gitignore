@@ -10,8 +10,7 @@ Thumbs.db
 client.md
 editor.desktop
 toggle.sh
-feather-pen.png
-viteConfigforLocalUse,md
+viteConfigforLocalUse.md
 # Environment variables
 .env
 .env.*
@@ -21,6 +20,9 @@ viteConfigforLocalUse,md
 
 # Node dependencies
 /frontend/node_modules
+
+arch.md
+TODO.md
 
 # --- Frontend ---
 frontend/node_modules/

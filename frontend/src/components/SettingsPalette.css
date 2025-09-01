@@ -1,18 +1,15 @@
-/* src/components/SettingsPalette.css */
+/* frontend/src/components/SettingsPalette.css */
 
-/* --- 1. Main Container & Overlay --- */
+/* --- 1. Main Palette & Overlay --- */
 #settings-palette-container {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(10, 10, 10, 0.3);
-  backdrop-filter: blur(4px);
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
-  justify-content: center;
   align-items: center;
-  z-index: 7000; /* Highest z-index */
+  justify-content: center;
+  z-index: 7000;
+  backdrop-filter: blur(4px);
   opacity: 1;
   transition: opacity 0.2s ease;
 }
@@ -22,11 +19,11 @@
   pointer-events: none;
 }
 
-
-/* --- 2. The Main Palette Panel --- */
 #settings-palette {
   width: 90%;
-  max-width: 600px;
+  max-width: 1000px;
+  min-height: 500px;
+  max-height: 85vh;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -37,111 +34,216 @@
 }
 
 
-/* --- 3. Header, Content, Footer --- */
+/* --- 2. THE NEW HEADER: Thin, with Tabs and Save Button --- */
 #settings-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: 8px 8px 8px 16px;
   border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-background);
   flex-shrink: 0;
 }
-#settings-header h2 {
-  margin: 0;
-  font-size: 18px;
-}
-#settings-close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: var(--color-text-muted);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+
+.settings-tab-bar {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s;
-}
-#settings-close-btn:hover {
-  background-color: var(--color-surface-medium);
+  gap: 8px;
+  flex-grow: 1;
 }
 
+.settings-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+}
+.settings-tab-btn:hover {
+  background-color: var(--color-surface-medium);
+  color: var(--color-text);
+}
+.settings-tab-btn.active {
+  background-color: var(--color-surface-light);
+  color: var(--color-primary);
+  box-shadow: 0 1px 3px var(--color-shadow);
+}
+.settings-tab-btn span { white-space: nowrap; }
+
+#settings-save-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background-color: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+#settings-save-btn:hover { filter: brightness(1.1); }
+
+.icon-save::before {
+  content: '';
+  display: block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg) translateY(-2px) translateX(-2px);
+}
+
+
+/* --- 3. THE NEW CONTENT AREA (CORRECTED) --- */
 #settings-content {
   padding: var(--spacing-lg);
   overflow-y: auto;
-  max-height: 60vh; /* Prevent content from making the modal too tall */
+  flex-grow: 1;
 }
 
-#settings-footer {
-  padding: var(--spacing-md) var(--spacing-lg);
-  border-top: 1px solid var(--color-border);
-  text-align: right;
-  background-color: var(--color-background);
-}
-#settings-save-btn {
-  background-color: var(--color-primary);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: filter 0.2s;
-}
-#settings-save-btn:hover {
-  filter: brightness(1.1);
-}
+.settings-tab-panel { display: none; }
+.settings-tab-panel.active { display: block; }
 
-
-/* --- 4. Form Elements --- */
+/* The section is the grid container. This is correct. */
 .settings-section {
-  margin-bottom: var(--spacing-lg);
-}
-.settings-section:last-of-type {
-  margin-bottom: 0;
-}
-.settings-section h3 {
-  margin-top: 0;
-  margin-bottom: var(--spacing-md);
-  font-size: 16px;
-  border-bottom: 1px solid var(--color-border);
-  padding-bottom: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-lg) var(--spacing-lg); /* Add vertical gap */
 }
 
-.setting-item {
+/* A helper class to make an item span all columns */
+.grid-span-all {
+  grid-column: 1 / -1;
+}
+
+/* This is the primary grid item. It has NO background or border. */
+.setting-item,
+.setting-item-full {
   display: flex;
   flex-direction: column;
-  margin-bottom: var(--spacing-md);
-}
-.setting-item label {
-  font-weight: 500;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-.setting-item small {
-  margin-top: 8px;
-  font-size: 12px;
-  color: var(--color-text-muted);
 }
 
-/* Base styles for inputs and selects */
-#settings-palette input,
-#settings-palette select {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+/* Labels for all items */
+.setting-item label, 
+.setting-item-full .setting-label {
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+/* Description for Data Management items */
+.setting-item-full .setting-description {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0 0 12px 0;
+  line-height: 1.5;
+  flex-grow: 1;
+}
+
+
+/* --- 4. FORM ELEMENTS (UNIFIED AND THEME-AWARE) --- */
+
+/* Text Inputs, Number Inputs, and Selects */
+.setting-item input,
+.setting-item select,
+.data-actions-export select {
+  width: 100%;
   padding: 10px 12px;
-  font-size: 15px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  /* THE FIX: All form elements get their background from a consistent variable */
+  background-color: var(--color-background); 
+  color: var(--color-text);
+  font-size: 14px;
   font-family: var(--font-sans);
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
-  background-color: var(--color-background);
-  color: var(--color-text);
 }
-#settings-palette input:focus,
-#settings-palette select:focus {
+
+/* Select-specific styling (for the dropdown arrow) */
+.setting-item select,
+.data-actions-export select {
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 1em;
+}
+
+/* Consistent Focus Ring */
+.setting-item input:focus,
+.setting-item select:focus,
+.data-actions-export select:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+
+/* --- 5. DATA MANAGEMENT BUTTONS (WITH ICON FIXES) --- */
+.data-actions, .data-actions-export {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-light);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+.settings-action-btn:hover {
+  background-color: var(--color-surface-medium);
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+.settings-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- THIS IS THE KEY ICON FIX --- */
+
+/* Generic styles for SVG icons inside buttons */
+.settings-action-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+  stroke: currentColor;
+  fill: none;
+}
+
+/* Styles for the text-based .tex tag */
+#settings-export-latex-btn {
+  width: auto; /* Allow this button to be wider */
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+.export-format-tag {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--color-text-muted);
 }

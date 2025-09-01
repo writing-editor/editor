@@ -16,15 +16,16 @@ function debounce(func, delay) {
 }
 
 export class Editor {
-  constructor(app) {
+  constructor(app, bookService) { 
     this.app = app;
+    this.bookService = bookService;
     this.element = document.getElementById('editor-pane');
 
     // --- NEW: Debounced save function ---
-    // We will call the App's save method after 5 min of inactivity.
+    // We will call the App's save method after 2 min of inactivity.
     this.debouncedSave = debounce(() => {
-        this.app.saveCurrentView(this.instance.getJSON());
-    }, 300000); 
+        this.bookService.saveCurrentView(this.instance.getJSON());
+    }, 120000);
 
     this.instance = new TipTapEditor({
       element: this.element,

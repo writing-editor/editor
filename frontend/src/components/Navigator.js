@@ -99,6 +99,7 @@ export class Navigator {
     if (isConfirmed) {
       const indicatorId = this.app.showIndicator('Deleting...');
       await this.bookService.deleteBook(filename); // Delegate to BookService
+      await this.app.rebuildSearchIndex();
       this.app.hideIndicator(indicatorId);
       this.app.showIndicator('Document Deleted', { duration: 2000 });
 

@@ -28,11 +28,12 @@ export class AssistantPane {
 
   render(blocksArray) {
     const blocks = blocksArray || [];
-    this.element.innerHTML = renderBlocks(blocks);
+    this.element.innerHTML = `<div id="assistant-content-wrapper">${renderBlocks(blocks)}</div>`;
   }
 
   renderRewriteSuggestion(payload) {
-    const html = `
+    const html = `<div id="assistant-content-wrapper">${
+    `
       <div class="suggestion-container"> 
         <h3>Rewrite Suggestion</h3>
         <div class="margin-block suggestion-block">
@@ -47,7 +48,7 @@ export class AssistantPane {
           </div>
         </div>
       </div>
-    `;
+    `}</div>`;
     this.element.innerHTML = html;
 
     // These event listeners are fine as they call App-level methods
