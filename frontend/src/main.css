@@ -1,0 +1,484 @@
+/* src/main.css - Global Styles */
+/* --- 1. THEME & GLOBAL VARIABLES --- */
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --navigator-width: 320px;
+  --right-drawer-width: 40%;
+  --editor-pane-shrunk-width: 60%;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  
+  /* Light Theme */
+  --color-text: #1a1a1a;
+  --color-text-muted: #666;
+  --color-background: rgb(253, 255, 250);
+  --color-surface-light: #fff; /* For cards, drawers */
+  --color-surface-medium: #f1f3f5; /* For hovers, inputs */
+  --color-primary: #007aff;
+  --color-border: #e0e0e0;
+  --color-success: #2b8a3e;
+  --color-danger: #c92a2a;
+  --color-danger-bg: #ffe3e3;
+  --color-success-bg: #d3f9d8;
+  --color-shadow: rgba(0, 0, 0, 0.1);
+}
+
+body.theme-dark {
+  /* Dark Theme with Blue Tint */
+  --color-text: #e3e6eb;             /* Softer off-white text */
+  --color-text-muted: #9aa0ac;       /* Muted, bluish-gray text */
+  --color-background: #070815;       /* Deep blue-black background */
+  --color-surface-light: #141a20;    /* Slightly lighter surface */
+  --color-surface-medium: #1e262f;   /* Raised surfaces with blue tone */
+  --color-border: #2a3440;           /* Borders with subtle blue hue */
+
+  /* Accent colors */
+  --color-primary: #4da3ff;          /* Brighter Android-like blue */
+  --color-success: #3ecf8e;          /* Green still works */
+  --color-danger: #ff5c5f;           /* Adjusted red for contrast */
+
+  /* Background tints for status feedback */
+  --color-danger-bg: #2a1a1d;        /* Dark red with blue mix */
+  --color-success-bg: #122a20;       /* Dark green with blue undertone */
+
+  /* Shadows */
+  --color-shadow: rgba(0, 0, 0, 0.65);
+}
+
+
+
+
+/* --- 2. GLOBAL & LAYOUT STYLES --- */
+body, html {
+  height: 100%;
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background-color: var(--color-background);
+}
+
+#root {
+  height: 100vh;
+  width: 100vw;
+}
+
+#app {
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+#main-container {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.right-drawer-is-open #main-container {
+  width: var(--editor-pane-shrunk-width);
+}
+
+#editor-pane {
+  flex-grow: 1;
+  padding: var(--spacing-lg);
+  overflow-y: auto;  
+  min-height: 0;    
+  height: 100%;      
+  box-sizing: border-box;
+}
+
+
+.right-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: var(--right-drawer-width);
+  height: 100%;
+  z-index: 1001;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;  
+  display: flex;
+  flex-direction: column;
+  min-height: 0;   
+}
+
+.right-drawer.is-visible {
+  transform: translateX(0);
+}
+
+.notebook-header,
+.note-editor-container {
+  flex-shrink: 0;
+}
+
+/* This is the key fix: make the notes list the primary scrolling area */
+#note-blocks-container {
+  flex-grow: 1; /* ADD: Allow this container to grow and fill remaining space */
+  overflow-y: auto; /* ADD: Make THIS the scrolling element */
+  min-height: 0; /* ADD: CRITICAL for flexbox scrolling to work correctly */
+}
+
+/* src/main.css */
+
+/* --- 3. GLOBAL CONTROL BUTTONS & ICONS (ENHANCED ANIMATIONS VERSION) --- */
+
+/* --- A) Base Button Styles --- */
+#navigator-toggle-btn,
+.app-control-btn {
+  background-color: transparent;
+  border: none;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 6px;
+  color: var(--color-text);
+  transition: transform 0.2s ease-out;
+}
+
+/* Position of Navigator Button */
+#navigator-toggle-btn {
+  position: fixed;
+  top: var(--spacing-md);
+  left: var(--spacing-md);
+  z-index: 1003;
+}
+
+/* Hover & Focus Feedback (scale + subtle shake) */
+#navigator-toggle-btn:hover,
+.app-control-btn:hover {
+  transform: scale(1.08);
+  animation: btn-focus-shake 0.35s ease-in-out;
+}
+
+.app-control-btn:active {
+  transform: scale(0.92);
+}
+
+/* Shake Animation */
+@keyframes btn-focus-shake {
+  0%, 100% { transform: scale(1.08) translateX(0); }
+  25% { transform: scale(1.08) translateX(-1px); }
+  50% { transform: scale(1.08) translateX(1px); }
+  75% { transform: scale(1.08) translateX(-1px); }
+}
+
+
+/* --- B) Button Containers --- */
+#app-controls {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1004;
+}
+#top-right-controls,
+#bottom-left-controls,
+#bottom-right-controls {
+  position: absolute;
+  pointer-events: all;
+  display: flex;
+  gap: 8px;
+}
+#top-right-controls { top: var(--spacing-md); right: var(--spacing-md); }
+#bottom-left-controls { bottom: var(--spacing-md); left: var(--spacing-md); }
+#bottom-right-controls { bottom: var(--spacing-md); right: var(--spacing-md); }
+
+
+/* --- C) Icon-Specific Styles --- */
+
+/* --- ICON 1: Hamburger (Navigator) --- */
+.icon-hamburger {
+  width: 20px;
+  height: 18px;
+  position: relative;
+}
+.icon-hamburger span {
+  display: block;
+  position: absolute;
+  height: 2px;
+  width: 100%;
+  background: var(--color-text);
+  border-radius: 2px;
+  left: 0;
+  transform: rotate(0deg);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+}
+.icon-hamburger span:nth-child(1) { top: 0px; }
+.icon-hamburger span:nth-child(2) { top: 8px; }
+.icon-hamburger span:nth-child(3) { top: 16px; }
+
+body.drawer-is-open .icon-hamburger span:nth-child(1) {
+  top: 8px;
+  transform: rotate(135deg) scale(1.1);
+}
+body.drawer-is-open .icon-hamburger span:nth-child(2) {
+  opacity: 0;
+  transform: translateX(-20px) scale(0.5);
+}
+body.drawer-is-open .icon-hamburger span:nth-child(3) {
+  top: 8px;
+  transform: rotate(-135deg) scale(1.1);
+}
+
+
+/* --- ICON 2: Pages (Notebook) --- */
+.icon-pages {
+  width: 18px;
+  height: 18px;
+  position: relative;
+}
+.icon-pages span {
+  display: block;
+  position: absolute;
+  height: 2px;
+  width: 100%;
+  background: var(--color-text);
+  border-radius: 2px;
+  left: 0;
+  transform: rotate(0deg);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+}
+
+/* Notebook Lines */
+.icon-pages span:nth-child(1) { top: 3px; left: -3px; width: 85%; } /* "hanging" page */
+.icon-pages span:nth-child(2) { top: 8px; }
+.icon-pages span:nth-child(3) { top: 13px; }
+
+/* Active Morph (Notebook → X) */
+#notebook-toggle-btn.is-active .icon-pages span:nth-child(1) {
+  top: 8px;
+  transform: rotate(135deg) scale(1.1);
+  left: 0; /* align back */
+  width: 100%;
+}
+#notebook-toggle-btn.is-active .icon-pages span:nth-child(2) {
+  opacity: 0;
+  transform: translateX(-20px) scale(0.5);
+}
+#notebook-toggle-btn.is-active .icon-pages span:nth-child(3) {
+  top: 8px;
+  transform: rotate(-135deg) scale(1.1);
+}
+
+
+/* --- ICON 3: Spark (AI Assistant) --- */
+.icon-spark {
+  width: 20px;
+  height: 20px;
+  position: relative;
+}
+.icon-spark span {
+  display: block;
+  position: absolute;
+  height: 2px;
+  width: 100%;
+  background: var(--color-text);
+  border-radius: 2px;
+  left: 0;
+  top: 9px; /* Center point */
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+}
+
+.icon-spark span:nth-child(1) { transform: rotate(90deg); }
+.icon-spark span:nth-child(2) { transform: rotate(45deg); }
+.icon-spark span:nth-child(3) { transform: rotate(-45deg); }
+
+/* Active Morph (Spark → X-like form) */
+#assistant-toggle-btn.is-active .icon-spark span:nth-child(1) {
+  opacity: 0;
+}
+#assistant-toggle-btn.is-active .icon-spark span:nth-child(2) {
+  transform: rotate(135deg) scale(1.1);
+}
+#assistant-toggle-btn.is-active .icon-spark span:nth-child(3) {
+  transform: rotate(45deg) scale(1.1);
+}
+
+
+
+
+#status-indicator-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 2000;
+  pointer-events: none;
+}
+
+/* Base style for all indicator bubbles */
+.status-indicator-item {
+  padding: 8px 15px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px var(--color-shadow);
+  animation: slide-in 0.5s forwards ease;
+
+  /* --- THEME AWARE STYLES --- */
+  background-color: var(--color-text);
+  color: var(--color-background);
+}
+
+/* Modifier class for error indicators */
+.status-indicator-item.is-error {
+  background-color: var(--color-danger);
+  color: #fff; /* White text provides the best contrast on a red background */
+}
+
+@keyframes slide-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* --- 5. SCROLLBAR HIDING --- */
+#editor-pane::-webkit-scrollbar,
+#navigator-drawer::-webkit-scrollbar,
+.right-drawer::-webkit-scrollbar,
+#note-blocks-container::-webkit-scrollbar { /* <-- ADD THIS */
+  display: none;
+}
+
+/* This is the standard property for Firefox */
+#editor-pane,
+#navigator-drawer,
+.right-drawer,
+#note-blocks-container { /* <-- ADD THIS */
+  scrollbar-width: none;
+}
+
+/* ICON 5: Gear (Settings) — bigger */
+.icon-gear {
+  position: relative;
+  width: 40px;   /* increased */
+  height: 40px;  /* increased */
+  display: inline-block;
+}
+
+/* shared */
+.icon-gear .gear-center,
+.icon-gear .tooth {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: 50% 50%;
+}
+
+/* center ring (bigger) */
+.icon-gear .gear-center {
+  width: 8px;                     /* was 8px */
+  height: 8px;
+  border-radius: 50%;
+  border: 3.5px solid var(--color-text);
+  background: transparent;
+  transform: translate(-50%, -50%);
+}
+
+/* teeth bars (longer & thicker) */
+.icon-gear .tooth {
+  width: 20px;                     /* was 14px */
+  height: 3px;                     /* was 2px */
+  border-radius: 2px;
+  background: var(--color-text);
+  transform: translate(-50%, -50%) rotate(0deg);
+}
+.icon-gear .tooth.v {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+/* optional diagonal teeth (scaled up as well) */
+.icon-gear::before,
+.icon-gear::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 20px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--color-text);
+  transform-origin: 50% 50%;
+}
+.icon-gear::before { transform: translate(-50%, -50%) rotate(45deg); }
+.icon-gear::after  { transform: translate(-50%, -50%) rotate(-45deg); }
+
+/* === NEW: Icons for Data Management Buttons === */
+
+.icon-cloud {
+  position: relative;
+  width: 20px;
+  height: 12px;
+  background: currentColor;
+  border-radius: 6px;
+  margin-right: 8px;
+  transform: translateY(-2px);
+}
+.icon-cloud::before {
+  content: '';
+  position: absolute;
+  background: currentColor;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  top: -4px;
+  left: 3px;
+}
+.icon-cloud::after {
+  content: '';
+  position: absolute;
+  background: currentColor;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  top: -6px;
+  right: 2px;
+}
+
+.icon-file-doc {
+  position: relative;
+  width: 14px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-radius: 2px;
+  margin-right: 8px;
+}
+.icon-file-doc::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-background);
+  border-bottom: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+  border-radius: 0 0 0 8px;
+}
+.icon-file-doc::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 2px;
+  width: 8px;
+  height: 2px;
+  background-color: currentColor;
+  box-shadow: 0 4px 0 currentColor, 0 8px 0 currentColor;
+}
+

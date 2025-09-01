@@ -1,0 +1,31 @@
+# General
+.DS_Store
+Thumbs.db
+*.log
+
+# IDE and editor folders
+.vscode/
+.idea/
+
+client.md
+editor.desktop
+toggle.sh
+feather-pen.png
+viteConfigforLocalUse,md
+# Environment variables
+.env
+.env.*
+
+# Production build output
+/frontend/dist
+
+# Node dependencies
+/frontend/node_modules
+
+# --- Frontend ---
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+frontend/venv
+!frontend/.env.example
