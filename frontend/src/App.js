@@ -132,6 +132,8 @@ export class App {
       this.notebookPane.initialize();
       this.settingsPalette.initialize(); 
     });
+
+    this.activeIndicators = new Map();
   }
 
   // --- METHODS THAT DELEGATE TO BookService ---
@@ -257,26 +259,93 @@ export class App {
   }
 
   // --- INDICATOR SYSTEM ---
+  /**
+   * Shows a status indicator. All indicators now have a failsafe timeout.
+   * @param {string} message - The text to display.
+   * @param {object} options - Configuration options.
+   * @param {boolean} [options.isError=false] - If true, styles as an error.
+   * @param {number|null} [options.duration=null] - If set, auto-hides after this many ms.
+   * @param {number} [options.timeout=20000] - Failsafe removal after this many ms.
+   * @returns {string} The unique ID of the indicator message.
+   */
   showIndicator(message, options = {}) {
-    const { isError = false, duration = null } = options;
+    // Run the cleanup function every time a new indicator is shown.
+    this.clearStaleIndicators();
+
+    const { isError = false, duration = null, timeout = 20000 } = options;
     const container = document.getElementById('status-indicator-container');
     const id = `indicator-${Date.now()}-${Math.random()}`;
+
     const indicatorEl = document.createElement('div');
     indicatorEl.id = id;
     indicatorEl.className = 'status-indicator-item';
     indicatorEl.textContent = message;
     if (isError) indicatorEl.classList.add('is-error');
+    
     container.appendChild(indicatorEl);
-    if (duration) setTimeout(() => this.hideIndicator(id), duration);
+
+    // Add to our tracking map with its creation timestamp
+    this.activeIndicators.set(id, Date.now());
+
+    // If a specific duration is set, use it.
+    if (duration) {
+      setTimeout(() => this.hideIndicator(id), duration);
+    } 
+    // Otherwise, set the failsafe timeout.
+    else if (timeout) {
+      setTimeout(() => this.hideIndicator(id, { isFailsafe: true }), timeout);
+    }
+
     return id;
   }
 
-  hideIndicator(id) {
+  /**
+   * Hides a specific status indicator message by its ID.
+   * @param {string} id - The unique ID of the message to hide.
+   * @param {object} options - Internal options.
+   */
+  hideIndicator(id, options = {}) {
+    // If this is a failsafe hide, but the indicator is no longer in our active list,
+    // it means it was hidden correctly already. Do nothing.
+    if (options.isFailsafe && !this.activeIndicators.has(id)) {
+        return;
+    }
+    
     const indicatorEl = document.getElementById(id);
     if (indicatorEl) {
       indicatorEl.style.transition = 'opacity 0.5s ease';
       indicatorEl.style.opacity = '0';
       setTimeout(() => indicatorEl.remove(), 500);
+    }
+    // Always remove from the tracking map
+    this.activeIndicators.delete(id);
+  }
+
+  /**
+   * Updates the text of an existing indicator.
+   * @param {string} id - The ID of the indicator to update.
+   * @param {string} newMessage - The new text to display.
+   */
+  updateIndicator(id, newMessage) {
+    const indicatorEl = document.getElementById(id);
+    if (indicatorEl) {
+      indicatorEl.textContent = newMessage;
+      // Also update its timestamp to reset its failsafe timer
+      this.activeIndicators.set(id, Date.now());
+    }
+  }
+
+  /**
+   * The "janitor" function. Removes any indicators that have been visible for too long.
+   * This is our safety net for any rogue indicators.
+   */
+  clearStaleIndicators(maxAge = 15000) { // Default max lifetime: 15 seconds
+    const now = Date.now();
+    for (const [id, timestamp] of this.activeIndicators.entries()) {
+      if (now - timestamp > maxAge) {
+        console.warn(`Hiding stale indicator (ID: ${id})`);
+        this.hideIndicator(id);
+      }
     }
   }
 
