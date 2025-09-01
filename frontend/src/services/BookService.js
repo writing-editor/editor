@@ -338,6 +338,7 @@ export class BookService {
       }
     }
 
+
     // 3. Rebuild chapters from scratch, preserving IDs.
     const newChapters = [];
     let currentChapterContent = [];
@@ -354,15 +355,18 @@ export class BookService {
         newChapters.push({
           id: chapterId,
           title: newTitle,
-          content_json: { type: 'doc', content: [] }
+          content_json: { type: 'doc', content: [] } // Start with empty content
         });
         currentChapterContent = [];
+
       } else {
-        if (newChapters.length > 0) currentChapterContent.push(node);
-        else orphanContent.push(node);
+        if (newChapters.length === 0) {
+          orphanContent.push(node);
+        } else {
+          currentChapterContent.push(node);
+        }
       }
     }
-
     if (newChapters.length > 0) {
       newChapters[newChapters.length - 1].content_json.content = currentChapterContent;
     }
