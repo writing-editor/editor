@@ -247,3 +247,56 @@
   font-weight: bold;
   color: var(--color-text-muted);
 }
+
+
+
+/* --- Style for the new Disconnect button --- */
+.settings-action-btn-danger {
+  width: 100%; /* Make it full-width to be prominent */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid var(--color-danger);
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+.settings-action-btn-danger:hover {
+  background-color: var(--color-danger);
+  color: #fff;
+}
+
+#settings-disconnect-btn:hover {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}#settings-disconnect-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-light);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+#settings-disconnect-btn:hover {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+#settings-disconnect-btn svg {
+  width: 16px;
+  height: 16px;
+}

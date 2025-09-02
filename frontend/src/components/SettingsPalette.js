@@ -49,6 +49,7 @@ export class SettingsPalette {
         this.gdriveUploadBtn = document.getElementById('settings-gdrive-upload-btn');
         this.gdriveDownloadBtn = document.getElementById('settings-gdrive-download-btn');
         this.manageCloudBtn = document.getElementById('settings-gdrive-manage-btn');
+        this.disconnectBtn = document.getElementById('settings-disconnect-btn');
         this.setupEventListeners();
         this.applyAllSettings();
     }
@@ -194,7 +195,27 @@ export class SettingsPalette {
         </button>
       </div>
     </div>
+      <div class="setting-item-full">
+      <label class="item-label">Disconnect & Reset</label>
+      <p class="item-description">
+        This will unregister the service worker, delete all local data (documents, notes, and settings) from your browser, and reload the application. 
+        This is the equivalent of a full uninstall.
+      </p>
+      <div class="data-actions">
+            
+<button id="settings-disconnect-btn" class="settings-action-btn" title="Disconnect and Clear All Local Data">
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<polyline points="3 6 5 6 21 6"/>
+<path d="M19 6l-2 14H7L5 6"/>
+<path d="M10 11v6"/>
+<path d="M14 11v6"/>
+<path d="M9 6V4h6v2"/>
+</svg>
+</button>
 
+  
+      </div>
+    </div>
       </div>
     </div>
   </div>
@@ -223,6 +244,16 @@ export class SettingsPalette {
         this.gdriveUploadBtn.addEventListener('click', () => this.app.syncService.uploadToGoogleDrive());
         this.gdriveDownloadBtn.addEventListener('click', () => this.app.syncService.downloadFromGoogleDrive());
         this.manageCloudBtn.addEventListener('click', () => this.app.dataManager.show());
+        this.disconnectBtn.addEventListener('click', async () => {
+        this.hide(); // Hide the settings panel first
+        const isConfirmed = await this.app.confirmationModal.show(
+            'Confirm Disconnect',
+            'Are you sure? This will delete all local data and reload the app.'
+        );
+        if (isConfirmed) {
+            this.app.uninstall();
+        }
+    });
     }
 
     // --- NEW: Tab Switching Logic ---

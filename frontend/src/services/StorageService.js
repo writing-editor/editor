@@ -3,7 +3,7 @@
  * This service is the single source of truth for all persistent data stored in the browser.
  */
 export class StorageService {
-  constructor(dbName = 'IntelligentEditorDB', version = 1) {
+  constructor(dbName = 'IntelligentEditorDB', version = 2) {
     this.dbName = dbName;
     this.version = version;
     this.db = null;
@@ -37,9 +37,11 @@ export class StorageService {
       // This event is only fired when the version changes or the DB is first created.
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
-        // The 'files' object store will hold all our data blobs (books, notes, prompts)
-        db.createObjectStore('files', { keyPath: 'id' });
-        console.log("Object store 'files' created.");
+        // THE FIX: Check if the store already exists before trying to create it.
+        if (!db.objectStoreNames.contains('files')) {
+            db.createObjectStore('files', { keyPath: 'id' });
+            console.log("Object store 'files' created.");
+        }
       };
     });
   }
@@ -146,5 +148,32 @@ export class StorageService {
           request.onsuccess = () => resolve(request.result || []);
           request.onerror = () => reject(request.error);
       });
+  }
+
+   async deleteDatabase() {
+    return new Promise((resolve, reject) => {
+      // First, close the active connection to the database
+      if (this.db) {
+        this.db.close();
+        this.db = null;
+        console.log("Database connection closed.");
+      }
+
+      console.log(`Deleting database: ${this.dbName}`);
+      const deleteRequest = indexedDB.deleteDatabase(this.dbName);
+
+      deleteRequest.onsuccess = () => {
+        console.log("Database deleted successfully.");
+        resolve();
+      };
+      deleteRequest.onerror = (event) => {
+        console.error("Error deleting database:", event.target.error);
+        reject("Error deleting database.");
+      };
+      deleteRequest.onblocked = () => {
+        console.warn("Database deletion blocked. Please close other tabs of this app.");
+        reject("Database deletion blocked.");
+      };
+    });
   }
 }

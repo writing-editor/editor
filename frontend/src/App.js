@@ -406,4 +406,31 @@ export class App {
     }
   }
 
+  // --- to remove the cashe and delete the app data ---
+  async uninstall() {
+    console.log("Uninstalling application...");
+    
+    // 1. Unregister all service workers
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const registration of registrations) {
+        await registration.unregister();
+        console.log("Service Worker unregistered.");
+      }
+    }
+    
+    // 2. Delete the entire IndexedDB database
+    await this.storageService.deleteDatabase();
+    console.log("IndexedDB database deleted.");
+
+    // 3. Clear any other site data (optional, but good practice)
+    // Caches are harder to clear programmatically, but the SW unregister does most of the work.
+    
+    // 4. Reload the page
+    this.showIndicator("Application data cleared. Reloading...", { duration: 2000 });
+    setTimeout(() => {
+      window.location.reload();
+    }, 2000);
+  }
+
 }
