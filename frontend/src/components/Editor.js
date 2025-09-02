@@ -38,9 +38,9 @@ export class Editor {
         }),
       ],
       content: '<h2>Welcome</h2>',
-      onUpdate: () => {
-        this.debouncedSave();
-      },
+      //onUpdate: () => {
+        //this.debouncedSave();
+      //},
     });
   }
 

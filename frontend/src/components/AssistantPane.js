@@ -54,8 +54,8 @@ export class AssistantPane {
     // These event listeners are fine as they call App-level methods
     document.getElementById('accept-suggestion-btn').addEventListener('click', async () => {
       this.app.editor.replaceText(payload.range, payload.suggested_text);
-      await this.app.restoreDefaultMargin();
       this.app.closeRightDrawer();
+      await this.app.restoreDefaultMargin();
     });
 
     document.getElementById('reject-suggestion-btn').addEventListener('click', async () => {
