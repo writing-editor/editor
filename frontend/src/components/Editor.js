@@ -16,31 +16,37 @@ function debounce(func, delay) {
 }
 
 export class Editor {
-  constructor(app, bookService) { 
+  constructor(app, bookService) { // <-- Already receives bookService
     this.app = app;
-    this.bookService = bookService;
+    this.bookService = bookService; // <-- Already stores reference
     this.element = document.getElementById('editor-pane');
 
-    // --- NEW: Debounced save function ---
-    // We will call the App's save method after 2 min of inactivity.
-    //this.debouncedSave = debounce(() => {
-        //this.bookService.saveCurrentView(this.instance.getJSON());
-    //}, 120000);
+    this.debouncedSave = debounce(() => {
+        // --- THIS IS THE FIX ---
+        // Call the new saveView method, passing the current viewId
+        // which the BookService already knows.
+        if (this.bookService.currentViewId) {
+            this.bookService.saveView(
+                this.bookService.currentViewId, 
+                this.instance.getJSON()
+            );
+        }
+    }, 300000); // 5 minute auto-save
 
     this.instance = new TipTapEditor({
       element: this.element,
       extensions: [
         StarterKit.configure({
-            heading: {
-                // --- THE FIX: Explicitly define allowed heading levels ---
-                levels: [2, 3, 4, 5, 6], // Allow H2 through H6, but NOT H1
-            },
+            heading: { levels: [2, 3, 4, 5, 6] },
         }),
       ],
       content: '<h2>Welcome</h2>',
-      //onUpdate: () => {
-        //this.debouncedSave();
-      //},
+      onUpdate: () => {
+        // We only want to trigger auto-save if the view is actually editable.
+        if (this.instance.isEditable) {
+            this.debouncedSave();
+        }
+      },
     });
   }
 

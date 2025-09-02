@@ -21,7 +21,7 @@ import { GoogleSyncService } from './services/GoogleSyncService.js';
 import { SearchService } from './services/SearchService.js';
 import { SearchPane } from './components/SearchPane.js';
 import { OfflineIndicator } from './utils/OfflineIndicator.js';
-import { DataManager } from './components/DataManager.js'; 
+import { DataManager } from './components/DataManager.js';
 
 
 let instance = null;
@@ -36,25 +36,25 @@ export class App {
     //  STEP 1: INITIALIZE CORE SERVICES & AGENTS FIRST
     // ====================================================================
 
-    
-    this.searchService = new SearchService(); 
+
+    this.searchService = new SearchService();
     this.storageService = new StorageService();
     // The googleSyncService only needs a small part of the controller
-    const gSyncController = { 
-        showIndicator: (...args) => this.showIndicator(...args),
-        hideIndicator: (...args) => this.hideIndicator(...args)
+    const gSyncController = {
+      showIndicator: (...args) => this.showIndicator(...args),
+      hideIndicator: (...args) => this.hideIndicator(...args)
     };
     this.googleSyncService = new GoogleSyncService(gSyncController);
-    
+
     // Now, pass ALL dependencies to SyncService
     this.syncService = new SyncService(
-        this.storageService, 
-        {
-            showIndicator: (...args) => this.showIndicator(...args),
-            hideIndicator: (...args) => this.hideIndicator(...args),
-            confirm: (...args) => this.confirmationModal.show(...args)
-        },
-        this.googleSyncService // <-- THE MISSING PIECE
+      this.storageService,
+      {
+        showIndicator: (...args) => this.showIndicator(...args),
+        hideIndicator: (...args) => this.hideIndicator(...args),
+        confirm: (...args) => this.confirmationModal.show(...args)
+      },
+      this.googleSyncService // <-- THE MISSING PIECE
     );
     this.llmOrchestrator = new LlmOrchestrator();
 
@@ -97,8 +97,8 @@ export class App {
     this.confirmationModal = new ConfirmationModal();
     this.searchPane = new SearchPane(this);
     this.settingsPalette = new SettingsPalette(this);
-    this.dataManager = new DataManager(this); 
-    new OfflineIndicator(); 
+    this.dataManager = new DataManager(this);
+    new OfflineIndicator();
 
     // ====================================================================
     //  STEP 3: POPULATE THE APP CONTROLLER with UI references
@@ -108,7 +108,7 @@ export class App {
     appController.renderNavigator = (state) => this.navigator.render(state);
     appController.renderAssistantPane = (blocks) => this.assistantPane.render(blocks);
 
-    
+
 
     // --- UI State Management (remains in App.js) ---
     this.activeRightDrawer = null;
@@ -130,10 +130,8 @@ export class App {
       this.searchService.buildIndex(bookFiles);
       this.bookService.loadInitialBook();
       this.notebookPane.initialize();
-      this.settingsPalette.initialize(); 
+      this.settingsPalette.initialize();
     });
-
-    this.activeIndicators = new Map();
   }
 
   // --- METHODS THAT DELEGATE TO BookService ---
@@ -182,7 +180,12 @@ export class App {
         switch (e.key) {
           case 's':
             e.preventDefault();
-            this.bookService.saveCurrentView(this.editor.instance.getJSON());
+            if (this.bookService.currentViewId && this.editor.instance.isEditable) {
+              this.bookService.saveView(
+                this.bookService.currentViewId,
+                this.editor.instance.getJSON()
+              );
+            }
             break;
           case 'k':
             e.preventDefault();
@@ -259,93 +262,26 @@ export class App {
   }
 
   // --- INDICATOR SYSTEM ---
-  /**
-   * Shows a status indicator. All indicators now have a failsafe timeout.
-   * @param {string} message - The text to display.
-   * @param {object} options - Configuration options.
-   * @param {boolean} [options.isError=false] - If true, styles as an error.
-   * @param {number|null} [options.duration=null] - If set, auto-hides after this many ms.
-   * @param {number} [options.timeout=20000] - Failsafe removal after this many ms.
-   * @returns {string} The unique ID of the indicator message.
-   */
   showIndicator(message, options = {}) {
-    // Run the cleanup function every time a new indicator is shown.
-    this.clearStaleIndicators();
-
-    const { isError = false, duration = null, timeout = 20000 } = options;
+    const { isError = false, duration = null } = options;
     const container = document.getElementById('status-indicator-container');
     const id = `indicator-${Date.now()}-${Math.random()}`;
-
     const indicatorEl = document.createElement('div');
     indicatorEl.id = id;
     indicatorEl.className = 'status-indicator-item';
     indicatorEl.textContent = message;
     if (isError) indicatorEl.classList.add('is-error');
-    
     container.appendChild(indicatorEl);
-
-    // Add to our tracking map with its creation timestamp
-    this.activeIndicators.set(id, Date.now());
-
-    // If a specific duration is set, use it.
-    if (duration) {
-      setTimeout(() => this.hideIndicator(id), duration);
-    } 
-    // Otherwise, set the failsafe timeout.
-    else if (timeout) {
-      setTimeout(() => this.hideIndicator(id, { isFailsafe: true }), timeout);
-    }
-
+    if (duration) setTimeout(() => this.hideIndicator(id), duration);
     return id;
   }
 
-  /**
-   * Hides a specific status indicator message by its ID.
-   * @param {string} id - The unique ID of the message to hide.
-   * @param {object} options - Internal options.
-   */
-  hideIndicator(id, options = {}) {
-    // If this is a failsafe hide, but the indicator is no longer in our active list,
-    // it means it was hidden correctly already. Do nothing.
-    if (options.isFailsafe && !this.activeIndicators.has(id)) {
-        return;
-    }
-    
+  hideIndicator(id) {
     const indicatorEl = document.getElementById(id);
     if (indicatorEl) {
       indicatorEl.style.transition = 'opacity 0.5s ease';
       indicatorEl.style.opacity = '0';
       setTimeout(() => indicatorEl.remove(), 500);
-    }
-    // Always remove from the tracking map
-    this.activeIndicators.delete(id);
-  }
-
-  /**
-   * Updates the text of an existing indicator.
-   * @param {string} id - The ID of the indicator to update.
-   * @param {string} newMessage - The new text to display.
-   */
-  updateIndicator(id, newMessage) {
-    const indicatorEl = document.getElementById(id);
-    if (indicatorEl) {
-      indicatorEl.textContent = newMessage;
-      // Also update its timestamp to reset its failsafe timer
-      this.activeIndicators.set(id, Date.now());
-    }
-  }
-
-  /**
-   * The "janitor" function. Removes any indicators that have been visible for too long.
-   * This is our safety net for any rogue indicators.
-   */
-  clearStaleIndicators(maxAge = 15000) { // Default max lifetime: 15 seconds
-    const now = Date.now();
-    for (const [id, timestamp] of this.activeIndicators.entries()) {
-      if (now - timestamp > maxAge) {
-        console.warn(`Hiding stale indicator (ID: ${id})`);
-        this.hideIndicator(id);
-      }
     }
   }
 
@@ -409,7 +345,7 @@ export class App {
   // --- to remove the cashe and delete the app data ---
   async uninstall() {
     console.log("Uninstalling application...");
-    
+
     // 1. Unregister all service workers
     if ('serviceWorker' in navigator) {
       const registrations = await navigator.serviceWorker.getRegistrations();
@@ -418,14 +354,14 @@ export class App {
         console.log("Service Worker unregistered.");
       }
     }
-    
+
     // 2. Delete the entire IndexedDB database
     await this.storageService.deleteDatabase();
     console.log("IndexedDB database deleted.");
 
     // 3. Clear any other site data (optional, but good practice)
     // Caches are harder to clear programmatically, but the SW unregister does most of the work.
-    
+
     // 4. Reload the page
     this.showIndicator("Application data cleared. Reloading...", { duration: 2000 });
     setTimeout(() => {

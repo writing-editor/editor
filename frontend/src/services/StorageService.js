@@ -3,7 +3,7 @@
  * This service is the single source of truth for all persistent data stored in the browser.
  */
 export class StorageService {
-  constructor(dbName = 'IntelligentEditorDB', version = 2) {
+  constructor(dbName = 'IntelligentEditorDB', version = 3) {
     this.dbName = dbName;
     this.version = version;
     this.db = null;
@@ -11,7 +11,6 @@ export class StorageService {
 
   /**
    * Opens and initializes the IndexedDB database.
-   * This must be called before any other database operations.
    * @returns {Promise<boolean>} A promise that resolves to true on success.
    */
   async open() {
@@ -30,26 +29,32 @@ export class StorageService {
 
       request.onsuccess = (event) => {
         this.db = event.target.result;
-        console.log("Database opened successfully.");
+        console.log("Database opened successfully at version 3.");
         resolve(true);
       };
 
-      // This event is only fired when the version changes or the DB is first created.
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
-        // THE FIX: Check if the store already exists before trying to create it.
-        if (!db.objectStoreNames.contains('files')) {
-            db.createObjectStore('files', { keyPath: 'id' });
-            console.log("Object store 'files' created.");
+        console.log(`Upgrading database to version ${this.version}...`);
+
+        // --- STEP 2: The "Nuke & Pave" logic ---
+        // If the 'files' object store already exists from a previous version, delete it.
+        if (db.objectStoreNames.contains('files')) {
+          db.deleteObjectStore('files');
+          console.log("Old 'files' object store deleted.");
         }
+
+        // Create the new, empty 'files' object store.
+        db.createObjectStore('files', { keyPath: 'id' });
+        console.log("New 'files' object store created.");
       };
     });
   }
 
-     /**
-   * Removes all entries associated with a specific filename from the index.
-   * @param {string} filename The filename of the book to remove.
-   */
+  /**
+* Removes all entries associated with a specific filename from the index.
+* @param {string} filename The filename of the book to remove.
+*/
   removeDocument(filename) {
     // FlexSearch's Document index doesn't have a simple "remove where field equals value".
     // The most robust way is to rebuild the index without the deleted file.
@@ -59,6 +64,7 @@ export class StorageService {
     console.log(`Request to remove ${filename} from index. A full re-index is recommended.`);
     this.isIndexed = false; // Mark index as dirty
   }
+  
   /**
    * Saves a file (or any JSON object) to the database.
    * @param {string} id - The "filename" or unique key (e.g., 'my-book.book', 'notes.json').
@@ -66,11 +72,13 @@ export class StorageService {
    * @returns {Promise<void>}
    */
   async saveFile(id, content) {
+    // We will add a lastModified timestamp to every save operation now.
+    const lastModified = Date.now();
     return new Promise((resolve, reject) => {
       if (!this.db) return reject("Database not open.");
       const transaction = this.db.transaction(['files'], 'readwrite');
       const store = transaction.objectStore('files');
-      const request = store.put({ id, content });
+      const request = store.put({ id, content, lastModified });
 
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
@@ -120,17 +128,17 @@ export class StorageService {
    */
   async getAllFilesBySuffix(suffix) {
     return new Promise((resolve, reject) => {
-        if (!this.db) return reject("Database not open.");
-        const transaction = this.db.transaction(['files'], 'readonly');
-        const store = transaction.objectStore('files');
-        const request = store.getAll();
+      if (!this.db) return reject("Database not open.");
+      const transaction = this.db.transaction(['files'], 'readonly');
+      const store = transaction.objectStore('files');
+      const request = store.getAll();
 
-        request.onsuccess = () => {
-            const allFiles = request.result || [];
-            const filteredFiles = allFiles.filter(file => file.id.endsWith(suffix));
-            resolve(filteredFiles);
-        };
-        request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const allFiles = request.result || [];
+        const filteredFiles = allFiles.filter(file => file.id.endsWith(suffix));
+        resolve(filteredFiles);
+      };
+      request.onerror = () => reject(request.error);
     });
   }
 
@@ -139,18 +147,18 @@ export class StorageService {
    * @returns {Promise<Array<{id: string, content: any}>>} A list of all file objects.
    */
   async getAllFiles() {
-      return new Promise((resolve, reject) => {
-          if (!this.db) return reject("Database not open.");
-          const transaction = this.db.transaction(['files'], 'readonly');
-          const store = transaction.objectStore('files');
-          const request = store.getAll();
+    return new Promise((resolve, reject) => {
+      if (!this.db) return reject("Database not open.");
+      const transaction = this.db.transaction(['files'], 'readonly');
+      const store = transaction.objectStore('files');
+      const request = store.getAll();
 
-          request.onsuccess = () => resolve(request.result || []);
-          request.onerror = () => reject(request.error);
-      });
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
   }
 
-   async deleteDatabase() {
+  async deleteDatabase() {
     return new Promise((resolve, reject) => {
       // First, close the active connection to the database
       if (this.db) {

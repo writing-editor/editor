@@ -1,26 +1,31 @@
 // frontend/src/services/BookService.js
 
 import { debounce } from '../utils/api.js';
-// We no longer import request here, as BookService should not make API calls for core ops.
-// It will only be used for optional sync/backup features later.
 
-// --- Default content for a first-time run ---
+// --- Default content now uses the NEW hierarchical structure ---
 const DEFAULT_USER_MANUAL = {
   metadata: { title: "User Manual" },
   chapters: [{
     id: "ch_manual_1",
-    title: "Welcome to the Editor",
+    title: "Welcome to the Intelligent Editor",
     content_json: {
       type: "doc",
       content: [
-        { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Welcome!" }] },
-        { type: "paragraph", content: [{ type: "text", text: "This is your user manual. It is also a fully functional document you can explore." }] },
-        { type: "heading", attrs: { level: 3 }, content: [{ type: "text", text: "The Navigator" }] },
-        { type: "paragraph", content: [{ type: "text", text: "Use the hamburger menu icon (☰) in the top-left to open the navigator. From there, you can see all your documents or the chapter/section structure of the current document." }] },
-        { type: "heading", attrs: { level: 3 }, content: [{ type: "text", text: "AI Assistant & Notebook" }] },
-        { type: "paragraph", content: [{ type: "text", text: "Use the icons in the top-right to open the AI Assistant and your personal Notebook. Select some text in the editor and press Ctrl+K (or Cmd+K) to open the Command Palette and interact with the AI." }] }
+        { type: "paragraph", content: [{ type: "text", text: "This is your user manual. It is also a fully functional document you can explore." }] }
       ]
-    }
+    },
+    sections: [
+      {
+        id: crypto.randomUUID(),
+        title: "The Navigator",
+        content_json: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Use the hamburger menu icon (☰) in the top-left to open the navigator." }] }] }
+      },
+      {
+        id: crypto.randomUUID(),
+        title: "AI Assistant & Notebook",
+        content_json: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Use the icons in the top-right to open the AI Assistant and your personal Notebook." }] }] }
+      }
+    ]
   }]
 };
 
@@ -29,17 +34,14 @@ const DEFAULT_PROMPTS = {
   'REWRITE.txt': "You are a professional editor. Rewrite the following text to address the user's request. Only return the rewritten text, with no extra commentary or markdown.\n---\nUser Request: {user_request}\nText to rewrite:\n{text_to_analyze}"
 };
 
-
 /**
- * Manages all book-related data and state using the browser's IndexedDB via StorageService.
- * This class is the single source of truth for all document and prompt data.
+ * Manages all book-related data using a hierarchical chapter/section model.
  */
 export class BookService {
-  constructor(appController, storageService) { // <-- Receives storageService
+  constructor(appController, storageService) {
     this.appController = appController;
-    this.storageService = storageService; // <-- Store the reference
+    this.storageService = storageService;
 
-    // --- State Management ---
     this.currentBook = null;
     this.currentViewId = null;
     this.pinnedBook = null;
@@ -59,9 +61,7 @@ export class BookService {
       pinnedBook: this.pinnedBook
     };
   }
-
   // --- Data Loading and Initialization ---
-
   async loadInitialBook() {
     await this.checkForFirstRun(); // Check if we need to seed the database
     await this.refreshLibrary();
@@ -113,8 +113,9 @@ export class BookService {
     }));
     this.appController.renderNavigator(this.getStateForNavigator());
   }
+  // --- METHODS ADAPTED FOR THE NEW DATA STRUCTURE ---
 
-  async switchBook(filename) {
+  async switchBook(filename, viewId = null) {
     this.navigatorView = 'contents';
     const bookFileContent = await this.storageService.getFile(`${filename}.book`);
 
@@ -126,12 +127,14 @@ export class BookService {
         structure: this._getBookStructure(bookFileContent),
       };
 
-      await this.loadMetadata(filename); // Metadata is also in IndexedDB now
+      await this.loadMetadata(filename);
       this.appController.renderNavigator(this.getStateForNavigator());
 
-      const firstViewId = this.currentBook.structure.chapters[0]?.id;
-      if (firstViewId) {
-        this.changeView(firstViewId);
+      const firstChapterId = this.currentBook.chapters[0]?.id;
+      const targetViewId = viewId || firstChapterId;
+
+      if (targetViewId) {
+        this.changeView(targetViewId);
       } else {
         this.appController.renderEditor({ type: 'doc', content: [] });
         this.appController.renderAssistantPane([]);
@@ -141,7 +144,9 @@ export class BookService {
 
   async changeView(viewId) {
     this.currentViewId = viewId;
-    const viewData = this._getViewData(viewId); // Gets data from in-memory state
+    this._updateNavigatorHighlight();
+
+    const viewData = this._getViewData(viewId);
     if (viewData) {
       this.appController.renderEditor(viewData.editor_content);
       const marginBlocks = this.metadata.margin_blocks?.[viewId] || [];
@@ -153,21 +158,7 @@ export class BookService {
     }
   }
 
-  // --- Metadata Management (Now uses StorageService) ---
-
-  async loadMetadata(filename) {
-    const metadata = await this.storageService.getFile(`${filename}.metadata.json`);
-    this.metadata = metadata || {};
-  }
-
-  async _saveMetadata() {
-    if (!this.currentBook) return;
-    const indicatorId = this.appController.showIndicator('Syncing analysis...');
-    await this.storageService.saveFile(`${this.currentBook.filename}.metadata.json`, this.metadata);
-    this.appController.hideIndicator(indicatorId);
-  }
-
-  // --- Book Manipulation Methods (Create, Rename, etc.) ---
+  // --- DATA MANIPULATION (All rewritten to be simpler) ---
 
   async createNewBook(title) {
     let filename = title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, '');
@@ -180,7 +171,12 @@ export class BookService {
 
     const newBookContent = {
       metadata: { title: title },
-      chapters: [{ id: "ch1", title: "Chapter 1", content_json: { type: "doc", content: [] } }]
+      chapters: [{
+        id: crypto.randomUUID(),
+        title: "Chapter 1",
+        content_json: { type: "doc", content: [] },
+        sections: []
+      }]
     };
 
     await this.storageService.saveFile(`${filename}.book`, newBookContent);
@@ -203,18 +199,15 @@ export class BookService {
 
   async createNewChapter(title) {
     if (!this.currentBook) return;
-    const newChapterId = `ch${Date.now()}`;
     const newChapter = {
-      id: newChapterId,
+      id: crypto.randomUUID(),
       title: title,
-      content_json: { type: "doc", content: [] }
+      content_json: { type: "doc", content: [] },
+      sections: []
     };
     this.currentBook.chapters.push(newChapter);
-    await this.storageService.saveFile(`${this.currentBook.filename}.book`, {
-      metadata: this.currentBook.metadata,
-      chapters: this.currentBook.chapters,
-    });
-    this._updateBookState({ chapters: this.currentBook.chapters }, newChapterId);
+    await this.saveCurrentBookToFile(); // Save the whole book
+    this._updateBookState({ chapters: this.currentBook.chapters }, newChapter.id);
   }
 
   async deleteBook(filename) {
@@ -231,247 +224,390 @@ export class BookService {
     await this.storageService.saveFile('pinned.txt', filename);
   }
 
-
   async createNewSection(chapterId, title) {
     if (!this.currentBook) return;
     const chapter = this.currentBook.chapters.find(c => c.id === chapterId);
     if (!chapter) return;
 
-    const newSectionHeading = {
-      type: "heading", attrs: { "level": 3 },
-      content: [{ type: "text", text: title }]
+    const newSection = {
+      id: crypto.randomUUID(),
+      title: title,
+      content_json: { type: "doc", content: [] }
     };
-    const newParagraph = { type: "paragraph", content: [] };
+    chapter.sections.push(newSection);
 
-    const insertionIndex = chapter.content_json.content.length;
-    const navigateToId = `${chapterId}_sec${insertionIndex}`;
-
-    chapter.content_json.content.push(newSectionHeading, newParagraph);
-
-    await this.storageService.saveFile(`${this.currentBook.filename}.book`, {
-      metadata: this.currentBook.metadata,
-      chapters: this.currentBook.chapters,
-    });
-    this._updateBookState({ chapters: this.currentBook.chapters }, navigateToId);
+    await this.saveCurrentBookToFile();
+    this._updateBookState({ chapters: this.currentBook.chapters }, newSection.id);
   }
 
+  // --- THE NEW SAVE ENGINE ---
 
-  async saveCurrentView(editorContent) {
-    const isEditable = this.currentViewId !== 'full_book';
-    if (!isEditable) {
-      console.log("Save prevented: Current view is not editable.");
-      return; // Stop execution immediately.
+
+  
+  // --- THE NEW, ROBUST SAVE ENGINE ---
+
+  /**
+   * Saves the content from the editor for a given view (chapter or section).
+   * This method acts as a safe entry point to the complex deconstruction logic.
+   *
+   * @param {string} viewId The ID of the chapter or section being edited.
+   * @param {object} editorContent The full TipTap JSON content from the editor.
+   */
+  async saveView(viewId, editorContent) {
+    if (!this.currentBook || !viewId || viewId === 'full_book' || viewId === this.currentBook.id) {
+      console.log("Save prevented: View is not editable or book is not loaded.");
+      return;
     }
 
-    if (!this.currentBook || !this.currentViewId) return;
     const indicatorId = this.appController.showIndicator('Saving...');
-    const { updatedBookData, navigateToId } = this._intelligentSave(this.currentViewId, editorContent);
 
-    // Save the ENTIRE new book data to IndexedDB
-    await this.storageService.saveFile(`${this.currentBook.filename}.book`, updatedBookData);
+    // Create a safe, deep copy of the book data to perform surgery on.
+    // This prevents corrupting the live state if an error occurs.
+    const bookCopy = JSON.parse(JSON.stringify(this.currentBook));
+    const nodes = editorContent.content || [];
+
+    // --- Deconstruct the editor content and surgically update the book copy ---
+    this._deconstructAndSaveView(viewId, nodes, bookCopy);
+    if (this.metadata.margin_blocks) {
+      // 1. Get a set of all valid IDs from the updated book structure.
+      const validIds = new Set();
+      bookCopy.chapters.forEach(chapter => {
+        validIds.add(chapter.id);
+        (chapter.sections || []).forEach(section => validIds.add(section.id));
+      });
+
+      // 2. Loop through existing metadata keys and delete any that are no longer valid.
+      for (const metadataId in this.metadata.margin_blocks) {
+        if (!validIds.has(metadataId)) {
+          delete this.metadata.margin_blocks[metadataId];
+        }
+      }
+    }
+
+    // --- Finalize: Update the live state and save to storage ---
+    this.currentBook = bookCopy;
+    await this.saveCurrentBookToFile();
 
     this.appController.hideIndicator(indicatorId);
     this.appController.showIndicator('Saved!', { duration: 2000 });
-    this._updateBookState(updatedBookData, navigateToId);
+    
+    // Refresh the UI and navigate to the same view to reflect changes.
+    this._updateBookState({ chapters: this.currentBook.chapters }, viewId);
   }
 
   /**
-   * Replicates the backend's intelligent save logic on the client-side.
-   * It reconstructs the entire book from a partial edit.
-   * @returns {object} An object containing the updated book data and the ID to navigate to.
+   * Finds the precise location (chapter, section, and their indices) of an item
+   * within the book's hierarchical structure. This is critical for targeted updates.
+   *
+   * @param {string} id The ID of the chapter or section to find.
+   * @param {object} book The book data structure to search within.
+   * @returns {object} An object containing location details.
    */
-  _intelligentSave(viewId, editorContent) {
-    // 1. Get current book data and create an ID map for preservation
-    const oldIdMap = new Map(this.currentBook.chapters.map(ch => [ch.title, ch.id]));
+  _findLocation(id, book) {
+    for (let i = 0; i < book.chapters.length; i++) {
+      const chapter = book.chapters[i];
+      if (chapter.id === id) {
+        return {
+          isChapterView: true,
+          chapter: chapter,
+          chapterIndex: i,
+          section: null,
+          sectionIndex: -1,
+        };
+      }
+      for (let j = 0; j < (chapter.sections || []).length; j++) {
+        const section = chapter.sections[j];
+        if (section.id === id) {
+          return {
+            isChapterView: false,
+            chapter: chapter,
+            chapterIndex: i,
+            section: section,
+            sectionIndex: j,
+          };
+        }
+      }
+    }
+    return { chapter: null }; // Return a predictable "not found" state
+  }
+  
+  /**
+   * The core "disassembly" engine. It intelligently parses the flat list of editor
+   * nodes back into a hierarchical structure and updates the book data.
+   *
+   * @param {string} viewId The ID of the view being saved.
+   * @param {Array} nodes The array of TipTap nodes from the editor.
+   * @param {object} book The deep copy of the book data to modify.
+   */
+  _deconstructAndSaveView(viewId, nodes, book) {
+    const location = this._findLocation(viewId, book);
+    if (!location.chapter) {
+      console.error("Save failed: Could not find the chapter or section being edited.", { viewId });
+      return;
+    }
 
-    // 2. Reconstitute the "Future State" of the document's full node list.
-    let allFutureNodes = [];
-    if (viewId === 'full_book') {
-      allFutureNodes = editorContent.content || [];
-    } else {
-      // Rebuild the full document node list from current data
-      for (const chapter of this.currentBook.chapters) {
-        allFutureNodes.push({
-          type: 'heading', attrs: { level: 2 },
-          content: [{ type: 'text', text: chapter.title }]
-        });
-        allFutureNodes.push(...(chapter.content_json.content || []));
+    // =======================================================
+    //  LOGIC BRANCH 1: SAVING A SECTION VIEW
+    // =======================================================
+    if (location.isChapterView === false) {
+      const { chapter, section, sectionIndex } = location;
+
+      // SCENARIO 1.1: ORPHANED SECTION (user deleted the H3 title)
+      // If the first node is not an H3, the section is orphaned and its content
+      // must be merged with the preceding item.
+      if (!nodes.length || nodes[0].type !== 'heading' || nodes[0].attrs?.level !== 3) {
+        const mergeTargetContent = (sectionIndex > 0)
+          ? chapter.sections[sectionIndex - 1].content_json.content // Merge into previous section
+          : chapter.content_json.content;                         // Or merge into parent chapter
+
+        mergeTargetContent.push(...nodes);
+        chapter.sections.splice(sectionIndex, 1); // Remove the original, now-empty section
+        return;
       }
 
-      // Now, find where to apply the patch from the user's edit.
-      const structure = this._getBookStructure(this.currentBook);
-      const targetChapterId = viewId.split('_sec')[0];
-      let startIndex = -1;
-      let chapterOffset = 0;
+      // SCENARIO 1.2: NORMAL SECTION SAVE
+      // This handles renaming, content changes, and splitting a section by adding new H3s.
+      const newSectionsPayload = [];
+      let currentSectionPayload = null;
+      for (const node of nodes) {
+        if (node.type === 'heading' && node.attrs?.level === 3) {
+          currentSectionPayload = {
+            id: crypto.randomUUID(),
+            title: node.content?.[0]?.text || 'Untitled Section',
+            content_json: { type: 'doc', content: [] }
+          };
+          newSectionsPayload.push(currentSectionPayload);
+        } else if (currentSectionPayload) {
+          currentSectionPayload.content_json.content.push(node);
+        }
+      }
 
-      for (const chapStruct of structure.chapters) {
-        const chapterObj = this.currentBook.chapters.find(c => c.id === chapStruct.id);
-        if (!chapterObj) continue;
+      if (newSectionsPayload.length > 0) {
+        // The first parsed section becomes the update for the one being edited.
+        section.title = newSectionsPayload[0].title;
+        section.content_json = newSectionsPayload[0].content_json;
 
-        if (chapStruct.id === targetChapterId) {
-          if (viewId.includes('_sec')) {
-            const section = chapStruct.sections.find(s => s.id === viewId);
-            if (section) {
-              startIndex = chapterOffset + 1 + parseInt(viewId.split('_sec')[1], 10);
-            }
-          } else { // Chapter view
-            startIndex = chapterOffset;
+        // Any subsequent H3s create new sections inserted immediately after.
+        const newlyCreated = newSectionsPayload.slice(1);
+        if (newlyCreated.length > 0) {
+          chapter.sections.splice(sectionIndex + 1, 0, ...newlyCreated);
+        }
+      }
+      return;
+    }
+
+    // =======================================================
+    //  LOGIC BRANCH 2: SAVING A CHAPTER VIEW
+    // =======================================================
+    if (location.isChapterView === true) {
+      const { chapter, chapterIndex } = location;
+
+      // SCENARIO 2.1: ORPHANED CHAPTER (user deleted the H2 title)
+      // This triggers a merge with the previous chapter, or a rename if it's the first chapter.
+      if (!nodes.length || nodes[0].type !== 'heading' || nodes[0].attrs?.level !== 2) {
+        this._handleOrphanedChapter(location, nodes, book);
+        return;
+      }
+
+      // SCENARIO 2.2: NORMAL CHAPTER SAVE
+      // This handles renaming, content changes, section changes, and splitting the chapter by adding a new H2.
+      const newChaptersPayload = [];
+      let currentChapterPayload = null;
+      let currentSectionPayload = null;
+
+      for (const node of nodes) {
+        if (node.type === 'heading' && node.attrs?.level === 2) {
+          currentChapterPayload = {
+            id: crypto.randomUUID(),
+            title: node.content?.[0]?.text || 'Untitled Chapter',
+            content_json: { type: 'doc', content: [] },
+            sections: []
+          };
+          newChaptersPayload.push(currentChapterPayload);
+          currentSectionPayload = null; // Reset section context for the new chapter
+        } else if (node.type === 'heading' && node.attrs?.level === 3) {
+          if (!currentChapterPayload) continue; // Ignore sections that appear before a chapter heading
+          currentSectionPayload = {
+            id: crypto.randomUUID(),
+            title: node.content?.[0]?.text || 'Untitled Section',
+            content_json: { type: 'doc', content: [] }
+          };
+          currentChapterPayload.sections.push(currentSectionPayload);
+        } else { // It's body content
+          if (currentSectionPayload) {
+            currentSectionPayload.content_json.content.push(node);
+          } else if (currentChapterPayload) {
+            currentChapterPayload.content_json.content.push(node);
           }
-          break;
         }
-        chapterOffset += 1 + (chapterObj.content_json.content || []).length;
       }
 
-      if (startIndex !== -1) {
-        let endIndex = startIndex + 1;
-        while (endIndex < allFutureNodes.length &&
-          (
-            allFutureNodes[endIndex].type !== 'heading' ||
-            (viewId.includes('_sec') && allFutureNodes[endIndex].attrs?.level >= 3) ||
-            (!viewId.includes('_sec') && allFutureNodes[endIndex].attrs?.level > 2)
-          )
-        ) {
-          endIndex++;
-        }
+      if (newChaptersPayload.length > 0) {
+        // The first parsed chapter becomes the update for the one being edited.
+        const updatedData = newChaptersPayload[0];
+        chapter.title = updatedData.title;
+        chapter.content_json = updatedData.content_json;
+        chapter.sections = updatedData.sections;
 
-        allFutureNodes.splice(startIndex, endIndex - startIndex, ...(editorContent.content || []));
-      }
-    }
-
-
-    // 3. Rebuild chapters from scratch, preserving IDs.
-    const newChapters = [];
-    let currentChapterContent = [];
-    let orphanContent = [];
-    const sanitizedNodes = this._sanitizeTiptapContent(allFutureNodes);
-
-    for (const node of sanitizedNodes) {
-      if (node.type === 'heading' && (node.attrs?.level === 1 || node.attrs?.level === 2)) {
-        if (newChapters.length > 0) {
-          newChapters[newChapters.length - 1].content_json.content = currentChapterContent;
-        }
-        const newTitle = node.content?.[0]?.text || 'New Chapter';
-        const chapterId = oldIdMap.get(newTitle) || `ch${Date.now() + newChapters.length}`;
-        newChapters.push({
-          id: chapterId,
-          title: newTitle,
-          content_json: { type: 'doc', content: [] } // Start with empty content
-        });
-        currentChapterContent = [];
-
-      } else {
-        if (newChapters.length === 0) {
-          orphanContent.push(node);
-        } else {
-          currentChapterContent.push(node);
+        // Any subsequent H2s create new chapters inserted immediately after.
+        const newlyCreated = newChaptersPayload.slice(1);
+        if (newlyCreated.length > 0) {
+          book.chapters.splice(chapterIndex + 1, 0, ...newlyCreated);
         }
       }
     }
-    if (newChapters.length > 0) {
-      newChapters[newChapters.length - 1].content_json.content = currentChapterContent;
-    }
-
-    if (orphanContent.length > 0) {
-      if (newChapters.length > 0) {
-        newChapters[0].content_json.content.unshift(...orphanContent);
-      } else {
-        newChapters.push({
-          id: `ch${Date.now()}`, title: 'Chapter 1',
-          content_json: { type: 'doc', content: orphanContent }
-        });
-      }
-    }
-
-    // 4. Create the final book data object to be saved
-    const updatedBookData = {
-      metadata: this.currentBook.metadata,
-      chapters: newChapters,
-    };
-
-    // (Garbage collection for metadata would happen here if needed)
-
-    // 5. Determine where to navigate
-    const finalStructure = this._getBookStructure(updatedBookData);
-    let navigateToId = 'full_book';
-    const originalViewExists = finalStructure.chapters.some(ch =>
-      ch.id === viewId.split('_sec')[0] && (
-        !viewId.includes('_sec') || ch.sections.some(s => s.id === viewId)
-      )
-    );
-    if (originalViewExists) navigateToId = viewId;
-
-    return { updatedBookData, navigateToId };
   }
 
   /**
-   * Generates the navigator structure from raw book data.
-   * Replicates backend logic.
+   * Handles the logic for when a chapter's main H2 title is deleted by the user.
+   *
+   * @param {object} location The location object for the chapter being deleted.
+   * @param {Array} orphanedNodes The raw editor nodes that are now "headless".
+   * @param {object} book The deep copy of the book data to modify.
    */
+  // REPLACE the existing _handleOrphanedChapter method with this corrected version.
+
+/**
+ * Handles the logic for when a chapter's main H2 title is deleted by the user.
+ *
+ * @param {object} location The location object for the chapter being deleted.
+ * @param {Array} orphanedNodes The raw editor nodes that are now "headless".
+ * @param {object} book The deep copy of the book data to modify.
+ */
+_handleOrphanedChapter(location, orphanedNodes, book) {
+    const { chapter: chapterToDelete, chapterIndex } = location;
+
+    if (chapterIndex > 0) {
+        // SCENARIO A: There is a previous chapter to merge into.
+        const previousChapter = book.chapters[chapterIndex - 1];
+
+        // --- CORRECTED LOGIC ---
+        // First, deconstruct the orphaned content into its constituent parts:
+        // 1. Body content (nodes before the first H3)
+        // 2. Sections (nodes after H3s)
+        const orphanedBodyContent = [];
+        const newSectionsFromOrphan = [];
+        let currentSectionPayload = null;
+        
+        for (const node of orphanedNodes) {
+            if (node.type === 'heading' && node.attrs?.level === 3) {
+                currentSectionPayload = {
+                    id: crypto.randomUUID(),
+                    title: node.content?.[0]?.text || 'Untitled Section',
+                    content_json: { type: 'doc', content: [] }
+                };
+                newSectionsFromOrphan.push(currentSectionPayload);
+            } else {
+                if (currentSectionPayload) {
+                    currentSectionPayload.content_json.content.push(node);
+                } else {
+                    // This is orphaned body content. Collect it instead of merging directly.
+                    orphanedBodyContent.push(node);
+                }
+            }
+        }
+
+        // If there was any orphaned body content, wrap it in a new section.
+        // This prevents it from polluting the previous chapter's body content.
+        if (orphanedBodyContent.length > 0) {
+            const mergedContentSection = {
+                id: crypto.randomUUID(),
+                title: "Untitled Section", // Give it a default title
+                content_json: { type: 'doc', content: orphanedBodyContent }
+            };
+            // Add this new section to the beginning of the list of sections to be merged.
+            newSectionsFromOrphan.unshift(mergedContentSection);
+        }
+
+        // Now, append all the newly formed sections to the previous chapter's section list.
+        previousChapter.sections.push(...newSectionsFromOrphan);
+        
+        // Finally, remove the original chapter that was edited.
+        book.chapters.splice(chapterIndex, 1);
+
+    } else {
+        // SCENARIO B: This is the first chapter. This logic remains unchanged and correct.
+        chapterToDelete.title = "Chapter 1";
+        chapterToDelete.content_json.content = [];
+        chapterToDelete.sections = [];
+
+        let currentSectionPayload = null;
+        for (const node of orphanedNodes) {
+            if (node.type === 'heading' && node.attrs?.level === 3) {
+                currentSectionPayload = {
+                    id: crypto.randomUUID(),
+                    title: node.content?.[0]?.text || 'Untitled Section',
+                    content_json: { type: 'doc', content: [] }
+                };
+                chapterToDelete.sections.push(currentSectionPayload);
+            } else {
+                if (currentSectionPayload) {
+                    currentSectionPayload.content_json.content.push(node);
+                } else {
+                    chapterToDelete.content_json.content.push(node);
+                }
+            }
+        }
+    }
+}
+
+
+
+  // --- HELPER METHODS REWRITTEN FOR NEW STRUCTURE ---
+
   _getBookStructure(bookData) {
     const structure = { chapters: [] };
     for (const ch of bookData.chapters || []) {
-      const chapterInfo = { id: ch.id, title: ch.title, sections: [] };
-      const contentNodes = ch.content_json?.content || [];
-      if (contentNodes) {
-        contentNodes.forEach((node, i) => {
-          if (node.type === 'heading' && node.attrs?.level === 3) {
-            const sectionTitle = node.content?.[0]?.text || "Untitled Section";
-            chapterInfo.sections.push({ id: `${ch.id}_sec${i}`, title: sectionTitle });
-          }
-        });
-      }
+      const chapterInfo = {
+        id: ch.id,
+        title: ch.title,
+        sections: (ch.sections || []).map(s => ({ id: s.id, title: s.title }))
+      };
       structure.chapters.push(chapterInfo);
     }
     return structure;
   }
 
-  /**
-   * Generates the content for a specific view from the full book data.
-   * Replicates backend logic.
-   */
   _getViewData(viewId) {
-    const editorContent = { type: 'doc', content: [] };
-    if (viewId === 'full_book') {
-      let allNodes = [];
-      allNodes.push({
-        type: 'heading', attrs: { level: 1 },
-        content: [{ type: 'text', text: this.currentBook.title }]
-      });
-      for (const chapter of this.currentBook.chapters) {
-        allNodes.push({
-          type: 'heading', attrs: { level: 2 },
-          content: [{ type: 'text', text: chapter.title || "Untitled Chapter" }]
-        });
-        allNodes.push(...(chapter.content_json?.content || []));
-      }
-      editorContent.content = this._sanitizeTiptapContent(allNodes);
-    } else {
-      const targetChapterId = viewId.split('_sec')[0];
-      const chapter = this.currentBook.chapters.find(ch => ch.id === targetChapterId);
-      if (!chapter) return { editor_content: editorContent };
+    if (!this.currentBook) return { editor_content: { type: 'doc', content: [] } };
 
-      let nodesToRender = [];
-      if (viewId.includes('_sec')) {
-        const sectionIndex = parseInt(viewId.split('_sec')[1], 10);
-        const sectionNodes = chapter.content_json?.content || [];
-        if (sectionIndex < sectionNodes.length) {
-          nodesToRender.push(sectionNodes[sectionIndex]);
-          let currentIndex = sectionIndex + 1;
-          while (currentIndex < sectionNodes.length && sectionNodes[currentIndex].type !== 'heading') {
-            nodesToRender.push(sectionNodes[currentIndex]);
-            currentIndex++;
-          }
+    // --- NEW: Full Book View Logic ---
+    if (viewId === this.currentBook.id || viewId === 'full_book') { // Handle full book view
+      let allNodes = [];
+      allNodes.push({ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: this.currentBook.title }] });
+      for (const chapter of this.currentBook.chapters) {
+        allNodes.push({ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: chapter.title }] });
+        allNodes.push(...(chapter.content_json?.content || []));
+        for (const section of chapter.sections || []) {
+          allNodes.push({ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: section.title }] });
+          allNodes.push(...(section.content_json?.content || []));
         }
-      } else {
-        nodesToRender.push({
-          type: 'heading', attrs: { level: 1 },
-          content: [{ type: 'text', text: chapter.title || "Untitled Chapter" }]
-        });
-        nodesToRender.push(...(chapter.content_json?.content || []));
       }
-      editorContent.content = this._sanitizeTiptapContent(nodesToRender);
+      return { editor_content: { type: 'doc', content: this._sanitizeTiptapContent(allNodes) } };
     }
-    return { editor_content: editorContent };
+
+    // --- Chapter and Section View Logic ---
+    for (const chapter of this.currentBook.chapters) {
+      if (chapter.id === viewId) { // Chapter View
+        let content = [];
+        content.push({ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: chapter.title }] });
+        content.push(...(chapter.content_json?.content || []));
+        for (const section of chapter.sections || []) {
+          content.push({ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: section.title }] });
+          content.push(...(section.content_json?.content || []));
+        }
+        return { editor_content: { type: 'doc', content: this._sanitizeTiptapContent(content) } };
+      }
+      for (const section of chapter.sections || []) {
+        if (section.id === viewId) { // Section View
+          let content = [];
+          content.push({ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: section.title }] });
+          content.push(...(section.content_json?.content || []));
+          return { editor_content: { type: 'doc', content: this._sanitizeTiptapContent(content) } };
+        }
+      }
+    }
+    return { editor_content: { type: 'doc', content: [] } }; // Fallback
   }
 
   _updateBookState(updatedBookData, navigateToId) {
@@ -517,6 +653,35 @@ export class BookService {
     return sanitizedNodes;
   }
 
+  _updateNavigatorHighlight() {
+    const drawer = document.getElementById('navigator-drawer');
+    if (!drawer) return;
+
+    // Remove previous active state
+    drawer.querySelectorAll('.is-active').forEach(el => el.classList.remove('is-active'));
+
+    // Add new active state
+    if (this.currentViewId) {
+      const activeElement = drawer.querySelector(`[data-view-id="${this.currentViewId}"]`);
+      if (activeElement) {
+        activeElement.classList.add('is-active');
+      }
+    }
+  }
+
+
+  _isChapterId(viewId) {
+    return this.currentBook.chapters.some(c => c.id === viewId);
+  }
+
+  async saveCurrentBookToFile() {
+    // A simple helper to save the entire state of the current book.
+    await this.storageService.saveFile(`${this.currentBook.filename}.book`, {
+      metadata: this.currentBook.metadata,
+      chapters: this.currentBook.chapters,
+    });
+  }
+
   addMarginBlock(viewId, blockData) {
     if (!this.metadata.margin_blocks) {
       this.metadata.margin_blocks = {};
@@ -558,5 +723,19 @@ export class BookService {
     // to "restore" it to its empty/default state for this view.
     const marginBlocks = this.metadata.margin_blocks?.[this.currentViewId] || [];
     this.appController.renderAssistantPane(marginBlocks);
+  }
+
+  // --- Metadata Management (Now uses StorageService) ---
+
+  async loadMetadata(filename) {
+    const metadata = await this.storageService.getFile(`${filename}.metadata.json`);
+    this.metadata = metadata || {};
+  }
+
+  async _saveMetadata() {
+    if (!this.currentBook) return;
+    const indicatorId = this.appController.showIndicator('Syncing analysis...');
+    await this.storageService.saveFile(`${this.currentBook.filename}.metadata.json`, this.metadata);
+    this.appController.hideIndicator(indicatorId);
   }
 }

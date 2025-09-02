@@ -38,7 +38,7 @@ export class SearchService {
    */
   async buildIndex(bookFiles) {
     console.log("Building search index...");
-    this.index.clear(); // Clear any previous index
+    this.index.clear();
     let entryId = 0;
 
     for (const bookFile of bookFiles) {
@@ -48,23 +48,41 @@ export class SearchService {
 
       for (const chapter of bookData.chapters || []) {
         const chapterTitle = chapter.title || "Untitled Chapter";
-        const contentNodes = chapter.content_json?.content || [];
 
-        // We index content paragraph by paragraph to get better snippets
-        for (const [i, node] of contentNodes.entries()) {
-          const nodeText = tiptapToText(node.content);
-          if (nodeText.trim().length < 10) continue; // Skip very short nodes
+        // --- THIS IS THE FIX: Index content from the chapter AND its sections ---
+        
+        // 1. Index the chapter's top-level content
+        const chapterContentNodes = chapter.content_json?.content || [];
+        if (chapterContentNodes.length > 0) {
+            const chapterText = tiptapToText(chapterContentNodes);
+            if(chapterText.trim()) {
+                this.index.add({
+                    id: entryId++,
+                    content: chapterText,
+                    filename: filename,
+                    viewId: chapter.id, // The viewId is the chapter's own ID
+                    title: `${bookTitle} / ${chapterTitle}`,
+                    snippet: chapterText.substring(0, 150) + (chapterText.length > 150 ? '...' : '')
+                });
+            }
+        }
 
-          const viewId = `${chapter.id}_sec${i}`;
-          
-          this.index.add({
-            id: entryId++,
-            content: nodeText,
-            filename: filename,
-            viewId: viewId,
-            title: `${bookTitle} / ${chapterTitle}`,
-            snippet: nodeText.substring(0, 150) + (nodeText.length > 150 ? '...' : '')
-          });
+        // 2. Index the content of each section within the chapter
+        for (const section of chapter.sections || []) {
+            const sectionContentNodes = section.content_json?.content || [];
+            if (sectionContentNodes.length > 0) {
+                const sectionText = tiptapToText(sectionContentNodes);
+                if (sectionText.trim()) {
+                    this.index.add({
+                        id: entryId++,
+                        content: sectionText,
+                        filename: filename,
+                        viewId: section.id, // The viewId is the section's unique ID
+                        title: `${bookTitle} / ${chapterTitle} / ${section.title}`,
+                        snippet: sectionText.substring(0, 150) + (sectionText.length > 150 ? '...' : '')
+                    });
+                }
+            }
         }
       }
     }

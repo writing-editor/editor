@@ -43,14 +43,14 @@ export class Navigator {
     }
 
     // Actions now delegate to bookService or are pure UI
-    if (action === 'show-library')      this.showLibrary();
-    else if (action === 'pin-book')         this.pinBook(target.dataset.filename);
-    else if (action === 'switch-book')    { this.bookService.switchBook(target.dataset.filename); this.close(); }
-    else if (action === 'new-book')         this.createNewBook();
-    else if (action === 'delete-document')  this.deleteDocument(target.dataset.filename, target.dataset.title);
-    else if (action === 'new-section')    { e.stopPropagation(); this.createNewSection(target.dataset.chapterId); }
-    else if (action === 'new-chapter')    { e.stopPropagation(); this.createNewChapter(); }
-    else if (viewId)                    { this.bookService.changeView(viewId); this.close(); }
+    if (action === 'show-library') this.showLibrary();
+    else if (action === 'pin-book') this.pinBook(target.dataset.filename);
+    else if (action === 'switch-book') { this.bookService.switchBook(target.dataset.filename); this.close(); }
+    else if (action === 'new-book') this.createNewBook();
+    else if (action === 'delete-document') this.deleteDocument(target.dataset.filename, target.dataset.title);
+    else if (action === 'new-section') { e.stopPropagation(); this.createNewSection(target.dataset.chapterId); }
+    else if (action === 'new-chapter') { e.stopPropagation(); this.createNewChapter(); }
+    else if (viewId) { this.bookService.changeView(viewId); this.close(); }
   }
 
   // --- Data Manipulation Methods (Simplified to delegate to BookService) ---
@@ -62,7 +62,7 @@ export class Navigator {
       // The BookService now handles creating the book in IndexedDB
       const { filename } = await this.bookService.createNewBook(title);
       this.app.hideIndicator(indicatorId);
-      
+
       if (filename) {
         await this.showLibrary(); // Refresh the navigator view from IndexedDB
         await this.bookService.switchBook(filename);
@@ -93,8 +93,8 @@ export class Navigator {
 
   async deleteDocument(filename, title) {
     const isConfirmed = await this.app.confirmationModal.show(
-        'Delete Document', 
-        `Are you sure you want to permanently delete "${title}"? This cannot be undone.`
+      'Delete Document',
+      `Are you sure you want to permanently delete "${title}"? This cannot be undone.`
     );
     if (isConfirmed) {
       const indicatorId = this.app.showIndicator('Deleting...');
@@ -106,18 +106,18 @@ export class Navigator {
       // If the active book was deleted, the bookService will handle the state change.
       // We just need to refresh the library view.
       if (this.bookService.currentBook && this.bookService.currentBook.filename === filename) {
-          await this.bookService.loadInitialBook();
+        await this.bookService.loadInitialBook();
       } else {
-          await this.showLibrary();
+        await this.showLibrary();
       }
     }
   }
-  
+
   async pinBook(filename) {
     const indicatorId = this.app.showIndicator('Setting default...');
-    
+
     await this.bookService.pinBook(filename);
-    
+
     this.app.hideIndicator(indicatorId);
     this.app.showIndicator('Default book set!', { duration: 1500 });
     await this.showLibrary();
@@ -128,7 +128,7 @@ export class Navigator {
   async showLibrary() {
     await this.bookService.refreshLibrary();
   }
-  
+
   makeTitleEditable(titleElement) {
     if (this.isEditingTitle) return;
     this.isEditingTitle = true;
@@ -216,7 +216,8 @@ export class Navigator {
     const bookTitle = book?.title || 'Untitled';
     const chapters = book?.structure?.chapters || [];
     let html = `<div class="nav-back-to-library" data-action="show-library" title="Back to Library">&larr;</div>`;
-    html += `<div class="book-title-container"><div class="nav-item nav-action"><h2 data-view-id="full_book" data-action="edit-book-title">${bookTitle}</h2></div></div>`;
+    html += `<div class="book-title-container"><div class="nav-item nav-action"><h2 data-view-id="${book.id}" data-action="edit-book-title">${bookTitle}</h2></div></div>`;
+
     chapters.forEach(chapter => {
       html += `
         <details class="nav-chapter-group" open>
@@ -224,13 +225,16 @@ export class Navigator {
             <span class="nav-chapter-text" data-view-id="${chapter.id}">${chapter.title || 'Untitled Chapter'}</span>
             <span class="nav-new-section-btn" data-action="new-section" data-chapter-id="${chapter.id}" title="New Section">+</span>
           </summary>
-          <div class="nav-section-container">${(chapter.sections || []).map(s => `<div class="nav-item nav-section" data-view-id="${s.id}">${s.title}</div>`).join('')}</div>
+          <div class="nav-section-container">
+            ${(chapter.sections || []).map(s => `<div class="nav-item nav-section" data-view-id="${s.id}">${s.title}</div>`).join('')}
+          </div>
         </details>`;
     });
+
     html += `<hr class="nav-divider"><div class="nav-item nav-action" data-action="new-chapter">+ New Chapter</div>`;
     this.drawerEl.innerHTML = html;
   }
-  
+
   toggle() { this.drawerEl.classList.toggle('is-open'); }
   close() { this.drawerEl.classList.remove('is-open'); document.body.classList.remove('drawer-is-open'); }
   isOpen() { return this.drawerEl.classList.contains('is-open'); }
