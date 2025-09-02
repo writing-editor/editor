@@ -9,7 +9,7 @@ const DEFAULT_USER_MANUAL = {
   metadata: { title: "User Manual" },
   chapters: [{
     id: "ch_manual_1",
-    title: "Welcome to the Intelligent Editor",
+    title: "Welcome to the Editor",
     content_json: {
       type: "doc",
       content: [
