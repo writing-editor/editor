@@ -21,7 +21,7 @@ export class FindNotesAgent extends BaseAgent {
             Analyze the query and the notes. Return a single, valid JSON object with one key: "relevant_note_ids".
             This key should be a list of the string IDs of the notes that are most conceptually relevant.
             Return up to 5 of the most relevant IDs. If no notes are relevant, return an empty list.
-            Do not include any other text or markdown formatting in your response.
+            MUST: Do not include any other text or markdown formatting in your response.
         `;
         
         const indicatorId = this.app.showIndicator('Searching...');
