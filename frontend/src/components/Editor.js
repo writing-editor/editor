@@ -23,9 +23,9 @@ export class Editor {
 
     // --- NEW: Debounced save function ---
     // We will call the App's save method after 2 min of inactivity.
-    this.debouncedSave = debounce(() => {
-        this.bookService.saveCurrentView(this.instance.getJSON());
-    }, 120000);
+    //this.debouncedSave = debounce(() => {
+        //this.bookService.saveCurrentView(this.instance.getJSON());
+    //}, 120000);
 
     this.instance = new TipTapEditor({
       element: this.element,
