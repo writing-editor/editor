@@ -1,7 +1,4 @@
-// frontend/src/components/NotebookPane.js
 import './RightDrawer.css';
-// request is no longer needed
-// import { request } from '../utils/api.js';
 import { noteBlockWrapper } from '../utils/noteBlockWrapper.js';
 import { Editor as TipTapEditor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
@@ -24,9 +21,9 @@ function tiptapJsonToText(tiptapJson) {
 }
 
 export class NotebookPane {
-    constructor(app, storageService) { // <-- Receive storageService
+    constructor(app, storageService) {
         this.app = app;
-        this.storageService = storageService; // <-- Store reference
+        this.storageService = storageService;
         this.element = document.getElementById('notebook-drawer');
 
         // ... state properties (allNotes, etc.) are the same ...
@@ -36,7 +33,7 @@ export class NotebookPane {
         this.isEditorVisible = false;
         this.editingNoteId = null;
         this.mainEditorInstance = null;
-        
+
         // Setup listeners
         this.element.addEventListener('click', this.handleClick.bind(this));
         this.element.addEventListener('input', this.handleInput.bind(this));

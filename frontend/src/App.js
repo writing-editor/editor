@@ -1,5 +1,3 @@
-// frontend/src/App.js
-
 import { Navigator } from './components/Navigator.js';
 import { Editor } from './components/Editor.js';
 import { CommandPalette } from './components/CommandPalette.js';

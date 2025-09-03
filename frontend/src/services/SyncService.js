@@ -1,13 +1,12 @@
-  // In frontend/src/services/SyncService.js
 /**
  * Manages the import and export of the entire user database
  * to and from the local file system.
  */
 export class SyncService {
-  constructor(storageService, appController, googleSyncService) { 
+  constructor(storageService, appController, googleSyncService) {
     this.storageService = storageService;
     this.appController = appController;
-    this.googleSyncService = googleSyncService; 
+    this.googleSyncService = googleSyncService;
   }
 
   /**
@@ -17,8 +16,8 @@ export class SyncService {
     const indicatorId = this.appController.showIndicator('Exporting data...');
     try {
       const allFiles = await this.storageService.getAllFiles();
-      const filesToExport = allFiles.filter(file => 
-        file.id !== 'user-manual.book' && 
+      const filesToExport = allFiles.filter(file =>
+        file.id !== 'user-manual.book' &&
         file.id !== 'initial_setup_complete'
       );
       const jsonData = JSON.stringify(filesToExport, null, 2);
@@ -58,7 +57,7 @@ export class SyncService {
         this.appController.showIndicator('Export failed!', { isError: true, duration: 4000 });
       }
     } finally {
-        this.appController.hideIndicator(indicatorId);
+      this.appController.hideIndicator(indicatorId);
     }
   }
 
@@ -68,7 +67,7 @@ export class SyncService {
   async importFromLocalFile() {
     try {
       let fileContent;
-      
+
       // Modern API path (Chrome, Edge)
       if (window.showOpenFilePicker) {
         console.log("Using File System Access API.");
@@ -99,7 +98,7 @@ export class SyncService {
             reader.readAsText(file);
           };
           // Reset value to ensure 'onchange' fires even if the same file is selected again
-          fileInput.value = ''; 
+          fileInput.value = '';
           fileInput.click();
         });
       }
@@ -107,16 +106,16 @@ export class SyncService {
       const importedData = JSON.parse(fileContent);
 
       if (!Array.isArray(importedData)) { // Simplified validation
-          throw new Error('Invalid backup file format.');
+        throw new Error('Invalid backup file format.');
       }
 
       const isConfirmed = await this.appController.confirm(
-          'Confirm Import',
-          'This will add new documents and notes from the file, and overwrite settings. Existing documents with the same name will be skipped. Continue?'
+        'Confirm Import',
+        'This will add new documents and notes from the file, and overwrite settings. Existing documents with the same name will be skipped. Continue?'
       );
 
       if (!isConfirmed) return;
-      
+
       const indicatorId = this.appController.showIndicator('Merging data...');
 
       // --- NEW MERGE LOGIC ---
@@ -125,7 +124,7 @@ export class SyncService {
       const existingBooks = await this.storageService.getAllFilesBySuffix('.book');
       const existingNotesFile = await this.storageService.getFile('notes.json');
       const existingNotes = existingNotesFile || [];
-      
+
       const existingBookIds = new Set(existingBooks.map(b => b.id));
       const mergedNotesMap = new Map(existingNotes.map(n => [n.id, n]));
 
@@ -150,7 +149,7 @@ export class SyncService {
 
       // 3. Save the final merged notes list
       await this.storageService.saveFile('notes.json', Array.from(mergedNotesMap.values()));
-      
+
       // --- END OF MERGE LOGIC ---
 
       this.appController.hideIndicator(indicatorId);
@@ -173,69 +172,69 @@ export class SyncService {
   async uploadToGoogleDrive() {
     const indicatorId = this.appController.showIndicator('Preparing to upload...');
     try {
-        await this.googleSyncService.authorize();
-        let pInd = this.appController.showIndicator('Packaging data...');
+      await this.googleSyncService.authorize();
+      let pInd = this.appController.showIndicator('Packaging data...');
 
-        const allFiles = await this.storageService.getAllFiles();
-        const filesToExport = allFiles.filter(file => file.id !== 'initial_setup_complete');
-        const content = JSON.stringify(filesToExport);
+      const allFiles = await this.storageService.getAllFiles();
+      const filesToExport = allFiles.filter(file => file.id !== 'initial_setup_complete');
+      const content = JSON.stringify(filesToExport);
 
-        let uInd = this.appController.showIndicator('Uploading to Google Drive...');
-        await this.googleSyncService.uploadBackup(content);
-        this.appController.hideIndicator(pInd);
-        this.appController.hideIndicator(uInd);
-        this.appController.showIndicator('Upload complete!', { duration: 3000 });
+      let uInd = this.appController.showIndicator('Uploading to Google Drive...');
+      await this.googleSyncService.uploadBackup(content);
+      this.appController.hideIndicator(pInd);
+      this.appController.hideIndicator(uInd);
+      this.appController.showIndicator('Upload complete!', { duration: 3000 });
 
     } catch (error) {
-        console.error("Google Drive upload failed:", error);
-        this.appController.showIndicator('Upload failed. See console for details.', { isError: true, duration: 4000 });
+      console.error("Google Drive upload failed:", error);
+      this.appController.showIndicator('Upload failed. See console for details.', { isError: true, duration: 4000 });
     } finally {
-        this.appController.hideIndicator(indicatorId);
+      this.appController.hideIndicator(indicatorId);
     }
   }
 
   async downloadFromGoogleDrive() {
     const indicatorId = this.appController.showIndicator('Connecting to Google Drive...');
     try {
-        await this.googleSyncService.authorize();
+      await this.googleSyncService.authorize();
 
-        const content = await this.googleSyncService.downloadBackup();
-        if (!content) {
-            throw new Error("No backup file found in Google Drive.");
-        }
-        
-        // Use the exact same merge logic as the local import
-        const importedData = JSON.parse(content);
-        
-        const isConfirmed = await this.appController.confirm(
-          'Confirm Download',
-          'This will merge the data from your Google Drive with your local data. Continue?'
-        );
+      const content = await this.googleSyncService.downloadBackup();
+      if (!content) {
+        throw new Error("No backup file found in Google Drive.");
+      }
 
-        if (!isConfirmed) return;
+      // Use the exact same merge logic as the local import
+      const importedData = JSON.parse(content);
 
-        // ... (Paste the same merge logic from importFromLocalFile here)
-        let Mind = this.appController.showIndicator('Merging data...');
-        const existingBooks = await this.storageService.getAllFilesBySuffix('.book');
-        const existingNotesFile = await this.storageService.getFile('notes.json');
-        const existingNotes = existingNotesFile || [];
-        const existingBookIds = new Set(existingBooks.map(b => b.id));
-        const mergedNotesMap = new Map(existingNotes.map(n => [n.id, n]));
-        for (const item of importedData) {
-            if (item.id.endsWith('.book')) { if (!existingBookIds.has(item.id)) { await this.storageService.saveFile(item.id, item.content); } }
-            else if (item.id === 'notes.json') { const importedNotes = item.content || []; for (const note of importedNotes) { mergedNotesMap.set(note.id, note); } }
-            else { await this.storageService.saveFile(item.id, item.content); }
-        }
-        await this.storageService.saveFile('notes.json', Array.from(mergedNotesMap.values()));
-        this.appController.hideIndicator(Mind);
-        this.appController.showIndicator('Download & merge complete! Reloading...', { duration: 3000 });
-        setTimeout(() => window.location.reload(), 1500);
+      const isConfirmed = await this.appController.confirm(
+        'Confirm Download',
+        'This will merge the data from your Google Drive with your local data. Continue?'
+      );
 
-    } catch(error) {
-        console.error("Google Drive download failed:", error);
-        this.appController.showIndicator(`Download failed: ${error.message}`, { isError: true, duration: 4000 });
+      if (!isConfirmed) return;
+
+      // ... (Paste the same merge logic from importFromLocalFile here)
+      let Mind = this.appController.showIndicator('Merging data...');
+      const existingBooks = await this.storageService.getAllFilesBySuffix('.book');
+      const existingNotesFile = await this.storageService.getFile('notes.json');
+      const existingNotes = existingNotesFile || [];
+      const existingBookIds = new Set(existingBooks.map(b => b.id));
+      const mergedNotesMap = new Map(existingNotes.map(n => [n.id, n]));
+      for (const item of importedData) {
+        if (item.id.endsWith('.book')) { if (!existingBookIds.has(item.id)) { await this.storageService.saveFile(item.id, item.content); } }
+        else if (item.id === 'notes.json') { const importedNotes = item.content || []; for (const note of importedNotes) { mergedNotesMap.set(note.id, note); } }
+        else { await this.storageService.saveFile(item.id, item.content); }
+      }
+      await this.storageService.saveFile('notes.json', Array.from(mergedNotesMap.values()));
+      this.appController.hideIndicator(Mind);
+      this.appController.showIndicator('Download & merge complete! Reloading...', { duration: 3000 });
+      setTimeout(() => window.location.reload(), 1500);
+
+    } catch (error) {
+      console.error("Google Drive download failed:", error);
+      this.appController.showIndicator(`Download failed: ${error.message}`, { isError: true, duration: 4000 });
     } finally {
-        this.appController.hideIndicator(indicatorId);
+      this.appController.hideIndicator(indicatorId);
     }
   }
 
@@ -244,11 +243,11 @@ export class SyncService {
    */
   async clearDatabase() {
     return new Promise((resolve, reject) => {
-        const transaction = this.storageService.db.transaction(['files'], 'readwrite');
-        const store = transaction.objectStore('files');
-        const request = store.clear();
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
+      const transaction = this.storageService.db.transaction(['files'], 'readwrite');
+      const store = transaction.objectStore('files');
+      const request = store.clear();
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
     });
   }
 

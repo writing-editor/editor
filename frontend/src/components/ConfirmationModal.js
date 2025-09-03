@@ -1,4 +1,3 @@
-//frontend/src/components/ConfirmationModal.js
 import './ConfirmationModal.css';
 
 export class ConfirmationModal {
@@ -17,9 +16,9 @@ export class ConfirmationModal {
       if (e.target === this.containerEl) this.submit(false);
     });
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !this.containerEl.classList.contains('hidden')) {
-            this.submit(false);
-        }
+      if (e.key === 'Escape' && !this.containerEl.classList.contains('hidden')) {
+        this.submit(false);
+      }
     });
   }
 

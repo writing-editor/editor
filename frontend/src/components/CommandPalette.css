@@ -1,5 +1,3 @@
-/* src/components/CommandPalette.css */
-
 /* --- 1. Main Container & Overlay --- */
 #command-palette-container {
   position: fixed;
@@ -32,9 +30,9 @@
   border-radius: 12px;
   display: flex;
   flex-direction: column;
-  background-color: var(--color-surface-light); /* THEME: Use variable */
-  border: 1px solid var(--color-border);       /* THEME: Use variable */
-  box-shadow: 0 16px 40px var(--color-shadow);  /* THEME: Use variable */
+  background-color: var(--color-surface-light);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 16px 40px var(--color-shadow);
   overflow: hidden;
   position: relative;
 }
@@ -53,7 +51,7 @@
   padding: 8px;
   gap: 8px;
   border-bottom: 1px solid var(--color-border);
-  background-color: var(--color-background); /* THEME: Use variable */
+  background-color: var(--color-background);
 }
 
 .cp-tab-btn {
@@ -71,23 +69,23 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: var(--color-text-muted); /* THEME: Use variable */
+  color: var(--color-text-muted);
   outline: none;
 }
 
 .cp-tab-btn:hover:not(:disabled) {
-  background-color: var(--color-surface-medium); /* THEME: Use variable */
+  background-color: var(--color-surface-medium);
 }
 
 .cp-tab-btn.active {
-  background-color: var(--color-surface-light); /* THEME: Use variable */
+  background-color: var(--color-surface-light);
   color: var(--color-primary);
-  box-shadow: 0 1px 3px var(--color-shadow); /* THEME: Use variable */
+  box-shadow: 0 1px 3px var(--color-shadow);
 }
 
 .cp-tab-btn:disabled {
   color: var(--color-text-muted);
-  opacity: 0.5; /* More visible than just color change */
+  opacity: 0.5;
   cursor: not-allowed;
   background-color: transparent;
 }
@@ -101,8 +99,11 @@
   min-height: 0;
 }
 
-.cp-tab-panel { display: none; }
-.cp-tab-panel.active { 
+.cp-tab-panel {
+  display: none;
+}
+
+.cp-tab-panel.active {
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: auto 1fr;
@@ -114,15 +115,18 @@
   grid-column: 1 / -1;
   grid-row: 1;
   font-size: 14px;
-  color: var(--color-success); /* THEME: Use variable */
+  color: var(--color-success);
+  /* THEME: Use variable */
   font-weight: 500;
   display: flex;
   align-items: center;
   gap: 8px;
 }
+
 #cp-context-indicator::after {
   content: 'Context: Selected Text';
 }
+
 #cp-context-indicator.hidden {
   display: none;
 }
@@ -131,15 +135,24 @@
   display: flex;
   flex-direction: column;
 }
-.cp-input-group:nth-of-type(1) { grid-column: 1; grid-row: 2; }
-.cp-input-group:nth-of-type(2) { grid-column: 2; grid-row: 2; }
+
+.cp-input-group:nth-of-type(1) {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.cp-input-group:nth-of-type(2) {
+  grid-column: 2;
+  grid-row: 2;
+}
 
 
 /* --- 5. UI Elements Inside Panels --- */
 .cp-label {
   font-weight: 600;
   font-size: 13px;
-  color: var(--color-text); /* THEME: Use variable */
+  color: var(--color-text);
+  /* THEME: Use variable */
   margin-bottom: 8px;
   display: block;
 }
@@ -157,11 +170,11 @@
   box-sizing: border-box;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
-  color: var(--color-text);             /* THEME: Use variable */
-  background-color: var(--color-background); /* THEME: Use variable */
+  color: var(--color-text);
+  background-color: var(--color-background);
 }
 
 .cp-prompt-textarea:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent); /* Modern focus ring */
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }

@@ -1,5 +1,3 @@
-// frontend/src/agents/FindNotesAgent.js
-
 import { BaseAgent } from './BaseAgent.js';
 
 export class FindNotesAgent extends BaseAgent {
@@ -23,7 +21,7 @@ export class FindNotesAgent extends BaseAgent {
             Return up to 5 of the most relevant IDs. If no notes are relevant, return an empty list.
             MUST: Do not include any other text or markdown formatting in your response.
         `;
-        
+
         const indicatorId = this.app.showIndicator('Searching...');
         const response_text = await this.orchestrator.execute(prompt, true); // true for isJson hint
         this.app.hideIndicator(indicatorId);
@@ -37,7 +35,7 @@ export class FindNotesAgent extends BaseAgent {
         } catch (error) {
             console.error("Failed to parse LLM search response:", error);
             // Fallback to simple keyword search
-            return all_notes.filter(note => 
+            return all_notes.filter(note =>
                 note.plain_text.toLowerCase().includes(query.toLowerCase())
             );
         }

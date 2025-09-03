@@ -1,4 +1,3 @@
-// frontend/src/llm/GeminiClient.js
 import { BaseLlm } from './BaseLlm.js';
 
 export class GeminiClient extends BaseLlm {

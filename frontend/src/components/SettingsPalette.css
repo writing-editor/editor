@@ -1,5 +1,3 @@
-/* frontend/src/components/SettingsPalette.css */
-
 /* --- 1. Main Palette & Overlay --- */
 #settings-palette-container {
   position: fixed;
@@ -65,16 +63,21 @@
   font-weight: 500;
   transition: all 0.2s ease-in-out;
 }
+
 .settings-tab-btn:hover {
   background-color: var(--color-surface-medium);
   color: var(--color-text);
 }
+
 .settings-tab-btn.active {
   background-color: var(--color-surface-light);
   color: var(--color-primary);
   box-shadow: 0 1px 3px var(--color-shadow);
 }
-.settings-tab-btn span { white-space: nowrap; }
+
+.settings-tab-btn span {
+  white-space: nowrap;
+}
 
 #settings-save-btn {
   display: flex;
@@ -90,7 +93,10 @@
   cursor: pointer;
   transition: all 0.2s ease-in-out;
 }
-#settings-save-btn:hover { filter: brightness(1.1); }
+
+#settings-save-btn:hover {
+  filter: brightness(1.1);
+}
 
 .icon-save::before {
   content: '';
@@ -111,14 +117,20 @@
   flex-grow: 1;
 }
 
-.settings-tab-panel { display: none; }
-.settings-tab-panel.active { display: block; }
+.settings-tab-panel {
+  display: none;
+}
+
+.settings-tab-panel.active {
+  display: block;
+}
 
 /* The section is the grid container. This is correct. */
 .settings-section {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--spacing-lg) var(--spacing-lg); /* Add vertical gap */
+  gap: var(--spacing-lg) var(--spacing-lg);
+  /* Add vertical gap */
 }
 
 /* A helper class to make an item span all columns */
@@ -134,7 +146,7 @@
 }
 
 /* Labels for all items */
-.setting-item label, 
+.setting-item label,
 .setting-item-full .setting-label {
   font-weight: 600;
   margin-bottom: 8px;
@@ -162,8 +174,7 @@
   padding: 10px 12px;
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  /* THE FIX: All form elements get their background from a consistent variable */
-  background-color: var(--color-background); 
+  background-color: var(--color-background);
   color: var(--color-text);
   font-size: 14px;
   font-family: var(--font-sans);
@@ -193,7 +204,8 @@
 
 
 /* --- 5. DATA MANAGEMENT BUTTONS (WITH ICON FIXES) --- */
-.data-actions, .data-actions-export {
+.data-actions,
+.data-actions-export {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -213,11 +225,13 @@
   cursor: pointer;
   transition: all 0.2s ease-in-out;
 }
+
 .settings-action-btn:hover {
   background-color: var(--color-surface-medium);
   border-color: var(--color-text-muted);
   color: var(--color-text);
 }
+
 .settings-action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -236,12 +250,14 @@
 
 /* Styles for the text-based .tex tag */
 #settings-export-latex-btn {
-  width: auto; /* Allow this button to be wider */
+  width: auto;
+  /* Allow this button to be wider */
   padding: 0 12px;
   font-size: 14px;
   font-weight: 500;
   color: var(--color-text);
 }
+
 .export-format-tag {
   font-size: 12px;
   font-weight: bold;
@@ -252,7 +268,8 @@
 
 /* --- Style for the new Disconnect button --- */
 .settings-action-btn-danger {
-  width: 100%; /* Make it full-width to be prominent */
+  width: 100%;
+  /* Make it full-width to be prominent */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -266,6 +283,7 @@
   cursor: pointer;
   transition: all 0.2s ease-in-out;
 }
+
 .settings-action-btn-danger:hover {
   background-color: var(--color-danger);
   color: #fff;
@@ -275,7 +293,9 @@
   background-color: var(--color-danger-bg);
   color: var(--color-danger);
   border-color: var(--color-danger);
-}#settings-disconnect-btn {
+}
+
+#settings-disconnect-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -1,4 +1,3 @@
-// In src/utils/noteBlockWrapper.js
 import { generateHTML } from '@tiptap/html';
 import StarterKit from '@tiptap/starter-kit';
 

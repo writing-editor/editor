@@ -1,4 +1,3 @@
-// In src/utils/renderBlocks.js
 import { marked } from 'marked';
 
 /**

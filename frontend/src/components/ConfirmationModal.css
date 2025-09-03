@@ -1,5 +1,3 @@
-/* src/components/ConfirmationModal.css */
-
 #confirmation-modal-container {
   /* This is identical to the modal input overlay */
   position: fixed;
@@ -13,7 +11,7 @@
   justify-content: center;
   align-items: flex-start;
   padding-top: 20vh;
-  z-index: 6000; /* Highest z-index */
+  z-index: 6000;
   opacity: 1;
   transition: opacity 0.2s ease;
 }
@@ -78,6 +76,7 @@
   border-color: var(--color-danger);
   color: #fff;
 }
+
 #confirm-btn-confirm:hover {
   filter: brightness(1.1);
 }

@@ -1,5 +1,3 @@
-// frontend/src/utils/DocxConverter.js
-
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
 
@@ -18,10 +16,10 @@ export class DocxConverter {
    */
   async convertAndSave() {
     const doc = this.createDocument();
-    
+
     // Use the Packer to generate a Blob
     const blob = await Packer.toBlob(doc);
-    
+
     // Use file-saver to trigger the download
     const filename = `${this.bookTitle.toLowerCase().replace(/\s+/g, '-')}.docx`;
     saveAs(blob, filename);
@@ -36,21 +34,21 @@ export class DocxConverter {
 
     // Add the main title for articles
     if (this.isArticle) {
-        children.push(new Paragraph({
-            text: this.bookTitle,
-            heading: HeadingLevel.TITLE,
-        }));
+      children.push(new Paragraph({
+        text: this.bookTitle,
+        heading: HeadingLevel.TITLE,
+      }));
     }
 
     (this.json.chapters || []).forEach(chapter => {
       // Add a chapter title for multi-chapter books
       if (!this.isArticle) {
         children.push(new Paragraph({
-            text: chapter.title || 'Untitled Chapter',
-            heading: HeadingLevel.HEADING_1,
+          text: chapter.title || 'Untitled Chapter',
+          heading: HeadingLevel.HEADING_1,
         }));
       }
-      
+
       const contentNodes = chapter.content_json?.content || [];
       this.nodesToDocx(contentNodes, children);
     });
@@ -70,7 +68,7 @@ export class DocxConverter {
 
     return doc;
   }
-  
+
   /**
    * Converts an array of TipTap nodes into docx Paragraphs and adds them to the children array.
    * @param {Array} nodes - The TipTap nodes to convert.
@@ -88,7 +86,7 @@ export class DocxConverter {
           5: HeadingLevel.HEADING_5,
           6: HeadingLevel.HEADING_6,
         };
-        
+
         children.push(new Paragraph({
           children: this.renderTextRuns(node.content || []),
           heading: headingLevelMap[level] || HeadingLevel.HEADING_2,
@@ -97,14 +95,14 @@ export class DocxConverter {
       } else if (node.type === 'paragraph') {
         // Only add a paragraph if it contains text
         if (node.content && node.content.some(n => n.text)) {
-            children.push(new Paragraph({
-              children: this.renderTextRuns(node.content || []),
-            }));
+          children.push(new Paragraph({
+            children: this.renderTextRuns(node.content || []),
+          }));
         }
       }
     }
   }
-  
+
   /**
    * Converts an array of TipTap text nodes (with marks) into an array of docx TextRuns.
    * @param {Array} contentNodes - The array of TipTap text nodes.
@@ -112,12 +110,12 @@ export class DocxConverter {
    */
   renderTextRuns(contentNodes) {
     if (!contentNodes) return [];
-    
+
     return contentNodes.map(node => {
       const textRunOptions = {
         text: node.text || "",
       };
-      
+
       if (node.marks) {
         node.marks.forEach(mark => {
           if (mark.type === 'bold') {
@@ -128,7 +126,7 @@ export class DocxConverter {
           }
         });
       }
-      
+
       return new TextRun(textRunOptions);
     });
   }

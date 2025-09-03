@@ -1,4 +1,3 @@
-// In frontend/src/components/ModalInput.js
 import './ModalInput.css';
 
 export class ModalInput {
@@ -8,9 +7,7 @@ export class ModalInput {
     this.titleEl = document.getElementById('modal-title');
     this.inputEl = document.getElementById('modal-input');
 
-    this.resolvePromise = null; // This will hold the 'resolve' function of our promise
-
-    // Event listeners for closing the modal
+    this.resolvePromise = null;
     this.containerEl.addEventListener('click', (e) => {
       if (e.target === this.containerEl) this.cancel();
     });
@@ -21,7 +18,6 @@ export class ModalInput {
       }
     });
 
-    // Event listener for submitting
     this.inputEl.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         this.submit();
@@ -37,7 +33,6 @@ export class ModalInput {
     this.containerEl.classList.remove('hidden');
     this.inputEl.focus();
 
-    // We return a Promise that will resolve with the user's input, or null if they cancel.
     return new Promise((resolve) => {
       this.resolvePromise = resolve;
     });
@@ -49,11 +44,10 @@ export class ModalInput {
       this.resolvePromise(value);
       this.hide();
     }
-    // If input is empty, do nothing, just wait for more input or cancel.
   }
 
   cancel() {
-    this.resolvePromise(null); // Resolve with null to indicate cancellation
+    this.resolvePromise(null);
     this.hide();
   }
 

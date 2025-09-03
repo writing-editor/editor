@@ -1,4 +1,3 @@
-/* src/main.css - Global Styles */
 /* --- 1. THEME & GLOBAL VARIABLES --- */
 :root {
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -7,13 +6,15 @@
   --editor-pane-shrunk-width: 60%;
   --spacing-md: 16px;
   --spacing-lg: 24px;
-  
+
   /* Light Theme */
   --color-text: #1a1a1a;
   --color-text-muted: #666;
   --color-background: rgb(253, 255, 250);
-  --color-surface-light: #fff; /* For cards, drawers */
-  --color-surface-medium: #f1f3f5; /* For hovers, inputs */
+  --color-surface-light: #fff;
+  /* For cards, drawers */
+  --color-surface-medium: #f1f3f5;
+  /* For hovers, inputs */
   --color-primary: #007aff;
   --color-border: #e0e0e0;
   --color-success: #2b8a3e;
@@ -25,38 +26,58 @@
 
 body.theme-dark {
   /* Dark Theme with Blue Tint */
-  --color-text: #e3e6eb;             /* Softer off-white text */
-  --color-text-muted: #9aa0ac;       /* Muted, bluish-gray text */
-  --color-background: #070815;       /* Deep blue-black background */
-  --color-surface-light: #141a20;    /* Slightly lighter surface */
-  --color-surface-medium: #1e262f;   /* Raised surfaces with blue tone */
-  --color-border: #2a3440;           /* Borders with subtle blue hue */
+  --color-text: #e3e6eb;
+  /* Softer off-white text */
+  --color-text-muted: #9aa0ac;
+  /* Muted, bluish-gray text */
+  --color-background: #070815;
+  /* Deep blue-black background */
+  --color-surface-light: #141a20;
+  /* Slightly lighter surface */
+  --color-surface-medium: #1e262f;
+  /* Raised surfaces with blue tone */
+  --color-border: #2a3440;
+  /* Borders with subtle blue hue */
 
   /* Accent colors */
-  --color-primary: #4da3ff;          /* Brighter Android-like blue */
-  --color-success: #3ecf8e;          /* Green still works */
-  --color-danger: #ff5c5f;           /* Adjusted red for contrast */
+  --color-primary: #4da3ff;
+  /* Brighter Android-like blue */
+  --color-success: #3ecf8e;
+  /* Green still works */
+  --color-danger: #ff5c5f;
+  /* Adjusted red for contrast */
 
   /* Background tints for status feedback */
-  --color-danger-bg: #2a1a1d;        /* Dark red with blue mix */
-  --color-success-bg: #122a20;       /* Dark green with blue undertone */
+  --color-danger-bg: #2a1a1d;
+  /* Dark red with blue mix */
+  --color-success-bg: #122a20;
+  /* Dark green with blue undertone */
 
   /* Shadows */
   --color-shadow: rgba(0, 0, 0, 0.65);
 }
 
 body.theme-nord {
-  --color-text: #d8dee9;              /* Grayish-white text */
-  --color-text-muted: #8190a5;        /* Muted blue-gray */
-  --color-background: #2e3440;        /* Dark slate background */
-  --color-surface-light: #3b4252;     /* Lighter surface */
-  --color-surface-medium: #434c5e;    /* Hover and inputs */
-  --color-border: #4c566a;            /* Subtle borders */
+  --color-text: #d8dee9;
+  /* Grayish-white text */
+  --color-text-muted: #8190a5;
+  /* Muted blue-gray */
+  --color-background: #2e3440;
+  /* Dark slate background */
+  --color-surface-light: #3b4252;
+  /* Lighter surface */
+  --color-surface-medium: #434c5e;
+  /* Hover and inputs */
+  --color-border: #4c566a;
+  /* Subtle borders */
 
   /* Accent colors */
-  --color-primary: #88c0d0;           /* Frosty cyan */
-  --color-success: #a3be8c;           /* Aurora green */
-  --color-danger: #bf616a;            /* Aurora red */
+  --color-primary: #88c0d0;
+  /* Frosty cyan */
+  --color-success: #a3be8c;
+  /* Aurora green */
+  --color-danger: #bf616a;
+  /* Aurora red */
 
   /* Background tints */
   --color-danger-bg: #4b2c30;
@@ -68,17 +89,26 @@ body.theme-nord {
 
 /* --- NEW THEME: Solarized Dark (High-contrast, low eye-strain) --- */
 body.theme-solarized-dark {
-  --color-text: #93a1a1;              /* Main text */
-  --color-text-muted: #657b83;        /* Muted comments/placeholders */
-  --color-background: #002b36;        /* Deep cyan-blue background */
-  --color-surface-light: #073642;     /* Lighter content background */
-  --color-surface-medium: #586e75;    /* Hover and inputs */
-  --color-border: #073642;            /* Borders are the same as surface */
+  --color-text: #93a1a1;
+  /* Main text */
+  --color-text-muted: #657b83;
+  /* Muted comments/placeholders */
+  --color-background: #002b36;
+  /* Deep cyan-blue background */
+  --color-surface-light: #073642;
+  /* Lighter content background */
+  --color-surface-medium: #586e75;
+  /* Hover and inputs */
+  --color-border: #073642;
+  /* Borders are the same as surface */
 
   /* Accent colors */
-  --color-primary: #268bd2;           /* Vivid blue */
-  --color-success: #859900;           /* Olive green */
-  --color-danger: #dc322f;            /* Bright red */
+  --color-primary: #268bd2;
+  /* Vivid blue */
+  --color-success: #859900;
+  /* Olive green */
+  --color-danger: #dc322f;
+  /* Bright red */
 
   /* Background tints */
   --color-danger-bg: #3c2f2f;
@@ -90,17 +120,26 @@ body.theme-solarized-dark {
 
 /* --- NEW THEME: Monokai (Classic, vibrant code editor theme) --- */
 body.theme-monokai {
-  --color-text: #f8f8f2;              /* Very light text */
-  --color-text-muted: #75715e;        /* Muted gray-green */
-  --color-background: #272822;        /* Classic Monokai background */
-  --color-surface-light: #3e3d32;     /* Lighter surface */
-  --color-surface-medium: #49483e;    /* Hover and inputs */
-  --color-border: #75715e;            /* Borders match muted text */
+  --color-text: #f8f8f2;
+  /* Very light text */
+  --color-text-muted: #75715e;
+  /* Muted gray-green */
+  --color-background: #272822;
+  /* Classic Monokai background */
+  --color-surface-light: #3e3d32;
+  /* Lighter surface */
+  --color-surface-medium: #49483e;
+  /* Hover and inputs */
+  --color-border: #75715e;
+  /* Borders match muted text */
 
   /* Accent colors */
-  --color-primary: #66d9ef;           /* Bright cyan */
-  --color-success: #a6e22e;           /* Vibrant lime green */
-  --color-danger: #f92672;            /* Hot pink */
+  --color-primary: #66d9ef;
+  /* Bright cyan */
+  --color-success: #a6e22e;
+  /* Vibrant lime green */
+  --color-danger: #f92672;
+  /* Hot pink */
 
   /* Background tints */
   --color-danger-bg: #492a36;
@@ -112,17 +151,26 @@ body.theme-monokai {
 
 
 body.theme-lime {
-  --color-text: #1a2a00;              /* Dark, slightly desaturated green text for readability */
-  --color-text-muted: #4a5933;        /* Muted olive text */
-  --color-background: #f7ffe5;        /* Very light, almost white lime background */
-  --color-surface-light: #ffffff;     /* Pure white for surfaces */
-  --color-surface-medium: #e8f5d0;    /* Soft lime for hovers */
-  --color-border: #d2e0b8;            /* Desaturated lime border */
+  --color-text: #1a2a00;
+  /* Dark, slightly desaturated green text for readability */
+  --color-text-muted: #4a5933;
+  /* Muted olive text */
+  --color-background: #f7ffe5;
+  /* Very light, almost white lime background */
+  --color-surface-light: #ffffff;
+  /* Pure white for surfaces */
+  --color-surface-medium: #e8f5d0;
+  /* Soft lime for hovers */
+  --color-border: #d2e0b8;
+  /* Desaturated lime border */
 
   /* Accent colors */
-  --color-primary: oklch(65% 0.2 130);  /* A darker, more saturated lime for primary actions */
-  --color-success: #2b8a3e;           /* A standard, compatible green */
-  --color-danger: #c92a2a;            /* A standard, compatible red */
+  --color-primary: oklch(65% 0.2 130);
+  /* A darker, more saturated lime for primary actions */
+  --color-success: #2b8a3e;
+  /* A standard, compatible green */
+  --color-danger: #c92a2a;
+  /* A standard, compatible red */
 
   /* Background tints (using your base color for success) */
   --color-danger-bg: #ffe3e3;
@@ -134,18 +182,27 @@ body.theme-lime {
 
 body.theme-cyan-light {
   /* YOUR color is the foundation for the background */
-  --color-background: oklch(98.4% 0.019 200.873); /* Subtle, cool off-white */
-  
-  --color-text: #012a36;              /* Very dark, saturated cyan for high contrast text */
-  --color-text-muted: #41616a;        /* Muted, soft cyan-gray */
-  --color-surface-light: #ffffff;     /* Pure white for raised surfaces and cards */
-  --color-surface-medium: #e6f7fb;    /* Very light cyan for hovers */
-  --color-border: #ccecf4;            /* Soft, light cyan border */
+  --color-background: oklch(98.4% 0.019 200.873);
+  /* Subtle, cool off-white */
+
+  --color-text: #012a36;
+  /* Very dark, saturated cyan for high contrast text */
+  --color-text-muted: #41616a;
+  /* Muted, soft cyan-gray */
+  --color-surface-light: #ffffff;
+  /* Pure white for raised surfaces and cards */
+  --color-surface-medium: #e6f7fb;
+  /* Very light cyan for hovers */
+  --color-border: #ccecf4;
+  /* Soft, light cyan border */
 
   /* Accent colors */
-  --color-primary: oklch(65% 0.15 200); /* A vibrant, accessible cyan for buttons and links */
-  --color-success: #2b8a3e;           /* Standard green for consistency */
-  --color-danger: #c92a2a;            /* Standard red */
+  --color-primary: oklch(65% 0.15 200);
+  /* A vibrant, accessible cyan for buttons and links */
+  --color-success: #2b8a3e;
+  /* Standard green for consistency */
+  --color-danger: #c92a2a;
+  /* Standard red */
 
   /* Background tints */
   --color-danger-bg: #ffe3e3;
@@ -156,7 +213,8 @@ body.theme-cyan-light {
 }
 
 /* --- 2. GLOBAL & LAYOUT STYLES --- */
-body, html {
+body,
+html {
   height: 100%;
   margin: 0;
   font-family: var(--font-sans);
@@ -192,9 +250,9 @@ body.right-drawer-is-open #main-container {
 #editor-pane {
   flex-grow: 1;
   padding: var(--spacing-lg);
-  overflow-y: auto;  
-  min-height: 0;    
-  height: 100%;      
+  overflow-y: auto;
+  min-height: 0;
+  height: 100%;
   box-sizing: border-box;
 }
 
@@ -208,10 +266,10 @@ body.right-drawer-is-open #main-container {
   z-index: 1001;
   transform: translateX(100%);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow-y: auto;  
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  min-height: 0;   
+  min-height: 0;
 }
 
 .right-drawer.is-visible {
@@ -223,25 +281,22 @@ body.right-drawer-is-open #main-container {
   flex-shrink: 0;
 }
 
-/* This is the key fix: make the notes list the primary scrolling area */
 #note-blocks-container {
-  flex-grow: 1; /* ADD: Allow this container to grow and fill remaining space */
-  overflow-y: auto; /* ADD: Make THIS the scrolling element */
-  min-height: 0; /* ADD: CRITICAL for flexbox scrolling to work correctly */
+  flex-grow: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 #assistant-drawer,
 #search-results-container {
-  flex-grow: 1; /* Allows this element to expand and fill the space */
-  overflow-y: auto; /* Enables scrolling on this element */
-  min-height: 0; /* A critical rule to make scrolling work inside a flex container */
+  flex-grow: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
-/* We also need to ensure the headers of these drawers do not shrink */
 .search-header {
   flex-shrink: 0;
 }
-/* src/main.css */
 
 /* --- 3. GLOBAL CONTROL BUTTONS & ICONS (ENHANCED ANIMATIONS VERSION) --- */
 
@@ -270,7 +325,6 @@ body.right-drawer-is-open #main-container {
   z-index: 1003;
 }
 
-/* Hover & Focus Feedback (scale + subtle shake) */
 #navigator-toggle-btn:hover,
 .app-control-btn:hover {
   transform: scale(1.08);
@@ -283,10 +337,23 @@ body.right-drawer-is-open #main-container {
 
 /* Shake Animation */
 @keyframes btn-focus-shake {
-  0%, 100% { transform: scale(1.08) translateX(0); }
-  25% { transform: scale(1.08) translateX(-1px); }
-  50% { transform: scale(1.08) translateX(1px); }
-  75% { transform: scale(1.08) translateX(-1px); }
+
+  0%,
+  100% {
+    transform: scale(1.08) translateX(0);
+  }
+
+  25% {
+    transform: scale(1.08) translateX(-1px);
+  }
+
+  50% {
+    transform: scale(1.08) translateX(1px);
+  }
+
+  75% {
+    transform: scale(1.08) translateX(-1px);
+  }
 }
 
 
@@ -300,6 +367,7 @@ body.right-drawer-is-open #main-container {
   pointer-events: none;
   z-index: 1004;
 }
+
 #top-right-controls,
 #bottom-right-controls {
   position: absolute;
@@ -307,8 +375,16 @@ body.right-drawer-is-open #main-container {
   display: flex;
   gap: 8px;
 }
-#top-right-controls { top: var(--spacing-md); right: var(--spacing-md); }
-#bottom-right-controls { bottom: var(--spacing-md); right: var(--spacing-md); }
+
+#top-right-controls {
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+}
+
+#bottom-right-controls {
+  bottom: var(--spacing-md);
+  right: var(--spacing-md);
+}
 
 
 /* --- C) Icon-Specific Styles --- */
@@ -319,6 +395,7 @@ body.right-drawer-is-open #main-container {
   height: 18px;
   position: relative;
 }
+
 .icon-hamburger span {
   display: block;
   position: absolute;
@@ -330,18 +407,29 @@ body.right-drawer-is-open #main-container {
   transform: rotate(0deg);
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
 }
-.icon-hamburger span:nth-child(1) { top: 0px; }
-.icon-hamburger span:nth-child(2) { top: 8px; }
-.icon-hamburger span:nth-child(3) { top: 16px; }
+
+.icon-hamburger span:nth-child(1) {
+  top: 0px;
+}
+
+.icon-hamburger span:nth-child(2) {
+  top: 8px;
+}
+
+.icon-hamburger span:nth-child(3) {
+  top: 16px;
+}
 
 body.drawer-is-open .icon-hamburger span:nth-child(1) {
   top: 8px;
   transform: rotate(135deg) scale(1.1);
 }
+
 body.drawer-is-open .icon-hamburger span:nth-child(2) {
   opacity: 0;
   transform: translateX(-20px) scale(0.5);
 }
+
 body.drawer-is-open .icon-hamburger span:nth-child(3) {
   top: 8px;
   transform: rotate(-135deg) scale(1.1);
@@ -354,6 +442,7 @@ body.drawer-is-open .icon-hamburger span:nth-child(3) {
   height: 18px;
   position: relative;
 }
+
 .icon-pages span {
   display: block;
   position: absolute;
@@ -367,21 +456,35 @@ body.drawer-is-open .icon-hamburger span:nth-child(3) {
 }
 
 /* Notebook Lines */
-.icon-pages span:nth-child(1) { top: 3px; left: -3px; width: 85%; } /* "hanging" page */
-.icon-pages span:nth-child(2) { top: 8px; }
-.icon-pages span:nth-child(3) { top: 13px; }
+.icon-pages span:nth-child(1) {
+  top: 3px;
+  left: -3px;
+  width: 85%;
+}
+
+/* "hanging" page */
+.icon-pages span:nth-child(2) {
+  top: 8px;
+}
+
+.icon-pages span:nth-child(3) {
+  top: 13px;
+}
 
 /* Active Morph (Notebook → X) */
 #notebook-toggle-btn.is-active .icon-pages span:nth-child(1) {
   top: 8px;
   transform: rotate(135deg) scale(1.1);
-  left: 0; /* align back */
+  left: 0;
+  /* align back */
   width: 100%;
 }
+
 #notebook-toggle-btn.is-active .icon-pages span:nth-child(2) {
   opacity: 0;
   transform: translateX(-20px) scale(0.5);
 }
+
 #notebook-toggle-btn.is-active .icon-pages span:nth-child(3) {
   top: 8px;
   transform: rotate(-135deg) scale(1.1);
@@ -394,6 +497,7 @@ body.drawer-is-open .icon-hamburger span:nth-child(3) {
   height: 20px;
   position: relative;
 }
+
 .icon-spark span {
   display: block;
   position: absolute;
@@ -402,21 +506,32 @@ body.drawer-is-open .icon-hamburger span:nth-child(3) {
   background: var(--color-text);
   border-radius: 2px;
   left: 0;
-  top: 9px; /* Center point */
+  top: 9px;
+  /* Center point */
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
 }
 
-.icon-spark span:nth-child(1) { transform: rotate(90deg); }
-.icon-spark span:nth-child(2) { transform: rotate(45deg); }
-.icon-spark span:nth-child(3) { transform: rotate(-45deg); }
+.icon-spark span:nth-child(1) {
+  transform: rotate(90deg);
+}
+
+.icon-spark span:nth-child(2) {
+  transform: rotate(45deg);
+}
+
+.icon-spark span:nth-child(3) {
+  transform: rotate(-45deg);
+}
 
 /* Active Morph (Spark → X-like form) */
 #assistant-toggle-btn.is-active .icon-spark span:nth-child(1) {
   opacity: 0;
 }
+
 #assistant-toggle-btn.is-active .icon-spark span:nth-child(2) {
   transform: rotate(135deg) scale(1.1);
 }
+
 #assistant-toggle-btn.is-active .icon-spark span:nth-child(3) {
   transform: rotate(45deg) scale(1.1);
 }
@@ -453,7 +568,8 @@ body.drawer-is-open .icon-hamburger span:nth-child(3) {
 /* Modifier class for error indicators */
 .status-indicator-item.is-error {
   background-color: var(--color-danger);
-  color: #fff; /* White text provides the best contrast on a red background */
+  color: #fff;
+  /* White text provides the best contrast on a red background */
 }
 
 @keyframes slide-in {
@@ -468,7 +584,7 @@ body.drawer-is-open .icon-hamburger span:nth-child(3) {
 #editor-pane::-webkit-scrollbar,
 #navigator-drawer::-webkit-scrollbar,
 .right-drawer::-webkit-scrollbar,
-#note-blocks-container::-webkit-scrollbar { /* <-- ADD THIS */
+#note-blocks-container::-webkit-scrollbar {
   display: none;
 }
 
@@ -476,7 +592,7 @@ body.drawer-is-open .icon-hamburger span:nth-child(3) {
 #editor-pane,
 #navigator-drawer,
 .right-drawer,
-#note-blocks-container { /* <-- ADD THIS */
+#note-blocks-container {
   scrollbar-width: none;
 }
 
@@ -484,14 +600,16 @@ body.drawer-is-open .icon-hamburger span:nth-child(3) {
 #settings-toggle-btn .settings-icon {
   width: 24px;
   height: 24px;
-  stroke: currentColor; /* Makes the icon theme-aware */
+  stroke: currentColor;
+  /* Makes the icon theme-aware */
   stroke-width: 1.5;
   fill: none;
   transition: transform 0.3s ease;
 }
 
 #settings-toggle-btn:hover .settings-icon {
-  transform: rotate(45deg); /* Add a nice rotation on hover */
+  transform: rotate(45deg);
+  /* Add a nice rotation on hover */
 }
 
 /* --- REVISED: Offline Indicator --- */
@@ -502,21 +620,23 @@ body.drawer-is-open .icon-hamburger span:nth-child(3) {
   width: 32px;
   height: 32px;
   background-color: var(--color-background);
-  color:  var(--color-text-muted);
+  color: var(--color-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   /* Start hidden and scaled down */
   opacity: 0;
   transform: scale(0.5);
   transition: opacity 0.3s ease, transform 0.3s ease;
-  pointer-events: none; /* Can't be clicked */
+  pointer-events: none;
+  /* Can't be clicked */
 }
 
 #offline-indicator.is-visible {
   opacity: 1;
-  transform: scale(1); /* Animate into view */
+  transform: scale(1);
+  /* Animate into view */
 }
 
 /* Style for the SVG icon we will add */
@@ -526,4 +646,3 @@ body.drawer-is-open .icon-hamburger span:nth-child(3) {
   stroke-width: 2;
   stroke: currentColor;
 }
-

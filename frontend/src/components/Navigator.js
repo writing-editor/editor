@@ -1,9 +1,8 @@
-// frontend/src/components/Navigator.js
 import './navigator.css';
 export class Navigator {
   constructor(app, bookService) {
-    this.app = app; // For modals, indicators
-    this.bookService = bookService; // The single source of truth for data ops
+    this.app = app;
+    this.bookService = bookService;
     this.drawerEl = document.getElementById('navigator-drawer');
     this.isEditingTitle = false;
     this.clickTimer = null;
@@ -103,8 +102,6 @@ export class Navigator {
       this.app.hideIndicator(indicatorId);
       this.app.showIndicator('Document Deleted', { duration: 2000 });
 
-      // If the active book was deleted, the bookService will handle the state change.
-      // We just need to refresh the library view.
       if (this.bookService.currentBook && this.bookService.currentBook.filename === filename) {
         await this.bookService.loadInitialBook();
       } else {

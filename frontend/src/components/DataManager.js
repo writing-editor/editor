@@ -1,6 +1,4 @@
-// frontend/src/components/DataManager.js
 import './DataManager.css';
-
 
 export class DataManager {
   constructor(app) {
@@ -65,7 +63,7 @@ export class DataManager {
     // Also clear the content so it's fresh next time
     this.containerEl.innerHTML = '';
   }
-  
+
   async handleDeleteAll() {
     // 1. Hide both modals immediately.
     this.hide();
@@ -77,7 +75,7 @@ export class DataManager {
       'This will permanently delete all application data from your Google Drive and disconnect the app. This cannot be undone.'
     );
     if (isConfirmed) {
-        await this.app.syncService.deleteAllCloudFiles();
+      await this.app.syncService.deleteAllCloudFiles();
     }
   }
 }

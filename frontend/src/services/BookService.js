@@ -1,6 +1,4 @@
-// frontend/src/services/BookService.js
-
-import { debounce } from '../utils/api.js';
+import { debounce } from '../utils/debounce.js';
 
 // --- Default content now uses the NEW hierarchical structure ---
 const DEFAULT_USER_MANUAL = {
@@ -240,11 +238,7 @@ export class BookService {
     this._updateBookState({ chapters: this.currentBook.chapters }, newSection.id);
   }
 
-  // --- THE NEW SAVE ENGINE ---
-
-
-  
-  // --- THE NEW, ROBUST SAVE ENGINE ---
+  // --- SAVE ENGINE ---
 
   /**
    * Saves the content from the editor for a given view (chapter or section).
@@ -267,8 +261,8 @@ export class BookService {
     const nodes = editorContent.content || [];
 
     // --- Deconstruct the editor content and surgically update the book copy ---
-    this._deconstructAndSaveView(viewId, nodes, bookCopy);
-    if (this.metadata.margin_blocks) {
+    const navigateToId = this._deconstructAndSaveView(viewId, nodes, bookCopy);
+    if (this.metadata.margin_blocks && navigateToId !== viewId) {
       // 1. Get a set of all valid IDs from the updated book structure.
       const validIds = new Set();
       bookCopy.chapters.forEach(chapter => {
@@ -290,9 +284,9 @@ export class BookService {
 
     this.appController.hideIndicator(indicatorId);
     this.appController.showIndicator('Saved!', { duration: 2000 });
-    
+
     // Refresh the UI and navigate to the same view to reflect changes.
-    this._updateBookState({ chapters: this.currentBook.chapters }, viewId);
+    this._updateBookState({ chapters: this.currentBook.chapters }, navigateToId);
   }
 
   /**
@@ -330,7 +324,7 @@ export class BookService {
     }
     return { chapter: null }; // Return a predictable "not found" state
   }
-  
+
   /**
    * The core "disassembly" engine. It intelligently parses the flat list of editor
    * nodes back into a hierarchical structure and updates the book data.
@@ -340,10 +334,11 @@ export class BookService {
    * @param {object} book The deep copy of the book data to modify.
    */
   _deconstructAndSaveView(viewId, nodes, book) {
+    let navigateToId = viewId;
     const location = this._findLocation(viewId, book);
     if (!location.chapter) {
       console.error("Save failed: Could not find the chapter or section being edited.", { viewId });
-      return;
+      return navigateToId;
     }
 
     // =======================================================
@@ -356,13 +351,18 @@ export class BookService {
       // If the first node is not an H3, the section is orphaned and its content
       // must be merged with the preceding item.
       if (!nodes.length || nodes[0].type !== 'heading' || nodes[0].attrs?.level !== 3) {
-        const mergeTargetContent = (sectionIndex > 0)
-          ? chapter.sections[sectionIndex - 1].content_json.content // Merge into previous section
-          : chapter.content_json.content;                         // Or merge into parent chapter
-
-        mergeTargetContent.push(...nodes);
-        chapter.sections.splice(sectionIndex, 1); // Remove the original, now-empty section
-        return;
+        if (sectionIndex > 0) {
+          // Merge into the previous section
+          const mergeTarget = chapter.sections[sectionIndex - 1];
+          mergeTarget.content_json.content.push(...nodes);
+          navigateToId = mergeTarget.id; // << SET the correct navigation ID
+        } else {
+          // Merge into the parent chapter
+          chapter.content_json.content.push(...nodes);
+          navigateToId = chapter.id; // << SET the correct navigation ID
+        }
+        chapter.sections.splice(sectionIndex, 1); // Remove the original section
+        return navigateToId; // Return the new, correct ID
       }
 
       // SCENARIO 1.2: NORMAL SECTION SAVE
@@ -370,7 +370,7 @@ export class BookService {
       const newSectionsPayload = [];
       let currentSectionPayload = null;
       for (const node of nodes) {
-        if (node.type === 'heading' && node.attrs?.level === 3) {
+        if (node.type === 'heading' && (node.attrs?.level === 3 || node.attrs?.level === 2)) {
           currentSectionPayload = {
             id: crypto.randomUUID(),
             title: node.content?.[0]?.text || 'Untitled Section',
@@ -383,17 +383,15 @@ export class BookService {
       }
 
       if (newSectionsPayload.length > 0) {
-        // The first parsed section becomes the update for the one being edited.
         section.title = newSectionsPayload[0].title;
         section.content_json = newSectionsPayload[0].content_json;
-
-        // Any subsequent H3s create new sections inserted immediately after.
         const newlyCreated = newSectionsPayload.slice(1);
         if (newlyCreated.length > 0) {
           chapter.sections.splice(sectionIndex + 1, 0, ...newlyCreated);
+          navigateToId = newlyCreated[newlyCreated.length - 1].id;
         }
       }
-      return;
+      return navigateToId;
     }
 
     // =======================================================
@@ -405,8 +403,8 @@ export class BookService {
       // SCENARIO 2.1: ORPHANED CHAPTER (user deleted the H2 title)
       // This triggers a merge with the previous chapter, or a rename if it's the first chapter.
       if (!nodes.length || nodes[0].type !== 'heading' || nodes[0].attrs?.level !== 2) {
-        this._handleOrphanedChapter(location, nodes, book);
-        return;
+        navigateToId = this._handleOrphanedChapter(location, nodes, book);
+        return navigateToId;
       }
 
       // SCENARIO 2.2: NORMAL CHAPTER SAVE
@@ -453,9 +451,11 @@ export class BookService {
         const newlyCreated = newChaptersPayload.slice(1);
         if (newlyCreated.length > 0) {
           book.chapters.splice(chapterIndex + 1, 0, ...newlyCreated);
+          navigateToId = newlyCreated[newlyCreated.length - 1].id;
         }
       }
     }
+    return navigateToId;
   }
 
   /**
@@ -465,93 +465,107 @@ export class BookService {
    * @param {Array} orphanedNodes The raw editor nodes that are now "headless".
    * @param {object} book The deep copy of the book data to modify.
    */
-  // REPLACE the existing _handleOrphanedChapter method with this corrected version.
-
-/**
- * Handles the logic for when a chapter's main H2 title is deleted by the user.
- *
- * @param {object} location The location object for the chapter being deleted.
- * @param {Array} orphanedNodes The raw editor nodes that are now "headless".
- * @param {object} book The deep copy of the book data to modify.
- */
-_handleOrphanedChapter(location, orphanedNodes, book) {
+  _handleOrphanedChapter(location, orphanedNodes, book) {
     const { chapter: chapterToDelete, chapterIndex } = location;
 
     if (chapterIndex > 0) {
-        // SCENARIO A: There is a previous chapter to merge into.
-        const previousChapter = book.chapters[chapterIndex - 1];
+      // SCENARIO A: There is a previous chapter to merge into.
+      const previousChapter = book.chapters[chapterIndex - 1];
 
-        // --- CORRECTED LOGIC ---
-        // First, deconstruct the orphaned content into its constituent parts:
-        // 1. Body content (nodes before the first H3)
-        // 2. Sections (nodes after H3s)
-        const orphanedBodyContent = [];
-        const newSectionsFromOrphan = [];
-        let currentSectionPayload = null;
-        
-        for (const node of orphanedNodes) {
-            if (node.type === 'heading' && node.attrs?.level === 3) {
-                currentSectionPayload = {
-                    id: crypto.randomUUID(),
-                    title: node.content?.[0]?.text || 'Untitled Section',
-                    content_json: { type: 'doc', content: [] }
-                };
-                newSectionsFromOrphan.push(currentSectionPayload);
-            } else {
-                if (currentSectionPayload) {
-                    currentSectionPayload.content_json.content.push(node);
-                } else {
-                    // This is orphaned body content. Collect it instead of merging directly.
-                    orphanedBodyContent.push(node);
-                }
-            }
+      // --- CORRECTED LOGIC ---
+      // First, deconstruct the orphaned content into its constituent parts:
+      // 1. Body content (nodes before the first H3)
+      // 2. Sections (nodes after H3s)
+      const orphanedBodyContent = [];
+      const newSectionsFromOrphan = [];
+      let currentSectionPayload = null;
+
+      for (const node of orphanedNodes) {
+        if (node.type === 'heading' && node.attrs?.level === 3) {
+          currentSectionPayload = {
+            id: crypto.randomUUID(),
+            title: node.content?.[0]?.text || 'Untitled Section',
+            content_json: { type: 'doc', content: [] }
+          };
+          newSectionsFromOrphan.push(currentSectionPayload);
+        } else {
+          if (currentSectionPayload) {
+            currentSectionPayload.content_json.content.push(node);
+          } else {
+            // This is orphaned body content. Collect it instead of merging directly.
+            orphanedBodyContent.push(node);
+          }
         }
+      }
 
-        // If there was any orphaned body content, wrap it in a new section.
-        // This prevents it from polluting the previous chapter's body content.
-        if (orphanedBodyContent.length > 0) {
-            const mergedContentSection = {
-                id: crypto.randomUUID(),
-                title: "Untitled Section", // Give it a default title
-                content_json: { type: 'doc', content: orphanedBodyContent }
-            };
-            // Add this new section to the beginning of the list of sections to be merged.
-            newSectionsFromOrphan.unshift(mergedContentSection);
-        }
+      // If there was any orphaned body content, wrap it in a new section.
+      // This prevents it from polluting the previous chapter's body content.
+      if (this._hasMeaningfulContent(orphanedBodyContent)) {
+        const mergedContentSection = {
+          id: crypto.randomUUID(),
+          title: "Untitled Section", // Give it a default title
+          content_json: { type: 'doc', content: orphanedBodyContent }
+        };
+        // Add this new section to the beginning of the list of sections to be merged.
+        newSectionsFromOrphan.unshift(mergedContentSection);
+      }
 
-        // Now, append all the newly formed sections to the previous chapter's section list.
-        previousChapter.sections.push(...newSectionsFromOrphan);
-        
-        // Finally, remove the original chapter that was edited.
-        book.chapters.splice(chapterIndex, 1);
+      // Now, append all the newly formed sections to the previous chapter's section list.
+      previousChapter.sections.push(...newSectionsFromOrphan);
+
+      // Finally, remove the original chapter that was edited.
+      book.chapters.splice(chapterIndex, 1);
+      return previousChapter.id;
 
     } else {
-        // SCENARIO B: This is the first chapter. This logic remains unchanged and correct.
-        chapterToDelete.title = "Chapter 1";
-        chapterToDelete.content_json.content = [];
-        chapterToDelete.sections = [];
+      // SCENARIO B: This is the first chapter. This logic remains unchanged and correct.
+      chapterToDelete.title = "Chapter 1";
+      chapterToDelete.content_json.content = [];
+      chapterToDelete.sections = [];
 
-        let currentSectionPayload = null;
-        for (const node of orphanedNodes) {
-            if (node.type === 'heading' && node.attrs?.level === 3) {
-                currentSectionPayload = {
-                    id: crypto.randomUUID(),
-                    title: node.content?.[0]?.text || 'Untitled Section',
-                    content_json: { type: 'doc', content: [] }
-                };
-                chapterToDelete.sections.push(currentSectionPayload);
-            } else {
-                if (currentSectionPayload) {
-                    currentSectionPayload.content_json.content.push(node);
-                } else {
-                    chapterToDelete.content_json.content.push(node);
-                }
-            }
+      let currentSectionPayload = null;
+      for (const node of orphanedNodes) {
+        if (node.type === 'heading' && node.attrs?.level === 3) {
+          currentSectionPayload = {
+            id: crypto.randomUUID(),
+            title: node.content?.[0]?.text || 'Untitled Section',
+            content_json: { type: 'doc', content: [] }
+          };
+          chapterToDelete.sections.push(currentSectionPayload);
+        } else {
+          if (currentSectionPayload) {
+            currentSectionPayload.content_json.content.push(node);
+          } else {
+            chapterToDelete.content_json.content.push(node);
+          }
         }
+      }
+      return chapterToDelete.id;
     }
-}
-
-
+  }
+  /**
+   * Recursively checks if an array of TipTap nodes contains any meaningful text content.
+   * This is more robust than a simple length check, as it ignores empty paragraphs.
+   * @param {Array} nodes An array of TipTap nodes.
+   * @returns {boolean} True if any node contains non-whitespace text.
+   */
+  _hasMeaningfulContent(nodes) {
+    if (!nodes || nodes.length === 0) {
+      return false;
+    }
+    // Using `some` for an efficient check that stops as soon as content is found.
+    return nodes.some(node => {
+      // Check for a text property with actual content
+      if (node.text && node.text.trim() !== '') {
+        return true;
+      }
+      // If the node has children, recursively check them
+      if (node.content && this._hasMeaningfulContent(node.content)) {
+        return true;
+      }
+      return false;
+    });
+  }
 
   // --- HELPER METHODS REWRITTEN FOR NEW STRUCTURE ---
 

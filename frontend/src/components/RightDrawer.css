@@ -1,26 +1,17 @@
-/* src/components/RightDrawer.css */
-/* A unified and themed stylesheet for the Assistant and Notebook drawers. */
-
 /* --- 1. Drawer-level Styles --- */
-
-/* --- 1. Drawer-level Styles (REVISED for Grid Layout) --- */
 
 .right-drawer {
   background-color: var(--color-background);
-  
-  /* --- THE FIX: Use CSS Grid for layout --- */
   display: grid;
-  /* Create two rows: 1st row is for the header (auto-sized), 
-     2nd row is for content (takes all remaining space) */
-  grid-template-rows: auto 1fr; 
+  grid-template-rows: auto 1fr;
   height: 100%;
-  padding: 0; /* Remove padding from the container itself */
+  padding: 0;
 }
 
 /* Style the headers (for Notebook and Search) */
 .notebook-header,
 .search-header {
-  grid-row: 1; /* Assign to the first row */
+  grid-row: 1;
   padding: 60px var(--spacing-md) var(--spacing-lg) var(--spacing-md);
   flex-shrink: 0;
 }
@@ -29,9 +20,9 @@
 #note-blocks-container,
 #assistant-content-wrapper,
 #search-results-container {
-  grid-row: 2; /* Assign to the second, expanding row */
+  grid-row: 2;
   overflow-y: auto;
-  min-height: 0; /* Still critical for scrolling */
+  min-height: 0;
   padding: 0 var(--spacing-md) var(--spacing-md) var(--spacing-md);
 }
 
@@ -49,7 +40,7 @@
   border-radius: 8px;
   margin-bottom: var(--spacing-md);
   transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
-  overflow: hidden; /* Prevents content from spilling out */
+  overflow: hidden;
 }
 
 .block-header {
@@ -60,11 +51,12 @@
   cursor: pointer;
   border-bottom: 1px solid var(--color-border);
 }
+
 .block-header:hover {
   background-color: var(--color-surface-medium);
 }
-/* Hide the bottom border if the details element is closed */
-details:not([open]) > .block-header {
+
+details:not([open])>.block-header {
   border-bottom: none;
 }
 
@@ -100,6 +92,7 @@ details:not([open]) > .block-header {
   justify-content: center;
   transition: background-color 0.2s, color 0.2s, opacity 0.2s;
 }
+
 .block-action-btn:hover {
   background-color: var(--color-surface-medium);
   color: var(--color-text);
@@ -110,10 +103,12 @@ details:not([open]) > .block-header {
 .block-action-btn[title="Pin Suggestion"] {
   opacity: 0.6;
 }
+
 .block-action-btn.is-pinned {
   opacity: 1;
   color: var(--color-primary);
 }
+
 .block-action-btn.is-pinned:hover {
   color: var(--color-danger);
 }
@@ -140,6 +135,7 @@ details:not([open]) > .block-header {
   background-color: var(--color-background);
   color: var(--color-text);
 }
+
 #note-search-input:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
@@ -160,9 +156,11 @@ details:not([open]) > .block-header {
   justify-content: center;
   transition: background-color 0.2s;
 }
+
 .new-note-btn.clear-btn {
   background-color: var(--color-text-muted);
 }
+
 .new-note-btn:hover {
   filter: brightness(1.15);
 }
@@ -182,11 +180,13 @@ details:not([open]) > .block-header {
   color: var(--color-text);
   background-color: var(--color-surface-light);
 }
+
 .note-editor-prosemirror:focus-within {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
+
 .note-editor-prosemirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
@@ -208,9 +208,17 @@ details:not([open]) > .block-header {
 }
 
 /* Show/hide logic for edit/save buttons */
-.note-block .save-btn { display: none; }
-.note-block.is-editing .edit-btn { display: none; }
-.note-block.is-editing .save-btn { display: inline-flex; }
+.note-block .save-btn {
+  display: none;
+}
+
+.note-block.is-editing .edit-btn {
+  display: none;
+}
+
+.note-block.is-editing .save-btn {
+  display: inline-flex;
+}
 
 
 /* --- 4. Assistant-Specific Styles --- */
@@ -229,18 +237,21 @@ details:not([open]) > .block-header {
   font-family: Georgia, 'Times New Roman', Times, serif;
   color: var(--color-text);
 }
+
 .suggestion-diff strong {
   font-family: var(--font-sans);
   font-size: 13px;
   color: var(--color-text-muted);
   display: block;
 }
+
 .suggestion-diff del {
   background-color: var(--color-danger-bg);
   color: var(--color-danger);
   text-decoration: none;
   border-radius: 3px;
 }
+
 .suggestion-diff ins {
   background-color: var(--color-success-bg);
   color: var(--color-success);
@@ -255,6 +266,7 @@ details:not([open]) > .block-header {
   gap: 10px;
   border-top: 1px solid var(--color-border);
 }
+
 .suggestion-actions button {
   border: 1px solid var(--color-border);
   background-color: var(--color-surface-medium);
@@ -265,6 +277,7 @@ details:not([open]) > .block-header {
   font-weight: 500;
   cursor: pointer;
 }
+
 #accept-suggestion-btn {
   background-color: var(--color-success);
   border-color: var(--color-success);
@@ -287,15 +300,27 @@ details:not([open]) > .block-header {
   font-family: Georgia, 'Times New Roman', Times, serif;
   font-size: 16px;
 }
-.read-only-view > *:first-child, .read-only-view p:first-child { margin-top: 0; }
-.read-only-view > *:last-child, .read-only-view p:last-child { margin-bottom: 0; }
-.read-only-view h1, .read-only-view h2, .read-only-view h3 {
+
+.read-only-view>*:first-child,
+.read-only-view p:first-child {
+  margin-top: 0;
+}
+
+.read-only-view>*:last-child,
+.read-only-view p:last-child {
+  margin-bottom: 0;
+}
+
+.read-only-view h1,
+.read-only-view h2,
+.read-only-view h3 {
   font-family: var(--font-sans);
   margin-top: 1.5em;
   margin-bottom: 0.5em;
   line-height: 1.3;
   font-weight: 600;
 }
+
 .read-only-view blockquote {
   margin-left: 0;
   padding-left: 1em;
@@ -313,13 +338,16 @@ details:not([open]) > .block-header {
   padding: 3rem 1rem;
 }
 
-.hidden { display: none; }
+.hidden {
+  display: none;
+}
 
 /* --- 7. Search-Specific Styles --- */
 
 .search-header {
   margin-bottom: var(--spacing-lg);
-  flex-shrink: 0; /* Prevents the header from shrinking */
+  flex-shrink: 0;
+  /* Prevents the header from shrinking */
 }
 
 #search-input {
@@ -327,13 +355,15 @@ details:not([open]) > .block-header {
   padding: 12px 15px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  font-size: 16px; /* Slightly larger for a primary action */
+  font-size: 16px;
+  /* Slightly larger for a primary action */
   box-sizing: border-box;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
   background-color: var(--color-background);
   color: var(--color-text);
 }
+
 #search-input:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
@@ -353,9 +383,11 @@ details:not([open]) > .block-header {
   cursor: pointer;
   transition: background-color 0.2s;
 }
+
 .search-result-item:hover {
   background-color: var(--color-surface-medium);
 }
+
 .search-result-item:last-child {
   border-bottom: none;
 }
@@ -376,8 +408,7 @@ details:not([open]) > .block-header {
   line-height: 1.5;
   /* Shows up to 2 lines of text before cutting off */
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;  
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
   overflow: hidden;
 }
-

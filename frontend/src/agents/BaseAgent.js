@@ -1,5 +1,3 @@
-// frontend/src/agents/BaseAgent.js
-
 export class BaseAgent {
     constructor(orchestrator, app) {
         if (!orchestrator || !app) {

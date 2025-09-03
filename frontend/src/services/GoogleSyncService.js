@@ -44,15 +44,15 @@ export class GoogleSyncService {
 
   loadGapiClient() {
     return new Promise(resolve => {
-        // gapi.load('client', ...) is the full call, so we check for window.gapi first
-        const checkGapi = () => {
-            if (window.gapi && window.gapi.load) {
-                window.gapi.load('client', () => resolve(window.gapi));
-            } else {
-                setTimeout(checkGapi, 100);
-            }
-        };
-        checkGapi();
+      // gapi.load('client', ...) is the full call, so we check for window.gapi first
+      const checkGapi = () => {
+        if (window.gapi && window.gapi.load) {
+          window.gapi.load('client', () => resolve(window.gapi));
+        } else {
+          setTimeout(checkGapi, 100);
+        }
+      };
+      checkGapi();
     });
   }
 

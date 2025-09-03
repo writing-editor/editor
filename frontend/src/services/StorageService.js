@@ -64,7 +64,7 @@ export class StorageService {
     console.log(`Request to remove ${filename} from index. A full re-index is recommended.`);
     this.isIndexed = false; // Mark index as dirty
   }
-  
+
   /**
    * Saves a file (or any JSON object) to the database.
    * @param {string} id - The "filename" or unique key (e.g., 'my-book.book', 'notes.json').

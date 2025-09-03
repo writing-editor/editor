@@ -1,17 +1,12 @@
-// frontend/src/services/LlmOrchestrator.js
-
 import { GeminiClient } from '../llm/GeminiClient.js';
-// import { AnthropicClient } from '../llm/AnthropicClient.js'; // Future-proofing
+import { AnthropicClient } from '../llm/AnthropicClient.js';
 import { SettingsPalette } from '../components/SettingsPalette.js';
-
-
-
 export class LlmOrchestrator {
     constructor() {
         // Initialize instances of all available LLM clients
         this.clients = {
             google: new GeminiClient(),
-            // anthropic: new AnthropicClient(), // Future-proofing
+            anthropic: new AnthropicClient(), 
         };
     }
 

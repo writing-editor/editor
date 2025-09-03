@@ -1,4 +1,3 @@
-// frontend/src/components/AssistantPane.js
 import './RightDrawer.css';
 import { renderBlocks } from '../utils/renderBlocks.js';
 
@@ -14,7 +13,7 @@ export class AssistantPane {
 
       const blockId = actionBtn.dataset.blockId;
       // CORRECT: Get currentViewId from the single source of truth
-      const currentViewId = this.bookService.currentViewId; 
+      const currentViewId = this.bookService.currentViewId;
       if (!currentViewId) return; // Safety check
 
       if (actionBtn.title === 'Pin Suggestion') {
@@ -32,8 +31,7 @@ export class AssistantPane {
   }
 
   renderRewriteSuggestion(payload) {
-    const html = `<div id="assistant-content-wrapper">${
-    `
+    const html = `<div id="assistant-content-wrapper">${`
       <div class="suggestion-container"> 
         <h3>Rewrite Suggestion</h3>
         <div class="margin-block suggestion-block">

@@ -1,24 +1,23 @@
-// frontend/src/components/SearchPane.js
 import './RightDrawer.css';
 
 export class SearchPane {
   constructor(app) {
     this.app = app;
     this.element = document.getElementById('search-drawer');
-    
+
     this.element.addEventListener('input', (e) => {
-        if (e.target.id === 'search-input') {
-            this.performSearch(e.target.value);
-        }
+      if (e.target.id === 'search-input') {
+        this.performSearch(e.target.value);
+      }
     });
 
     this.element.addEventListener('click', (e) => {
-        const resultLink = e.target.closest('.search-result-item');
-        if (resultLink) {
-            e.preventDefault();
-            const { filename, viewId } = resultLink.dataset;
-            this.app.navigateTo(filename, viewId);
-        }
+      const resultLink = e.target.closest('.search-result-item');
+      if (resultLink) {
+        e.preventDefault();
+        const { filename, viewId } = resultLink.dataset;
+        this.app.navigateTo(filename, viewId);
+      }
     });
   }
 
@@ -51,8 +50,8 @@ export class SearchPane {
     if (!container) return;
 
     if (results.length === 0) {
-        container.innerHTML = `<p class="search-placeholder">No results found.</p>`;
-        return;
+      container.innerHTML = `<p class="search-placeholder">No results found.</p>`;
+      return;
     }
 
     container.innerHTML = results.map(res => `

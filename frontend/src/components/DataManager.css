@@ -1,29 +1,34 @@
-/* frontend/src/components/DataManager.css */
-
 /* --- 1. Main Modal & Overlay (Unchanged) --- */
 #data-manager-modal-container {
-  position: fixed; inset: 0;
+  position: fixed;
+  inset: 0;
   background-color: rgba(0, 0, 0, 0.6);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 8000; backdrop-filter: blur(4px);
-  opacity: 1; transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 8000;
+  backdrop-filter: blur(4px);
+  opacity: 1;
+  transition: opacity 0.2s ease;
 }
+
 #data-manager-modal-container.hidden {
-  opacity: 0; pointer-events: none;
+  opacity: 0;
+  pointer-events: none;
 }
 
 
 /* --- 2. THE NEW "SLICK" PALLET --- */
 #data-manager-modal-box {
-  width: 90%; max-width: 500px;
-  /* THE FIX: Use the main background color. The raised effect comes from the shadow. */
+  width: 90%;
+  max-width: 500px;
   background-color: var(--color-background);
   border-radius: 12px;
   box-shadow: 0 10px 30px var(--color-shadow);
-  display: flex; flex-direction: column;
+  display: flex;
+  flex-direction: column;
   max-height: 70vh;
-  /* THE FIX: Remove the hard border */
-  border: none; 
+  border: none;
 }
 
 
@@ -32,11 +37,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 10px 12px var(--spacing-md); /* Adjust padding */
-  /* THE FIX: Remove the border */
+  padding: 12px 10px 12px var(--spacing-md);
   border-bottom: none;
   flex-shrink: 0;
 }
+
 #data-manager-toolbar h4 {
   margin: 0;
   font-size: 16px;
@@ -58,18 +63,21 @@
   justify-content: center;
   transition: background-color 0.2s, color 0.2s;
 }
+
 #data-manager-delete-all-btn:hover {
   background-color: var(--color-danger-bg);
   color: var(--color-danger);
 }
+
 #data-manager-delete-all-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   background-color: transparent;
   color: var(--color-text-muted);
 }
+
 #data-manager-delete-all-btn svg {
-  width: 16px; /* Match the SVG's native size */
+  width: 16px;
   height: 16px;
 }
 
@@ -79,29 +87,30 @@
   padding: 0;
   overflow-y: auto;
   flex-grow: 1;
-  /* THE FIX: Use a different background to create a borderless separation */
   background-color: var(--color-surface-light);
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
 }
 
 #data-manager-file-list {
-  list-style: none; padding: 0; margin: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 #data-manager-file-list li {
   padding: 10px var(--spacing-lg);
-  /* THE FIX: Use a subtle border, but only between items */
   border-bottom: 1px solid var(--color-border);
   font-family: monospace;
   font-size: 14px;
   color: var(--color-text-muted);
 }
+
 #data-manager-file-list li:last-child {
   border-bottom: none;
 }
 
-.data-manager-loading, 
+.data-manager-loading,
 .data-manager-error {
   padding: var(--spacing-lg);
   text-align: center;

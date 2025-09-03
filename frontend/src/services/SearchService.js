@@ -1,5 +1,3 @@
-// frontend/src/services/SearchService.js
-
 import FlexSearch from 'flexsearch';
 
 // Helper to get plain text from TipTap content
@@ -50,39 +48,39 @@ export class SearchService {
         const chapterTitle = chapter.title || "Untitled Chapter";
 
         // --- THIS IS THE FIX: Index content from the chapter AND its sections ---
-        
+
         // 1. Index the chapter's top-level content
         const chapterContentNodes = chapter.content_json?.content || [];
         if (chapterContentNodes.length > 0) {
-            const chapterText = tiptapToText(chapterContentNodes);
-            if(chapterText.trim()) {
-                this.index.add({
-                    id: entryId++,
-                    content: chapterText,
-                    filename: filename,
-                    viewId: chapter.id, // The viewId is the chapter's own ID
-                    title: `${bookTitle} / ${chapterTitle}`,
-                    snippet: chapterText.substring(0, 150) + (chapterText.length > 150 ? '...' : '')
-                });
-            }
+          const chapterText = tiptapToText(chapterContentNodes);
+          if (chapterText.trim()) {
+            this.index.add({
+              id: entryId++,
+              content: chapterText,
+              filename: filename,
+              viewId: chapter.id, // The viewId is the chapter's own ID
+              title: `${bookTitle} / ${chapterTitle}`,
+              snippet: chapterText.substring(0, 150) + (chapterText.length > 150 ? '...' : '')
+            });
+          }
         }
 
         // 2. Index the content of each section within the chapter
         for (const section of chapter.sections || []) {
-            const sectionContentNodes = section.content_json?.content || [];
-            if (sectionContentNodes.length > 0) {
-                const sectionText = tiptapToText(sectionContentNodes);
-                if (sectionText.trim()) {
-                    this.index.add({
-                        id: entryId++,
-                        content: sectionText,
-                        filename: filename,
-                        viewId: section.id, // The viewId is the section's unique ID
-                        title: `${bookTitle} / ${chapterTitle} / ${section.title}`,
-                        snippet: sectionText.substring(0, 150) + (sectionText.length > 150 ? '...' : '')
-                    });
-                }
+          const sectionContentNodes = section.content_json?.content || [];
+          if (sectionContentNodes.length > 0) {
+            const sectionText = tiptapToText(sectionContentNodes);
+            if (sectionText.trim()) {
+              this.index.add({
+                id: entryId++,
+                content: sectionText,
+                filename: filename,
+                viewId: section.id, // The viewId is the section's unique ID
+                title: `${bookTitle} / ${chapterTitle} / ${section.title}`,
+                snippet: sectionText.substring(0, 150) + (sectionText.length > 150 ? '...' : '')
+              });
             }
+          }
         }
       }
     }
@@ -102,7 +100,7 @@ export class SearchService {
     // FlexSearch returns results for each field. We are only interested in 'content'.
     const results = this.index.search(query, { enrich: true });
     if (!results || results.length === 0) return [];
-    
+
     // Flatten and deduplicate the results
     const uniqueDocs = new Map();
     results.forEach(fieldResult => {

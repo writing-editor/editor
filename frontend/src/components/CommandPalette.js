@@ -1,6 +1,4 @@
-// frontend/src/components/CommandPalette.js
 import './CommandPalette.css';
-import { request } from '../utils/api.js';
 
 export class CommandPalette {
   constructor(app, bookService, storageService) {  // <-- Receive the bookService

@@ -1,5 +1,3 @@
-// frontend/src/agents/AnalystAgent.js
-
 import { BaseAgent } from './BaseAgent.js';
 
 export class AnalystAgent extends BaseAgent {
@@ -20,7 +18,7 @@ export class AnalystAgent extends BaseAgent {
         // Build the final prompt on the frontend
         let final_prompt = prompt_template.replace('{user_request}', user_request || "a general analysis");
         final_prompt = final_prompt.replace('{text_to_analyze}', text_to_analyze);
-        
+
         // Execute the prompt via the orchestrator
         const indicatorId = this.app.showIndicator('Thinking...');
         const ai_response = await this.orchestrator.execute(final_prompt);
