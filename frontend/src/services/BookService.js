@@ -111,7 +111,6 @@ export class BookService {
     }));
     this.appController.renderNavigator(this.getStateForNavigator());
   }
-  // --- METHODS ADAPTED FOR THE NEW DATA STRUCTURE ---
 
   async switchBook(filename, viewId = null) {
     this.navigatorView = 'contents';
@@ -254,39 +253,33 @@ export class BookService {
     }
 
     const indicatorId = this.appController.showIndicator('Saving...');
+    try {
+      const bookCopy = JSON.parse(JSON.stringify(this.currentBook));
+      const nodes = editorContent.content || [];
+      const navigateToId = this._deconstructAndSaveView(viewId, nodes, bookCopy);
 
-    // Create a safe, deep copy of the book data to perform surgery on.
-    // This prevents corrupting the live state if an error occurs.
-    const bookCopy = JSON.parse(JSON.stringify(this.currentBook));
-    const nodes = editorContent.content || [];
+      if (this.metadata.margin_blocks && navigateToId !== viewId) {
+        const validIds = new Set();
+        bookCopy.chapters.forEach(chapter => {
+          validIds.add(chapter.id);
+          (chapter.sections || []).forEach(section => validIds.add(section.id));
+        });
 
-    // --- Deconstruct the editor content and surgically update the book copy ---
-    const navigateToId = this._deconstructAndSaveView(viewId, nodes, bookCopy);
-    if (this.metadata.margin_blocks && navigateToId !== viewId) {
-      // 1. Get a set of all valid IDs from the updated book structure.
-      const validIds = new Set();
-      bookCopy.chapters.forEach(chapter => {
-        validIds.add(chapter.id);
-        (chapter.sections || []).forEach(section => validIds.add(section.id));
-      });
-
-      // 2. Loop through existing metadata keys and delete any that are no longer valid.
-      for (const metadataId in this.metadata.margin_blocks) {
-        if (!validIds.has(metadataId)) {
-          delete this.metadata.margin_blocks[metadataId];
+        for (const metadataId in this.metadata.margin_blocks) {
+          if (!validIds.has(metadataId)) {
+            delete this.metadata.margin_blocks[metadataId];
+          }
         }
       }
+
+      this.currentBook = bookCopy;
+      await this.saveCurrentBookToFile();
+
+      this.appController.showIndicator('Saved!', { duration: 2000 });
+      this._updateBookState({ chapters: this.currentBook.chapters }, navigateToId);
+    } finally {
+      this.appController.hideIndicator(indicatorId);
     }
-
-    // --- Finalize: Update the live state and save to storage ---
-    this.currentBook = bookCopy;
-    await this.saveCurrentBookToFile();
-
-    this.appController.hideIndicator(indicatorId);
-    this.appController.showIndicator('Saved!', { duration: 2000 });
-
-    // Refresh the UI and navigate to the same view to reflect changes.
-    this._updateBookState({ chapters: this.currentBook.chapters }, navigateToId);
   }
 
   /**
@@ -683,13 +676,14 @@ export class BookService {
     }
   }
 
-
   _isChapterId(viewId) {
+    if (!this.currentBook) {
+      return false;
+    }
     return this.currentBook.chapters.some(c => c.id === viewId);
   }
 
   async saveCurrentBookToFile() {
-    // A simple helper to save the entire state of the current book.
     await this.storageService.saveFile(`${this.currentBook.filename}.book`, {
       metadata: this.currentBook.metadata,
       chapters: this.currentBook.chapters,
@@ -733,13 +727,11 @@ export class BookService {
       return;
     }
 
-    // Since we no longer store default margin content, we can just clear the pane
-    // to "restore" it to its empty/default state for this view.
     const marginBlocks = this.metadata.margin_blocks?.[this.currentViewId] || [];
     this.appController.renderAssistantPane(marginBlocks);
   }
 
-  // --- Metadata Management (Now uses StorageService) ---
+  // --- Metadata Management ---
 
   async loadMetadata(filename) {
     const metadata = await this.storageService.getFile(`${filename}.metadata.json`);
@@ -749,7 +741,10 @@ export class BookService {
   async _saveMetadata() {
     if (!this.currentBook) return;
     const indicatorId = this.appController.showIndicator('Syncing analysis...');
-    await this.storageService.saveFile(`${this.currentBook.filename}.metadata.json`, this.metadata);
-    this.appController.hideIndicator(indicatorId);
+    try {
+      await this.storageService.saveFile(`${this.currentBook.filename}.metadata.json`, this.metadata);
+    } finally {
+      this.appController.hideIndicator(indicatorId);
+    }
   }
 }

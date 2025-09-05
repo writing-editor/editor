@@ -6,6 +6,17 @@ export function noteBlockWrapper(note) {
 
   const readOnlyContentHtml = generateHTML(note.content_json, [StarterKit]);
 
+  let tagsHtml = '';
+  if (note.tags && note.tags.length > 0) {
+    tagsHtml = `
+      <div class="block-tags">
+        ${note.tags.map(tag =>
+      `<span class="note-tag" data-action="filter-by-tag" data-tag="${tag}">#${tag}</span>`
+    ).join('')}
+      </div>
+    `;
+  }
+
   return `
     <details class="block-container note-block" id="container-${note.id}" data-note-id="${note.id}">
       <summary class="block-header">
@@ -18,7 +29,7 @@ export function noteBlockWrapper(note) {
         </button>
 
         <span class="block-title">${note.title}</span>
-
+        ${tagsHtml}
         <div class="block-actions">
           <!-- Edit Icon -->
           <button class="block-action-btn edit-btn" data-action="edit-note" title="Edit Note">

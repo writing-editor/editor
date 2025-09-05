@@ -1,3 +1,5 @@
+// frontend/src/App.js
+
 import { Navigator } from './components/Navigator.js';
 import { Editor } from './components/Editor.js';
 import { CommandPalette } from './components/CommandPalette.js';
@@ -8,18 +10,20 @@ import { ConfirmationModal } from './components/ConfirmationModal.js';
 import { SettingsPalette } from './components/SettingsPalette.js';
 import { LlmOrchestrator } from './services/LlmOrchestrator.js';
 import { BookService } from './services/BookService.js';
-import { StorageService } from './services/StorageService.js'; // Added import
+import { StorageService } from './services/StorageService.js';
 import { AnalystAgent } from './agents/AnalystAgent.js';
 import { RewriteAgent } from './agents/RewriteAgent.js';
 import { FindNotesAgent } from './agents/FindNotesAgent.js';
 import { SyncService } from './services/SyncService.js';
-import { LatexConverter } from './utils/LatexConverter.js';
-import { DocxConverter } from './utils/DocxConverter.js';
 import { GoogleSyncService } from './services/GoogleSyncService.js';
 import { SearchService } from './services/SearchService.js';
 import { SearchPane } from './components/SearchPane.js';
-import { OfflineIndicator } from './utils/OfflineIndicator.js';
 import { DataManager } from './components/DataManager.js';
+import { EventBus } from './utils/EventBus.js';
+import { ConnectivityStatus } from './components/ConnectivityStatus.js';
+import { IndicatorManager } from './ui/IndicatorManager.js'; // NEW
+import { ExportService } from './services/ExportService.js'; // NEW
+import { uninstallApp } from './utils/uninstall.js'; // NEW
 
 
 let instance = null;
@@ -28,45 +32,30 @@ export class App {
   constructor() {
     if (instance) return instance;
     instance = this;
-    console.log("Initializing SINGLE App instance with corrected order...");
+    console.log("Initializing App with new Controller pattern...");
 
-    // ====================================================================
-    //  STEP 1: INITIALIZE CORE SERVICES & AGENTS FIRST
-    // ====================================================================
-
-
+    // STEP 1: INITIALIZE CORE SERVICES (that don't depend on the controller)
+    this.eventBus = new EventBus();
+    this.indicatorManager = new IndicatorManager();
     this.searchService = new SearchService();
     this.storageService = new StorageService();
-    // The googleSyncService only needs a small part of the controller
-    const gSyncController = {
-      showIndicator: (...args) => this.showIndicator(...args),
-      hideIndicator: (...args) => this.hideIndicator(...args)
-    };
-    this.googleSyncService = new GoogleSyncService(gSyncController);
 
-    // Now, pass ALL dependencies to SyncService
-    this.syncService = new SyncService(
-      this.storageService,
-      {
-        showIndicator: (...args) => this.showIndicator(...args),
-        hideIndicator: (...args) => this.hideIndicator(...args),
-        confirm: (...args) => this.confirmationModal.show(...args)
-      },
-      this.googleSyncService // <-- THE MISSING PIECE
-    );
-    this.llmOrchestrator = new LlmOrchestrator();
+    // STEP 2: CREATE THE CONTROLLER AND DEPENDENT SERVICES
+    const controller = this.createController();
+    this.exportService = new ExportService(controller);
+    this.storageService.setController(controller);
+    this.googleSyncService = new GoogleSyncService(controller);
+    this.syncService = new SyncService(this.storageService, controller, this.googleSyncService);
+    this.llmOrchestrator = new LlmOrchestrator(controller);
 
-    // The appController is a bridge for the service to talk to the UI layer.
-    // We can define it here, but it will be populated with UI component
-    // references after they are created.
-    const appController = {
-      // We will fill these in after creating the components
-      renderEditor: null,
-      setEditorEditable: null,
-      renderNavigator: null,
-      renderAssistantPane: null,
-      showIndicator: (...args) => this.showIndicator(...args),
-      hideIndicator: (...args) => this.hideIndicator(...args),
+    // This is the controller for BookService -> UI communication
+    const bookServiceController = {
+      renderEditor: (content) => this.editor.render(content),
+      setEditorEditable: (isEditable) => this.editor.setEditable(isEditable),
+      renderNavigator: (state) => this.navigator.render(state),
+      renderAssistantPane: (blocks) => this.assistantPane.render(blocks),
+      showIndicator: (...args) => this.indicatorManager.show(...args),
+      hideIndicator: (...args) => this.indicatorManager.hide(...args),
       setAgentButtonsDisabled: (isDisabled) => {
         ['assistant-toggle-btn', 'notebook-toggle-btn'].forEach(id => {
           const btn = document.getElementById(id);
@@ -74,38 +63,27 @@ export class App {
         });
       }
     };
+    this.bookService = new BookService(bookServiceController, this.storageService);
 
-    // Now, create the BookService. It is ready.
-    this.bookService = new BookService(appController, this.storageService);
-
-    // Create agents that depend on services
-    this.analystAgent = new AnalystAgent(this.llmOrchestrator, this);
-    this.rewriteAgent = new RewriteAgent(this.llmOrchestrator, this);
-    this.findNotesAgent = new FindNotesAgent(this.llmOrchestrator, this);
+    // Agents now receive the main controller for UI interactions
+    this.analystAgent = new AnalystAgent(this.llmOrchestrator, controller);
+    this.rewriteAgent = new RewriteAgent(this.llmOrchestrator, controller);
+    this.findNotesAgent = new FindNotesAgent(this.llmOrchestrator, controller);
 
     // ====================================================================
-    //  STEP 2: INITIALIZE UI COMPONENTS THAT DEPEND ON SERVICES
+    //  STEP 3: INITIALIZE UI COMPONENTS
     // ====================================================================
-    this.navigator = new Navigator(this, this.bookService); // NOW this.bookService is defined!
-    this.editor = new Editor(this, this.bookService);
-    this.palette = new CommandPalette(this, this.bookService, this.storageService);
+    this.navigator = new Navigator(controller, this.bookService);
+    this.editor = new Editor(controller, this.bookService);
+    this.palette = new CommandPalette(controller, this.bookService, this.storageService);
     this.modalInput = new ModalInput();
-    this.assistantPane = new AssistantPane(this, this.bookService);
-    this.notebookPane = new NotebookPane(this, this.storageService);
+    this.assistantPane = new AssistantPane(controller, this.bookService);
+    this.notebookPane = new NotebookPane(controller, this.storageService);
     this.confirmationModal = new ConfirmationModal();
-    this.searchPane = new SearchPane(this);
-    this.settingsPalette = new SettingsPalette(this);
-    this.dataManager = new DataManager(this);
-    new OfflineIndicator();
-
-    // ====================================================================
-    //  STEP 3: POPULATE THE APP CONTROLLER with UI references
-    // ====================================================================
-    appController.renderEditor = (content) => this.editor.render(content);
-    appController.setEditorEditable = (isEditable) => this.editor.setEditable(isEditable);
-    appController.renderNavigator = (state) => this.navigator.render(state);
-    appController.renderAssistantPane = (blocks) => this.assistantPane.render(blocks);
-
+    this.searchPane = new SearchPane(controller);
+    this.settingsPalette = new SettingsPalette(controller);
+    this.dataManager = new DataManager(controller);
+    this.connectivityStatus = new ConnectivityStatus(controller);
 
 
     // --- UI State Management (remains in App.js) ---
@@ -119,27 +97,145 @@ export class App {
     // ====================================================================
     //  STEP 4: SET UP LISTENERS AND KICK OFF THE APP
     // ====================================================================
-
     this.setupGlobalListeners();
     this.storageService.open().then(async () => {
       console.log("Database is ready.");
-      this.googleSyncService.initialize();
+      this.checkInitialAuthStatus();
       const bookFiles = await this.storageService.getAllFilesBySuffix('.book');
       this.searchService.buildIndex(bookFiles);
       this.bookService.loadInitialBook();
       this.notebookPane.initialize();
-      this.settingsPalette.initialize();
     });
   }
 
-  // --- METHODS THAT DELEGATE TO BookService ---
-  // These are now minimal and correct
-  async switchBook(filename) { await this.bookService.switchBook(filename); }
-  async changeView(viewId) { await this.bookService.changeView(viewId); }
-  addMarginBlock(viewId, blockData) { this.bookService.addMarginBlock(viewId, blockData); }
-  togglePinMarginBlock(viewId, blockId) { this.bookService.togglePinMarginBlock(viewId, blockId); }
-  deleteMarginBlock(viewId, blockId) { this.bookService.deleteMarginBlock(viewId, blockId); }
-  async restoreDefaultMargin() { await this.bookService.restoreDefaultMargin(); }
+  async checkInitialAuthStatus() {
+    await this.googleSyncService.initialize();
+    const isSignedIn = await this.googleSyncService.checkSignInStatus();
+    if (isSignedIn) {
+      const user = await this.googleSyncService.getUserProfile();
+      // Add a check to ensure user is not null
+      if (user && user.name) {
+        this.connectivityStatus.setState('signed-in', user.name);
+      } else {
+        // If we're signed in but can't get profile, show a generic signed-in state
+        this.connectivityStatus.setState('signed-in', 'User');
+      }
+    } else {
+      if (navigator.onLine) {
+        this.connectivityStatus.setState('signed-out');
+      }
+    }
+  }
+
+  /**
+   * Creates a controller object to pass to components. This is the public API
+   * for components to interact with the rest of the application, promoting decoupling.
+   */
+  createController() {
+    return {
+      // Indicators & Modals
+      showIndicator: (...args) => this.indicatorManager.show(...args),
+      hideIndicator: (...args) => this.indicatorManager.hide(...args),
+      confirm: (...args) => this.confirmationModal.show(...args),
+      prompt: (...args) => this.modalInput.show(...args),
+
+      // Editor & Context
+      getContext: () => this.getContextPayload(),
+      replaceEditorText: (...args) => this.editor.replaceText(...args),
+      getEditorState: () => this.editor.instance.state,
+
+      // Agent Execution
+      runAnalyst: (payload) => this.analystAgent.run(payload),
+      runRewrite: (payload) => this.rewriteAgent.run(payload),
+      runFindNotes: (payload) => this.findNotesAgent.run(payload),
+
+      renderRewriteSuggestion: (payload) => this.assistantPane.renderRewriteSuggestion(payload),
+      // UI & Navigation
+      openRightDrawer: (drawerName) => this.openRightDrawer(drawerName),
+      closeRightDrawer: () => this.closeRightDrawer(),
+      navigateTo: (filename, viewId) => this.navigateTo(filename, viewId),
+      showCommandPalette: (tabName) => this.palette.show(tabName),
+      hideSettingsPalette: () => this.settingsPalette.hide(),
+      showDataManager: () => this.dataManager.show(),
+
+      // Data & Sync Services
+      addMarginBlock: (...args) => this.bookService.addMarginBlock(...args),
+      togglePinMarginBlock: (...args) => this.bookService.togglePinMarginBlock(...args),
+      deleteMarginBlock: (...args) => this.bookService.deleteMarginBlock(...args),
+      restoreDefaultMargin: () => this.bookService.restoreDefaultMargin(),
+      rebuildSearchIndex: () => this.rebuildSearchIndex(),
+      exportLocal: () => this.syncService.exportToLocalFile(),
+      importLocal: () => this.syncService.importFromLocalFile(),
+      getCloudFileList: () => this.syncService.getCloudFileList(),
+      deleteAllCloudFiles: () => this.syncService.deleteAllCloudFiles(),
+      deleteCloudAndLocalFile: async (cloudFileId, localFileName) => {
+        const cloudSuccess = await this.syncService.deleteCloudFileById(cloudFileId);
+
+        if (cloudSuccess) {
+          try {
+            const localFileExists = await this.storageService.getFile(localFileName);
+            if (localFileExists) {
+              await this.storageService.deleteFile(localFileName);
+              console.log(`Successfully deleted local file: ${localFileName}`);
+            } else {
+              console.log(`Local file "${localFileName}" did not exist. No local deletion needed.`);
+            }
+
+            if (localFileName.endsWith('.book')) {
+              await this.rebuildSearchIndex();
+            }
+            return true;
+          } catch (error) {
+            console.error(`An unexpected error occurred deleting local file "${localFileName}":`, error);
+            this.indicatorManager.show('Cloud file deleted, but a local DB error occurred.', { isError: true, duration: 5000 });
+            return false;
+          }
+        }
+        return false;
+      },
+      exportBookAsLatex: (filename) => this.exportService.exportBookAsLatex(filename),
+      exportBookAsDocx: (filename) => this.exportService.exportBookAsDocx(filename),
+      uninstall: () => uninstallApp(this.storageService, this.indicatorManager.show.bind(this.indicatorManager)),
+      getAvailableBooks: () => this.bookService.availableBooks,
+      getCurrentBookFilename: () => this.bookService.currentBook?.filename,
+      storageService: this.storageService,
+
+      // Auth methods for the UI to call
+      signIn: async () => {
+        try {
+          const user = await this.googleSyncService.signIn();
+          if (user && user.name) {
+            this.connectivityStatus.setState('signed-in', user.name);
+            this.indicatorManager.show(`Signed in as ${user.name}`, { duration: 3000 });
+          } else if (user) {
+            this.connectivityStatus.setState('signed-in', 'User');
+            this.indicatorManager.show(`Signed in successfully`, { duration: 3000 });
+          }
+        } catch (error) {
+          console.error("Sign-in failed:", error);
+          this.indicatorManager.show('Sign-in failed. See console for details.', { isError: true });
+        }
+      },
+      signOut: async () => {
+        await this.googleSyncService.signOut();
+        this.connectivityStatus.setState('signed-out');
+        this.indicatorManager.show('You have been signed out.', { duration: 3000 });
+      },
+
+      setSyncState: (state) => {
+        // Only change state if the user is currently signed in.
+        // This prevents the "syncing" icon from overriding the "offline" or "signed-out" states.
+        if (this.connectivityStatus.state === 'signed-in' || this.connectivityStatus.state === 'syncing') {
+          this.connectivityStatus.setState(state);
+        }
+      },
+
+      // Event Bus
+      publish: (eventName, data) => this.eventBus.publish(eventName, data),
+      subscribe: (eventName, callback) => this.eventBus.subscribe(eventName, callback),
+    };
+  }
+
 
   // --- UI-SPECIFIC LOGIC ---
   setupGlobalListeners() {
@@ -159,7 +255,6 @@ export class App {
       }
       if (this.activeRightDrawer === 'search') {
         const searchDrawerEl = this.drawers.search;
-        // If the click was NOT on the search drawer itself...
         if (!searchDrawerEl.contains(e.target)) {
           this.closeRightDrawer();
         }
@@ -189,7 +284,7 @@ export class App {
             e.preventDefault();
             this.palette.show();
             break;
-          case 'f': // --- NEW: Ctrl+F for Search ---
+          case 'f':
             e.preventDefault();
             this.searchPane.show();
             break;
@@ -251,120 +346,10 @@ export class App {
     } else {
       context = { type: 'global', view_content: this.editor.instance.getJSON() };
     }
-    // Correctly get data from the service
     return {
       context: context,
       current_book_filename: this.bookService.currentBook?.filename,
       current_view_id: this.bookService.currentViewId,
     };
   }
-
-  // --- INDICATOR SYSTEM ---
-  showIndicator(message, options = {}) {
-    const { isError = false, duration = null } = options;
-    const container = document.getElementById('status-indicator-container');
-    const id = `indicator-${Date.now()}-${Math.random()}`;
-    const indicatorEl = document.createElement('div');
-    indicatorEl.id = id;
-    indicatorEl.className = 'status-indicator-item';
-    indicatorEl.textContent = message;
-    if (isError) indicatorEl.classList.add('is-error');
-    container.appendChild(indicatorEl);
-    if (duration) setTimeout(() => this.hideIndicator(id), duration);
-    return id;
-  }
-
-  hideIndicator(id) {
-    const indicatorEl = document.getElementById(id);
-    if (indicatorEl) {
-      indicatorEl.style.transition = 'opacity 0.5s ease';
-      indicatorEl.style.opacity = '0';
-      setTimeout(() => indicatorEl.remove(), 500);
-    }
-  }
-
-
-  // ==== download to latex or docx logic ====
-  downloadFile(filename, content) {
-    const element = document.createElement('a');
-    const file = new Blob([content], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    element.download = filename;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-  }
-
-  async exportBookAsLatex(filename) {
-    const indicatorId = this.showIndicator('Converting to LaTeX...');
-
-    try {
-      const bookData = await this.storageService.getFile(`${filename}.book`);
-      if (!bookData) {
-        throw new Error('Could not find book data to export.');
-      }
-
-      // --- USE THE NEW JS CONVERTER ---
-      const converter = new LatexConverter(bookData, bookData.metadata.title);
-      const latexContent = converter.convert();
-
-      // The filename for download
-      const downloadFilename = filename.endsWith('.tex') ? filename : `${filename}.tex`;
-
-      this.downloadFile(downloadFilename, latexContent);
-
-    } catch (error) {
-      console.error("LaTeX export failed:", error);
-      this.showIndicator(`Export failed: ${error.message}`, { isError: true, duration: 4000 });
-    } finally {
-      this.hideIndicator(indicatorId);
-    }
-  }
-
-  async exportBookAsDocx(filename) {
-    const indicatorId = this.showIndicator('Converting to .docx...');
-    try {
-      const bookData = await this.storageService.getFile(`${filename}.book`);
-      if (!bookData) {
-        throw new Error('Could not find book data to export.');
-      }
-
-      const converter = new DocxConverter(bookData, bookData.metadata.title);
-      await converter.convertAndSave(); // This handles the download internally
-
-    } catch (error) {
-      console.error("DOCX export failed:", error);
-      this.showIndicator(`Export failed: ${error.message}`, { isError: true, duration: 4000 });
-    } finally {
-      this.hideIndicator(indicatorId);
-    }
-  }
-
-  // --- to remove the cashe and delete the app data ---
-  async uninstall() {
-    console.log("Uninstalling application...");
-
-    // 1. Unregister all service workers
-    if ('serviceWorker' in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      for (const registration of registrations) {
-        await registration.unregister();
-        console.log("Service Worker unregistered.");
-      }
-    }
-
-    // 2. Delete the entire IndexedDB database
-    await this.storageService.deleteDatabase();
-    console.log("IndexedDB database deleted.");
-
-    // 3. Clear any other site data (optional, but good practice)
-    // Caches are harder to clear programmatically, but the SW unregister does most of the work.
-
-    // 4. Reload the page
-    this.showIndicator("Application data cleared. Reloading...", { duration: 2000 });
-    setTimeout(() => {
-      window.location.reload();
-    }, 2000);
-  }
-
 }

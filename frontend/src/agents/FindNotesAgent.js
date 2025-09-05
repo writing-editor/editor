@@ -4,7 +4,6 @@ export class FindNotesAgent extends BaseAgent {
     async run(payload) {
         const { query, all_notes } = payload;
 
-        // Create the structured prompt for the LLM
         const notes_json_string = JSON.stringify(
             all_notes.map(note => ({ id: note.id, content: note.plain_text }))
         );
@@ -22,22 +21,19 @@ export class FindNotesAgent extends BaseAgent {
             MUST: Do not include any other text or markdown formatting in your response.
         `;
 
-        const indicatorId = this.app.showIndicator('Searching...');
-        const response_text = await this.orchestrator.execute(prompt, true); // true for isJson hint
-        this.app.hideIndicator(indicatorId);
-
-        // Process the response
+        const indicatorId = this.controller.showIndicator('Searching...');
         try {
+            const response_text = await this.orchestrator.execute(prompt, true);
             const relevant_ids_data = JSON.parse(response_text);
             const relevant_ids = new Set(relevant_ids_data.relevant_note_ids || []);
-            const filtered_notes = all_notes.filter(note => relevant_ids.has(note.id));
-            return filtered_notes;
+            return all_notes.filter(note => relevant_ids.has(note.id));
         } catch (error) {
             console.error("Failed to parse LLM search response:", error);
-            // Fallback to simple keyword search
             return all_notes.filter(note =>
                 note.plain_text.toLowerCase().includes(query.toLowerCase())
             );
+        } finally {
+            this.controller.hideIndicator(indicatorId);
         }
     }
 }

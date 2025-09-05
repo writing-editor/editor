@@ -1,5 +1,4 @@
 /* --- 1. Drawer-level Styles --- */
-
 .right-drawer {
   background-color: var(--color-background);
   display: grid;
@@ -26,14 +25,11 @@
   padding: 0 var(--spacing-md) var(--spacing-md) var(--spacing-md);
 }
 
-/* Special case for Assistant Pane, which has no header */
 #assistant-content-wrapper {
-  /* Give it the top padding directly since it has no header */
-  padding-top: 60px;
+  padding-top: 60px; /* Special case for Assistant Pane, which has no header */
 }
 
 /* --- 2. UNIFIED BLOCK STYLES (for Notes AND AI Suggestions) --- */
-
 .block-container {
   background-color: var(--color-surface-light);
   border: 1px solid var(--color-border);
@@ -45,19 +41,12 @@
 
 .block-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: space-between; /* <-- CHANGED */
   align-items: center;
+  gap: 8px; /* <-- NEW */
   padding: 8px 6px 8px 12px;
   cursor: pointer;
   border-bottom: 1px solid var(--color-border);
-}
-
-.block-header:hover {
-  background-color: var(--color-surface-medium);
-}
-
-details:not([open])>.block-header {
-  border-bottom: none;
 }
 
 .block-title {
@@ -68,8 +57,43 @@ details:not([open])>.block-header {
   overflow: hidden;
   text-overflow: ellipsis;
   flex-grow: 1;
+  flex-shrink: 1;
   padding-left: 8px;
+  /* --- REMOVED: min-width: 50px; --- */
 }
+
+.block-tags {
+    display: flex;
+    gap: 6px;
+    /* --- NEW: Stop tags from shrinking or growing --- */
+    flex-shrink: 0;
+}
+
+.note-tag {
+  background-color: var(--color-surface-medium);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap; /* Prevent tags from wrapping */
+}
+
+.note-tag:hover {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+.block-header:hover {
+  background-color: var(--color-surface-medium);
+}
+
+details:not([open]) > .block-header {
+  border-bottom: none;
+}
+
 
 .block-actions {
   display: flex;
@@ -98,7 +122,6 @@ details:not([open])>.block-header {
   color: var(--color-text);
 }
 
-/* Pin button specific states */
 .block-action-btn[title="Pin Note"],
 .block-action-btn[title="Pin Suggestion"] {
   opacity: 0.6;
@@ -113,180 +136,7 @@ details:not([open])>.block-header {
   color: var(--color-danger);
 }
 
-
-/* --- 3. Notebook-Specific Styles --- */
-
-.notebook-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: var(--spacing-lg);
-}
-
-#note-search-input {
-  flex-grow: 1;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  font-size: 14px;
-  box-sizing: border-box;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  background-color: var(--color-background);
-  color: var(--color-text);
-}
-
-#note-search-input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
-}
-
-.new-note-btn {
-  background-color: var(--color-primary);
-  color: #fff;
-  border: none;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  font-size: 22px;
-  cursor: pointer;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s;
-}
-
-.new-note-btn.clear-btn {
-  background-color: var(--color-text-muted);
-}
-
-.new-note-btn:hover {
-  filter: brightness(1.15);
-}
-
-.note-editor-container {
-  margin-bottom: var(--spacing-lg);
-}
-
-.note-editor-prosemirror {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 10px 15px;
-  font-family: inherit;
-  font-size: 15px;
-  line-height: 1.6;
-  min-height: 120px;
-  color: var(--color-text);
-  background-color: var(--color-surface-light);
-}
-
-.note-editor-prosemirror:focus-within {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
-}
-
-.note-editor-prosemirror p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  float: left;
-  color: var(--color-text-muted);
-  pointer-events: none;
-  height: 0;
-}
-
-.notebook-divider {
-  border: none;
-  border-top: 1px solid var(--color-border);
-  margin: var(--spacing-lg) 0;
-}
-
-/* Highlight for the note block currently being edited */
-.note-block.is-editing {
-  border-color: var(--color-primary);
-  background-color: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-light));
-}
-
-/* Show/hide logic for edit/save buttons */
-.note-block .save-btn {
-  display: none;
-}
-
-.note-block.is-editing .edit-btn {
-  display: none;
-}
-
-.note-block.is-editing .save-btn {
-  display: inline-flex;
-}
-
-
-/* --- 4. Assistant-Specific Styles --- */
-
-.suggestion-block {
-  background-color: var(--color-surface-light);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px var(--color-shadow);
-}
-
-.suggestion-diff {
-  padding: 12px;
-  line-height: 1.6;
-  font-size: 15px;
-  font-family: Georgia, 'Times New Roman', Times, serif;
-  color: var(--color-text);
-}
-
-.suggestion-diff strong {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  color: var(--color-text-muted);
-  display: block;
-}
-
-.suggestion-diff del {
-  background-color: var(--color-danger-bg);
-  color: var(--color-danger);
-  text-decoration: none;
-  border-radius: 3px;
-}
-
-.suggestion-diff ins {
-  background-color: var(--color-success-bg);
-  color: var(--color-success);
-  text-decoration: none;
-  border-radius: 3px;
-}
-
-.suggestion-actions {
-  padding: 12px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  border-top: 1px solid var(--color-border);
-}
-
-.suggestion-actions button {
-  border: 1px solid var(--color-border);
-  background-color: var(--color-surface-medium);
-  color: var(--color-text);
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-#accept-suggestion-btn {
-  background-color: var(--color-success);
-  border-color: var(--color-success);
-  color: #fff;
-}
-
-
-/* --- 5. Content Rendering Styles (for both Notes and AI Suggestions) --- */
-
+/* --- 3. Content Rendering Styles (for both Notes and AI Suggestions) --- */
 .block-content {
   padding: 15px;
   font-size: 15px;
@@ -295,18 +145,17 @@ details:not([open])>.block-header {
   color: var(--color-text);
 }
 
-/* Read-only prose styles for generated HTML */
 .read-only-view {
   font-family: Georgia, 'Times New Roman', Times, serif;
   font-size: 16px;
 }
 
-.read-only-view>*:first-child,
+.read-only-view > *:first-child,
 .read-only-view p:first-child {
   margin-top: 0;
 }
 
-.read-only-view>*:last-child,
+.read-only-view > *:last-child,
 .read-only-view p:last-child {
   margin-bottom: 0;
 }
@@ -329,9 +178,7 @@ details:not([open])>.block-header {
   font-style: italic;
 }
 
-
-/* --- 6. Utility Styles --- */
-
+/* --- 4. Utility Styles --- */
 .margin-placeholder {
   color: var(--color-text-muted);
   text-align: center;
@@ -342,12 +189,10 @@ details:not([open])>.block-header {
   display: none;
 }
 
-/* --- 7. Search-Specific Styles --- */
-
+/* --- 5. Search-Specific Styles --- */
 .search-header {
   margin-bottom: var(--spacing-lg);
   flex-shrink: 0;
-  /* Prevents the header from shrinking */
 }
 
 #search-input {
@@ -356,7 +201,6 @@ details:not([open])>.block-header {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   font-size: 16px;
-  /* Slightly larger for a primary action */
   box-sizing: border-box;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -406,7 +250,6 @@ details:not([open])>.block-header {
   font-size: 14px;
   color: var(--color-text-muted);
   line-height: 1.5;
-  /* Shows up to 2 lines of text before cutting off */
   display: -webkit-box;
   -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;

@@ -1,10 +1,11 @@
 import './RightDrawer.css';
+import './AssistantPane.css'; 
 import { renderBlocks } from '../utils/renderBlocks.js';
 
 export class AssistantPane {
-  constructor(app, bookService) { // <-- Receive bookService
-    this.app = app; // For UI methods (drawers, etc.)
-    this.bookService = bookService; // For data context
+  constructor(controller, bookService) {
+    this.controller = controller;
+    this.bookService = bookService;
     this.element = document.getElementById('assistant-drawer');
 
     this.element.addEventListener('click', (e) => {
@@ -12,15 +13,13 @@ export class AssistantPane {
       if (!actionBtn) return;
 
       const blockId = actionBtn.dataset.blockId;
-      // CORRECT: Get currentViewId from the single source of truth
       const currentViewId = this.bookService.currentViewId;
-      if (!currentViewId) return; // Safety check
+      if (!currentViewId) return;
 
       if (actionBtn.title === 'Pin Suggestion') {
-        // We now call the service method directly via the App instance
-        this.app.togglePinMarginBlock(currentViewId, blockId);
+        this.controller.togglePinMarginBlock(currentViewId, blockId);
       } else if (actionBtn.title === 'Dismiss') {
-        this.app.deleteMarginBlock(currentViewId, blockId);
+        this.controller.deleteMarginBlock(currentViewId, blockId);
       }
     });
   }
@@ -49,16 +48,15 @@ export class AssistantPane {
     `}</div>`;
     this.element.innerHTML = html;
 
-    // These event listeners are fine as they call App-level methods
     document.getElementById('accept-suggestion-btn').addEventListener('click', async () => {
-      this.app.editor.replaceText(payload.range, payload.suggested_text);
-      this.app.closeRightDrawer();
-      await this.app.restoreDefaultMargin();
+      this.controller.replaceEditorText(payload.range, payload.suggested_text);
+      this.controller.closeRightDrawer();
+      await this.controller.restoreDefaultMargin();
     });
 
     document.getElementById('reject-suggestion-btn').addEventListener('click', async () => {
-      await this.app.restoreDefaultMargin();
-      this.app.closeRightDrawer();
+      await this.controller.restoreDefaultMargin();
+      this.controller.closeRightDrawer();
     });
   }
 }

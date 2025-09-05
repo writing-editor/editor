@@ -52,7 +52,7 @@ export class LatexConverter {
     const docClass = this.isArticle ? 'article' : 'report';
     this.latexString += `\\documentclass{${docClass}}\n`;
     this.latexString += `\\title{${this.bookTitle}}\n`;
-    this.latexString += `\\author{Intelligent Editor}\n`;
+    this.latexString += `\\author{Editor App}\n`;
     this.latexString += `\\begin{document}\n`;
     this.latexString += `\\maketitle\n\n`;
   }

@@ -2,8 +2,8 @@
  * Manages authentication and file operations with the Google Drive API.
  */
 export class GoogleSyncService {
-  constructor(appController) {
-    this.appController = appController;
+  constructor(controller) {
+    this.controller = controller;
     this.tokenClient = null;
     this.gapi = null;
     this.gis = null;
@@ -11,23 +11,19 @@ export class GoogleSyncService {
 
     this.API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
     this.CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    this.SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
-    this.DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
+    // The scope for userinfo.profile was already correct.
+    this.SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile';
+    this.DISCOVERY_DOCS = [
+      "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"
+      // No longer need oauth2 discovery doc, as we use fetch
+    ];
 
-    this.BACKUP_FILENAME = 'intelligent_editor_backup.json';
+    this.APP_FOLDER_NAME = 'Editor App';
+    this.appFolderId = null;
   }
 
-  /**
-   * Initializes the Google API and Identity clients.
-   * Must be called before any other methods.
-   */
   initialize() {
-    // If already initializing, return the existing promise
-    if (this.initializationPromise) {
-      return this.initializationPromise;
-    }
-
-    // Start the initialization and store the promise
+    if (this.initializationPromise) return this.initializationPromise;
     this.initializationPromise = (async () => {
       this.gapi = await this.loadGapiClient();
       const gisClient = await this.loadGisClient();
@@ -36,21 +32,17 @@ export class GoogleSyncService {
         scope: this.SCOPES,
         callback: () => { },
       });
-      console.log("Google Sync Service Initialized.");
+      console.log("Google Sync Service Initialized for drive.file scope.");
     })();
-
     return this.initializationPromise;
   }
 
   loadGapiClient() {
     return new Promise(resolve => {
-      // gapi.load('client', ...) is the full call, so we check for window.gapi first
       const checkGapi = () => {
         if (window.gapi && window.gapi.load) {
           window.gapi.load('client', () => resolve(window.gapi));
-        } else {
-          setTimeout(checkGapi, 100);
-        }
+        } else setTimeout(checkGapi, 100);
       };
       checkGapi();
     });
@@ -59,103 +51,178 @@ export class GoogleSyncService {
   loadGisClient() {
     return new Promise(resolve => {
       const checkGis = () => {
-        // CORRECT: Wait for the specific object path to be available
         if (window.google && window.google.accounts && window.google.accounts.oauth2) {
-          resolve(window.google.accounts.oauth2);
-        } else {
-          setTimeout(checkGis, 100);
-        }
+          this.gis = window.google.accounts.oauth2;
+          resolve(this.gis);
+        } else setTimeout(checkGis, 100);
       };
       checkGis();
     });
   }
 
-  /**
-   * Authorizes the user and initializes the Drive API client.
-   * This will trigger a login popup if the user is not signed in.
-   */
   async authorize() {
     await this.initialize();
     return new Promise(async (resolve, reject) => {
       try {
-        await this.gapi.client.init({
-          apiKey: this.API_KEY,
-          discoveryDocs: this.DISCOVERY_DOCS,
-        });
-
-        const tokenResponse = this.gapi.client.getToken();
-        if (tokenResponse) {
-          console.log("Already authorized.");
+        // We only need to init the 'drive' client now.
+        await this.gapi.client.init({ apiKey: this.API_KEY, discoveryDocs: this.DISCOVERY_DOCS });
+        if (this.gapi.client.getToken()) {
           resolve(true);
           return;
         }
-
         this.tokenClient.callback = (resp) => {
-          if (resp.error) {
-            return reject(resp.error);
-          }
-          console.log("Authorization successful.");
+          if (resp.error) return reject(resp.error);
           resolve(true);
         };
-        this.tokenClient.requestAccessToken({ prompt: 'consent' });
+        this.tokenClient.requestAccessToken({ prompt: 'select_account' });
       } catch (err) {
         reject(err);
       }
     });
   }
 
+  // --- AUTH FLOW METHODS ---
+
+  async signIn() {
+    await this.authorize();
+    return this.getUserProfile();
+  }
+
+  async signOut() {
+    const token = this.gapi.client.getToken();
+    if (token && this.gis) {
+      this.gis.revoke(token.access_token, () => {
+        this.gapi.client.setToken(null);
+        console.log('Access token revoked and removed from client.');
+      });
+    }
+  }
+
+  async checkSignInStatus() {
+    await this.initialize();
+    return !!this.gapi.client.getToken();
+  } async signIn() {
+    await this.authorize();
+    return this.getUserProfile();
+  }
+
+  async signOut() {
+    const token = this.gapi.client.getToken();
+    if (token && this.gis) {
+      this.gis.revoke(token.access_token, () => {
+        this.gapi.client.setToken(null);
+        console.log('Access token revoked and removed from client.');
+      });
+    }
+  }
+
+  async checkSignInStatus() {
+    await this.initialize();
+    return !!this.gapi.client.getToken();
+  }
+
+  async getUserProfile() {
+    const token = this.gapi.client.getToken();
+    if (!token) return null;
+
+    try {
+      // Manually fetch using the access token, bypassing the gapi.client library for this call
+      const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: {
+          'Authorization': `Bearer ${token.access_token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json();
+        console.error("Failed to fetch user profile:", errorBody);
+        throw new Error(`Failed to fetch user profile: ${response.statusText}`);
+      }
+
+      return await response.json();
+
+    } catch (error) {
+      console.error("Error in getUserProfile:", error);
+      return null;
+    }
+  }
   /**
-   * Finds the backup file in the user's Drive appDataFolder.
-   * @returns {Promise<string|null>} The file ID, or null if not found.
+   * Finds or creates the dedicated application folder in Google Drive.
+   * @returns {Promise<string>} The ID of the folder.
+   * @private
    */
-  async findBackupFile() {
+  async _getAppFolderId() {
+    if (this.appFolderId) return this.appFolderId;
+
     const response = await this.gapi.client.drive.files.list({
-      spaces: 'appDataFolder',
+      q: `mimeType='application/vnd.google-apps.folder' and name='${this.APP_FOLDER_NAME}' and trashed=false`,
       fields: 'files(id, name)',
-      q: `name='${this.BACKUP_FILENAME}' and trashed=false`,
     });
-    const files = response.result.files;
-    return files.length > 0 ? files[0].id : null;
+
+    if (response.result.files.length > 0) {
+      this.appFolderId = response.result.files[0].id;
+      return this.appFolderId;
+    } else {
+      const fileMetadata = {
+        name: this.APP_FOLDER_NAME,
+        mimeType: 'application/vnd.google-apps.folder',
+      };
+      const newFolder = await this.gapi.client.drive.files.create({
+        resource: fileMetadata,
+        fields: 'id',
+      });
+      this.appFolderId = newFolder.result.id;
+      return this.appFolderId;
+    }
   }
 
   /**
-   * Uploads content to the backup file, creating it if it doesn't exist.
-   * @param {string} content The JSON string content to upload.
+   * Finds a file by name within the app folder.
+   * @param {string} filename The name of the file to find.
+   * @returns {Promise<string|null>} The file ID, or null if not found.
+   * @private
    */
-  async uploadBackup(content) {
-    const fileId = await this.findBackupFile();
+  async _findFileId(filename) {
+    const folderId = await this._getAppFolderId();
+    const response = await this.gapi.client.drive.files.list({
+      q: `'${folderId}' in parents and name='${filename}' and trashed=false`,
+      fields: 'files(id, name)',
+    });
+    return response.result.files.length > 0 ? response.result.files[0].id : null;
+  }
+
+  /**
+   * Uploads content to a specific file in the app folder.
+   * @param {string} filename The name of the file (e.g., 'notes.json').
+   * @param {any} content The content to upload (will be stringified if it's an object).
+   */
+  async uploadFile(filename, content) {
+    const folderId = await this._getAppFolderId();
+    const fileId = await this._findFileId(filename);
+    const contentString = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+    const mimeType = filename.endsWith('.json') || filename.endsWith('.book') ? 'application/json' : 'text/plain';
+
     const boundary = '-------314159265358979323846';
     const delimiter = "\r\n--" + boundary + "\r\n";
     const close_delim = "\r\n--" + boundary + "--";
 
-    const metadata = {
-      name: this.BACKUP_FILENAME,
-      mimeType: 'application/json',
-    };
-
+    const metadata = { name: filename, mimeType: mimeType };
     let path = '/upload/drive/v3/files';
     let method = 'POST';
 
-    if (fileId) { // If file exists, update it
+    if (fileId) {
       path = `/upload/drive/v3/files/${fileId}`;
       method = 'PATCH';
-      metadata.parents = undefined; // Don't try to change parents on update
-    } else { // Otherwise, specify the appDataFolder for creation
-      metadata.parents = ['appDataFolder'];
+    } else {
+      metadata.parents = [folderId];
     }
 
     const multipartRequestBody =
-      delimiter +
-      'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
-      JSON.stringify(metadata) +
-      delimiter +
-      'Content-Type: application/json\r\n\r\n' +
-      content +
-      close_delim;
+      delimiter + 'Content-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(metadata) +
+      delimiter + `Content-Type: ${mimeType}\r\n\r\n` + contentString + close_delim;
 
     await this.gapi.client.request({
-      path: path,
-      method: method,
+      path, method,
       params: { uploadType: 'multipart' },
       headers: { 'Content-Type': 'multipart/related; boundary="' + boundary + '"' },
       body: multipartRequestBody,
@@ -163,43 +230,49 @@ export class GoogleSyncService {
   }
 
   /**
-   * Downloads the content of the backup file.
-   * @returns {Promise<string|null>} The JSON string content, or null if not found.
+   * Downloads a specific file from the app folder.
+   * @param {string} fileId The ID of the file to download.
+   * @returns {Promise<string|null>} The file content as a string, or null.
    */
-  async downloadBackup() {
-    const fileId = await this.findBackupFile();
+  async downloadFileContent(fileId) {
     if (!fileId) return null;
-
-    const response = await this.gapi.client.drive.files.get({
-      fileId: fileId,
-      alt: 'media',
-    });
+    const response = await this.gapi.client.drive.files.get({ fileId, alt: 'media' });
     return response.body;
   }
 
-  // --- ADD THESE TWO NEW METHODS ---
-  async listBackupFiles() {
+  /**
+   * Lists all files within the dedicated app folder.
+   * @returns {Promise<Array<object>>} A list of file objects from the Drive API.
+   */
+  async listFiles() {
+    const folderId = await this._getAppFolderId();
     const response = await this.gapi.client.drive.files.list({
-      spaces: 'appDataFolder',
+      q: `'${folderId}' in parents and trashed=false`,
       fields: 'files(id, name, modifiedTime)',
     });
-    return response.result.files;
+    return response.result.files || [];
   }
 
-  async deleteAllFiles() {
-    const files = await this.listBackupFiles();
-    if (files && files.length > 0) {
-      const batch = this.gapi.client.newBatch();
-      files.forEach(file => {
-        batch.add(this.gapi.client.drive.files.delete({ fileId: file.id }));
-      });
-      await batch;
+  /**
+* Deletes a specific file by its Google Drive file ID.
+* @param {string} fileId The unique ID of the file to delete.
+*/
+  async deleteFileById(fileId) {
+    if (!fileId) {
+      throw new Error("File ID is required for deletion.");
     }
-    // Also, disconnect the user
-    if (this.gis && this.gapi.client.getToken()) {
-      this.gis.revokeToken(this.gapi.client.getToken().access_token, () => {
-        console.log('Access token revoked.');
-      });
+    await this.gapi.client.drive.files.delete({ fileId: fileId });
+    console.log(`Deleted file with ID "${fileId}" from Google Drive.`);
+  }
+
+  /**
+   * Deletes all files and the app folder itself.
+   */
+  async deleteAllFilesAndFolder() {
+    const folderId = await this._getAppFolderId();
+    if (folderId) {
+      await this.gapi.client.drive.files.delete({ fileId: folderId });
+      this.appFolderId = null;
     }
   }
 }

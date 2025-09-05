@@ -9,14 +9,14 @@ export class RewriteAgent extends BaseAgent {
             return null;
         }
 
-        // Build the final prompt
         let final_prompt = prompt_template.replace('{user_request}', user_request || "general improvements");
         final_prompt = final_prompt.replace('{text_to_analyze}', context.selected_text);
 
-        const indicatorId = this.app.showIndicator('Thinking...');
-        const rewritten_text = await this.orchestrator.execute(final_prompt);
-        this.app.hideIndicator(indicatorId);
-
-        return rewritten_text;
+        const indicatorId = this.controller.showIndicator('Thinking...');
+        try {
+            return await this.orchestrator.execute(final_prompt);
+        } finally {
+            this.controller.hideIndicator(indicatorId);
+        }
     }
 }

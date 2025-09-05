@@ -1,9 +1,12 @@
 import './RightDrawer.css';
 
 export class SearchPane {
-  constructor(app) {
-    this.app = app;
+  constructor(controller) {
+    this.controller = controller;
     this.element = document.getElementById('search-drawer');
+    // We can get the search service from the controller if needed, but for now
+    // the controller will just mediate the search call.
+    this.searchService = this.controller.searchService;
 
     this.element.addEventListener('input', (e) => {
       if (e.target.id === 'search-input') {
@@ -16,21 +19,21 @@ export class SearchPane {
       if (resultLink) {
         e.preventDefault();
         const { filename, viewId } = resultLink.dataset;
-        this.app.navigateTo(filename, viewId);
+        this.controller.navigateTo(filename, viewId);
       }
     });
   }
 
-  // Called when the user presses Ctrl+F
   show() {
     this.render();
-    this.app.openRightDrawer('search');
-    // Use a short timeout to ensure the element is visible before focusing
+    this.controller.openRightDrawer('search');
     setTimeout(() => this.element.querySelector('#search-input')?.focus(), 100);
   }
 
   performSearch(query) {
-    const results = this.app.searchService.search(query);
+    // Direct access to the service is fine here as it's a read-only operation
+    // and the App has already instantiated it.
+    const results = this.controller.searchService.search(query);
     this.renderResults(results);
   }
 

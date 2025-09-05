@@ -17,28 +17,26 @@
   pointer-events: none;
 }
 
-
-/* --- 2. THE NEW "SLICK" PALLET --- */
+/* --- 2. THE MODAL BOX --- */
 #data-manager-modal-box {
   width: 90%;
-  max-width: 500px;
+  max-width: 550px;
   background-color: var(--color-background);
   border-radius: 12px;
   box-shadow: 0 10px 30px var(--color-shadow);
   display: flex;
   flex-direction: column;
-  max-height: 70vh;
+  max-height: 80vh;
   border: none;
 }
 
-
-/* --- 3. The Toolbar (No bottom border) --- */
+/* --- 3. The Toolbar --- */
 #data-manager-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 10px 12px var(--spacing-md);
-  border-bottom: none;
+  padding: 12px 10px 12px var(--spacing-md); /* Adjusted padding */
+  border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
@@ -48,8 +46,7 @@
   color: var(--color-text);
 }
 
-
-/* --- 4. The Delete Button (Styled like block-action-btn) --- */
+/* --- NEW STYLE FOR THE HEADER DELETE BUTTON --- */
 #data-manager-delete-all-btn {
   background: none;
   border: none;
@@ -64,7 +61,7 @@
   transition: background-color 0.2s, color 0.2s;
 }
 
-#data-manager-delete-all-btn:hover {
+#data-manager-delete-all-btn:hover:not(:disabled) {
   background-color: var(--color-danger-bg);
   color: var(--color-danger);
 }
@@ -81,10 +78,9 @@
   height: 16px;
 }
 
-
-/* --- 5. The Content Area (Separated by background color) --- */
+/* --- 4. The Content Area --- */
 #data-manager-content {
-  padding: 0;
+  padding: 8px; /* Add some padding */
   overflow-y: auto;
   flex-grow: 1;
   background-color: var(--color-surface-light);
@@ -98,16 +94,103 @@
   margin: 0;
 }
 
-#data-manager-file-list li {
-  padding: 10px var(--spacing-lg);
-  border-bottom: 1px solid var(--color-border);
-  font-family: monospace;
-  font-size: 14px;
-  color: var(--color-text-muted);
+/* --- 5. NEW: Interactive File List Items --- */
+.data-manager-file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
 }
 
-#data-manager-file-list li:last-child {
-  border-bottom: none;
+.data-manager-file-item:hover {
+  background-color: var(--color-surface-medium);
+}
+
+.file-item-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0; /* Important for flex truncation */
+}
+
+.file-item-info svg {
+  width: 18px;
+  height: 18px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.file-item-name {
+  font-family: monospace;
+  font-size: 14px;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-item-delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.file-item-delete-btn:hover {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.file-item-delete-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* --- 6. The Footer with Delete All Button --- */
+#data-manager-footer {
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+#data-manager-delete-all-btn {
+  width: 20%;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 50;
+  border-radius: 6px;
+  border: 1px solid var(--color-danger);
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+#data-manager-delete-all-btn:hover:not(:disabled) {
+  background-color: var(--color-danger);
+  color: #fff;
+}
+
+#data-manager-delete-all-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: var(--color-border);
+  background-color: var(--color-surface-medium);
+  color: var(--color-text-muted);
 }
 
 .data-manager-loading,

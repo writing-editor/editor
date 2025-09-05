@@ -1,10 +1,10 @@
 export class BaseAgent {
-    constructor(orchestrator, app) {
-        if (!orchestrator || !app) {
-            throw new Error("BaseAgent requires an LlmOrchestrator and App instance.");
+    constructor(orchestrator, controller) {
+        if (!orchestrator || !controller) {
+            throw new Error("BaseAgent requires an LlmOrchestrator and a Controller instance.");
         }
         this.orchestrator = orchestrator;
-        this.app = app;
+        this.controller = controller;
     }
 
     async run(payload) {

@@ -547,7 +547,7 @@ body.drawer-is-open .icon-hamburger span:nth-child(3) {
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
-  z-index: 2000;
+  z-index: 9999;
   pointer-events: none;
 }
 
@@ -612,37 +612,27 @@ body.drawer-is-open .icon-hamburger span:nth-child(3) {
   /* Add a nice rotation on hover */
 }
 
-/* --- REVISED: Offline Indicator --- */
-#offline-indicator {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  width: 32px;
-  height: 32px;
-  background-color: var(--color-background);
+/* --- 6. WORD COUNT DISPLAY --- */
+#word-count-display {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-family: var(--font-sans);
   color: var(--color-text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  /* Start hidden and scaled down */
-  opacity: 0;
-  transform: scale(0.5);
+  background-color: color-mix(in srgb, var(--color-background) 80%, transparent);
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--color-border);
+  z-index: 10;
+  white-space: nowrap;
   transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#word-count-display.is-hidden {
+  opacity: 0;
+  transform: translate(-50%, 10px);
   pointer-events: none;
-  /* Can't be clicked */
-}
-
-#offline-indicator.is-visible {
-  opacity: 1;
-  transform: scale(1);
-  /* Animate into view */
-}
-
-/* Style for the SVG icon we will add */
-#offline-indicator svg {
-  width: 18px;
-  height: 18px;
-  stroke-width: 2;
-  stroke: currentColor;
 }

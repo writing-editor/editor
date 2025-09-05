@@ -1,0 +1,131 @@
+/* --- Notebook-Specific Styles --- */
+
+.notebook-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--spacing-lg);
+}
+
+#note-search-input {
+  flex-grow: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+#note-search-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.new-note-btn {
+  background-color: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 22px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.new-note-btn:hover {
+  filter: brightness(1.15);
+}
+
+.note-editor-container {
+  margin-bottom: var(--spacing-lg);
+}
+
+.note-editor-prosemirror {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 15px;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 120px;
+  color: var(--color-text);
+  background-color: var(--color-surface-light);
+}
+
+.note-editor-prosemirror:focus-within {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.note-editor-prosemirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-text-muted);
+  pointer-events: none;
+  height: 0;
+}
+
+.notebook-divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: var(--spacing-lg) 0;
+}
+
+/* Highlight for the note block currently being edited */
+.note-block.is-editing {
+  border-color: var(--color-primary);
+  background-color: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-light));
+}
+
+.notebook-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--color-surface-medium);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  margin-bottom: var(--spacing-lg);
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.active-filter-tag {
+  font-weight: 600;
+  color: var(--color-primary);
+  background-color: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+#clear-filter-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  color: var(--color-text-muted);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
+  margin-left: auto; /* Pushes the button to the far right */
+}
+
+#clear-filter-btn:hover {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+

@@ -1,10 +1,10 @@
 import './CommandPalette.css';
 
 export class CommandPalette {
-  constructor(app, bookService, storageService) {  // <-- Receive the bookService
-    this.app = app; // For UI (modals, indicators, agents)
-    this.bookService = bookService; // For data context
-    this.storageService = storageService; // <-- Store reference
+  constructor(controller, bookService, storageService) {
+    this.controller = controller;
+    this.bookService = bookService;
+    this.storageService = storageService;
     this.containerEl = document.getElementById('command-palette-container');
     this.formEl = document.getElementById('cp-form');
     this.tabBar = document.getElementById('cp-tab-bar');
@@ -13,12 +13,12 @@ export class CommandPalette {
 
     this.activeTab = 'analyze';
     this.promptTemplates = {};
+    this.capturedContext = null;
 
     this.containerEl.addEventListener('click', this.handlePaletteClick.bind(this));
     document.addEventListener('keydown', this.handleGlobalKeydown.bind(this));
   }
 
-  // --- Main Event Handlers ---
   handlePaletteClick(e) {
     const tabBtn = e.target.closest('.cp-tab-btn');
     if (tabBtn) {
@@ -37,7 +37,7 @@ export class CommandPalette {
     if (e.key === 'Escape') {
       this.hide();
     }
-    if (e.ctrlKey && e.key === 'Enter') {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       this.executeCommand();
     }
@@ -61,12 +61,11 @@ export class CommandPalette {
       }
     }
 
-    // CORRECTED: getContextPayload now works correctly
-    const finalPayload = { ...uiPayload, ...this.getContextPayload() };
+    const finalPayload = { ...uiPayload, ...this.capturedContext };
     this.hide();
 
     if (action === 'ANALYZE') {
-      const ai_response = await this.app.analystAgent.run(finalPayload);
+      const ai_response = await this.controller.runAnalyst(finalPayload);
       if (ai_response) {
         const blockData = {
           type: 'analysis',
@@ -74,27 +73,29 @@ export class CommandPalette {
           id: `analysis_${Date.now()}`,
           content: { type: 'markdown', text: ai_response }
         };
-        // CORRECT: Get currentViewId from the service
-        this.app.addMarginBlock(this.bookService.currentViewId, blockData);
-        this.app.openRightDrawer('assistant');
+        this.controller.addMarginBlock(this.bookService.currentViewId, blockData);
+        this.controller.openRightDrawer('assistant');
       }
     } else if (action === 'REWRITE') {
-      const rewritten_text = await this.app.rewriteAgent.run(finalPayload);
+      const rewritten_text = await this.controller.runRewrite(finalPayload);
       if (rewritten_text) {
         const suggestionPayload = {
           original_text: finalPayload.context.selected_text,
           suggested_text: rewritten_text,
           range: finalPayload.context.range
         };
-        this.app.assistantPane.renderRewriteSuggestion(suggestionPayload);
-        this.app.openRightDrawer('assistant');
+        this.controller.renderRewriteSuggestion(suggestionPayload);
+        this.controller.openRightDrawer('assistant');
       }
     }
   }
 
-  async show() {
+  async show(activeTab = 'analyze') {
     this.containerEl.classList.remove('hidden');
-    // Fetch all prompts from IndexedDB instead of the network
+    this.activeTab = activeTab;
+
+    this.capturedContext = this.controller.getContext();
+
     if (Object.keys(this.promptTemplates).length === 0) {
       const analyzePrompt = await this.storageService.getFile('ANALYZE.txt');
       const rewritePrompt = await this.storageService.getFile('REWRITE.txt');
@@ -152,22 +153,23 @@ export class CommandPalette {
 
   hide() {
     this.containerEl.classList.add('hidden');
+    this.capturedContext = null;
   }
 
   updateContextIndicator() {
-    const selection = this.app.editor.instance.state.selection;
-    const hasSelection = !selection.empty;
+    const hasSelection = this.capturedContext?.context?.type === 'selection';
     this.contextIndicator.classList.toggle('hidden', !hasSelection);
+    
     const rewriteTabButton = this.tabBar.querySelector('[data-tab="rewrite"]');
     if (rewriteTabButton) {
       rewriteTabButton.disabled = !hasSelection;
     }
+    
     if (!hasSelection && this.activeTab === 'rewrite') {
       this.activeTab = 'analyze';
     }
   }
 
-  // --- Payload and Context Helpers ---
   buildUiPayload() {
     let payload = {};
     const activePanel = this.contentArea.querySelector('.cp-tab-panel.active');
@@ -191,48 +193,19 @@ export class CommandPalette {
     return payload;
   }
 
-  // --- THIS IS THE MAIN FIX ---
-  getContextPayload() {
-    const selection = this.app.editor.instance.state.selection;
-    let context = {};
-    if (!selection.empty) {
-      context = {
-        type: 'selection',
-        selected_text: this.app.editor.instance.state.doc.textBetween(selection.from, selection.to),
-        range: { from: selection.from, to: selection.to }
-      };
-    } else {
-      context = {
-        type: 'global',
-        view_content: this.app.editor.instance.getJSON(),
-      };
-    }
-
-    // CORRECT: Get state from the bookService, not the app instance.
-    // Add optional chaining (?.) for safety during initialization.
-    return {
-      context: context,
-      current_book_filename: this.bookService.currentBook?.filename,
-      current_view_id: this.bookService.currentViewId,
-    };
-  }
-
   async savePromptTemplate(agentName, content) {
-    let indicatorId = this.app.showIndicator('Saving Template...');
+    let indicatorId = this.controller.showIndicator('Saving Template...');
     let fullContent = content;
 
-    // For rewrite, re-attach the locked system instruction
     if (agentName === 'REWRITE') {
       const system_instruction = (this.promptTemplates.REWRITE || '---').split('---')[0];
       fullContent = `${system_instruction}---\n${content}`;
     }
 
-    // Save to IndexedDB
     await this.storageService.saveFile(`${agentName}.txt`, fullContent);
 
-    // Refresh local cache
     this.promptTemplates[agentName] = fullContent;
-    this.app.hideIndicator(indicatorId);
-    this.app.showIndicator('Template Saved!', { duration: 2000 });
+    this.controller.hideIndicator(indicatorId);
+    this.controller.showIndicator('Template Saved!', { duration: 2000 });
   }
 }

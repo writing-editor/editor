@@ -1,81 +1,114 @@
 import './DataManager.css';
+import { loadHTML } from '../utils/htmlLoader.js';
 
 export class DataManager {
-  constructor(app) {
-    this.app = app;
-    // The constructor's only job is to get the container.
+  constructor(controller) {
+    this.controller = controller;
     this.containerEl = document.getElementById('data-manager-modal-container');
   }
 
-  // The show() method is now the single entry point that builds and displays the modal.
   async show() {
-    // 1. Make the container visible and render the initial "loading" shell.
     this.containerEl.classList.remove('hidden');
-    this.containerEl.innerHTML = `
-      <div id="data-manager-modal-box">
-        <div id="data-manager-toolbar">
-          <h4>Files in Google Drive</h4>
-          <button id="data-manager-delete-all-btn" class="settings-action-btn" title="Disconnect & Delete All Cloud Data" disabled>
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <polyline points="3 6 5 6 21 6"/>
-    <path d="M19 6l-2 14H7L5 6"/>
-    <path d="M10 11v6"/>
-    <path d="M14 11v6"/>
-    <path d="M9 6V4h6v2"/>
-  </svg>
-</button>
-        </div>
-        <div id="data-manager-content">
-          <p class="data-manager-loading">Connecting to Google Drive...</p>
-        </div>
-      </div>
-    `;
+    this.containerEl.innerHTML = await loadHTML('html-templates/data-manager.html');
 
-    // 2. Now that the elements exist, find them and attach listeners.
-    this.deleteAllBtn = document.getElementById('data-manager-delete-all-btn');
     this.contentEl = document.getElementById('data-manager-content');
+    const modalBox = document.getElementById('data-manager-modal-box');
+    
+    // Use event delegation for the whole modal
+    modalBox.addEventListener('click', (e) => this.handleModalClick(e));
 
-    this.deleteAllBtn.addEventListener('click', () => this.handleDeleteAll());
     this.containerEl.addEventListener('click', (e) => {
-      // Use a new reference to the modal box for the click-away check
-      const modalBox = document.getElementById('data-manager-modal-box');
-      if (e.target === this.containerEl || !modalBox.contains(e.target)) {
+      if (e.target === this.containerEl) {
         this.hide();
       }
     });
 
-    // 3. Fetch the file list from the cloud.
-    const fileList = await this.app.syncService.getCloudFileList();
+    const fileList = await this.controller.getCloudFileList();
 
-    // 4. Update the content area with the results.
     if (fileList === null) {
       this.contentEl.innerHTML = `<p class="data-manager-error">Could not fetch file list. Please try again.</p>`;
     } else if (fileList.length === 0) {
       this.contentEl.innerHTML = `<p class="data-manager-loading">No application data found in your Google Drive.</p>`;
     } else {
-      this.deleteAllBtn.disabled = false; // Enable the delete button only if there are files
-      this.contentEl.innerHTML = `<ul id="data-manager-file-list">${fileList.map(file => `<li>${file.name}</li>`).join('')}</ul>`;
+      document.getElementById('data-manager-delete-all-btn').disabled = false;
+      this.renderFileList(fileList);
+    }
+  }
+  
+  renderFileList(files) {
+    // File icon SVG
+    const fileIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
+    
+    this.contentEl.innerHTML = `<ul id="data-manager-file-list">
+      ${files.map(file => `
+        <li class="data-manager-file-item" data-file-id="${file.id}">
+          <div class="file-item-info">
+            ${fileIcon}
+            <span class="file-item-name" title="${file.name}">${file.name}</span>
+          </div>
+          <button class="file-item-delete-btn" data-action="delete-single" data-file-id="${file.id}" data-file-name="${file.name}" title="Delete this file">
+            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-2 14H7L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4h6v2"></path></svg>
+          </button>
+        </li>
+      `).join('')}
+    </ul>`;
+  }
+
+  handleModalClick(e) {
+    const target = e.target.closest('button');
+    if (!target) return;
+
+    const action = target.dataset.action || target.id;
+    
+    if (action === 'data-manager-delete-all-btn') {
+      this.handleDeleteAll();
+    } else if (action === 'delete-single') {
+      const { fileId, fileName } = target.dataset;
+      const listItem = target.closest('.data-manager-file-item');
+      this.handleDeleteSingleFile(fileId, fileName, listItem);
     }
   }
 
   hide() {
     this.containerEl.classList.add('hidden');
-    // Also clear the content so it's fresh next time
     this.containerEl.innerHTML = '';
   }
 
   async handleDeleteAll() {
-    // 1. Hide both modals immediately.
     this.hide();
-    this.app.settingsPalette.hide();
-
-    // 2. Now show the confirmation modal on a clean screen.
-    const isConfirmed = await this.app.confirmationModal.show(
+    this.controller.hideSettingsPalette();
+    const isConfirmed = await this.controller.confirm(
       'Delete All Cloud Data?',
       'This will permanently delete all application data from your Google Drive and disconnect the app. This cannot be undone.'
     );
     if (isConfirmed) {
-      await this.app.syncService.deleteAllCloudFiles();
+      await this.controller.deleteAllCloudFiles();
+    }
+  }
+  
+  async handleDeleteSingleFile(fileId, fileName, listItem) {
+    const isConfirmed = await this.controller.confirm(
+      'Delete Cloud File?',
+      `Are you sure you want to permanently delete "${fileName}" from your Google Drive? This cannot be undone.`
+    );
+    if (isConfirmed) {
+      listItem.style.opacity = '0.5'; // Visual feedback
+      const success = await this.controller.deleteCloudAndLocalFile(fileId, fileName);
+      if (success) {
+        listItem.style.transition = 'all 0.3s ease';
+        listItem.style.transform = 'translateX(-20px)';
+        listItem.style.opacity = '0';
+        setTimeout(() => {
+            listItem.remove();
+            const list = document.getElementById('data-manager-file-list');
+            if (list && list.children.length === 0) {
+                 this.contentEl.innerHTML = `<p class="data-manager-loading">No application data found in your Google Drive.</p>`;
+                 document.getElementById('data-manager-delete-all-btn').disabled = true;
+            }
+        }, 300);
+      } else {
+        listItem.style.opacity = '1'; // Revert on failure
+      }
     }
   }
 }

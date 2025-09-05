@@ -1,0 +1,62 @@
+/* --- Assistant-Specific Styles --- */
+
+.suggestion-block {
+  background-color: var(--color-surface-light);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px var(--color-shadow);
+}
+
+.suggestion-diff {
+  padding: 12px;
+  line-height: 1.6;
+  font-size: 15px;
+  font-family: Georgia, 'Times New Roman', Times, serif;
+  color: var(--color-text);
+}
+
+.suggestion-diff strong {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--color-text-muted);
+  display: block;
+}
+
+.suggestion-diff del {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  text-decoration: none;
+  border-radius: 3px;
+}
+
+.suggestion-diff ins {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+  text-decoration: none;
+  border-radius: 3px;
+}
+
+.suggestion-actions {
+  padding: 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.suggestion-actions button {
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-medium);
+  color: var(--color-text);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+#accept-suggestion-btn {
+  background-color: var(--color-success);
+  border-color: var(--color-success);
+  color: #fff;
+}

@@ -1,11 +1,11 @@
 {
-  "name": "Intelligent Editor",
+  "name": "Editor App",
   "short_name": "Editor",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1a1a1a",
-  "description": "An intelligent editor for writers and researchers.",
+  "description": "An editor for writers and researchers.",
   "icons": [
     {
       "src": "/vite.svg",

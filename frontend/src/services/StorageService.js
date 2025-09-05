@@ -3,10 +3,15 @@
  * This service is the single source of truth for all persistent data stored in the browser.
  */
 export class StorageService {
-  constructor(dbName = 'IntelligentEditorDB', version = 3) {
+  constructor(dbName = 'EditorAppDB', version = 3) {
     this.dbName = dbName;
     this.version = version;
     this.db = null;
+    this.controller = null; // Will be set by App.js
+  }
+
+  setController(controller) {
+    this.controller = controller;
   }
 
   /**
@@ -36,17 +41,10 @@ export class StorageService {
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
         console.log(`Upgrading database to version ${this.version}...`);
-
-        // --- STEP 2: The "Nuke & Pave" logic ---
-        // If the 'files' object store already exists from a previous version, delete it.
         if (db.objectStoreNames.contains('files')) {
           db.deleteObjectStore('files');
-          console.log("Old 'files' object store deleted.");
         }
-
-        // Create the new, empty 'files' object store.
         db.createObjectStore('files', { keyPath: 'id' });
-        console.log("New 'files' object store created.");
       };
     });
   }
@@ -72,7 +70,6 @@ export class StorageService {
    * @returns {Promise<void>}
    */
   async saveFile(id, content) {
-    // We will add a lastModified timestamp to every save operation now.
     const lastModified = Date.now();
     return new Promise((resolve, reject) => {
       if (!this.db) return reject("Database not open.");
@@ -80,7 +77,13 @@ export class StorageService {
       const store = transaction.objectStore('files');
       const request = store.put({ id, content, lastModified });
 
-      request.onsuccess = () => resolve();
+      request.onsuccess = () => {
+        // --- NEW: PUBLISH EVENT ---
+        if (this.controller && id !== 'initial_setup_complete') {
+          this.controller.publish('database:changed', { fileId: id, action: 'saved' });
+        }
+        resolve();
+      };
       request.onerror = () => reject(request.error);
     });
   }
@@ -116,9 +119,29 @@ export class StorageService {
       const store = transaction.objectStore('files');
       const request = store.delete(id);
 
-      request.onsuccess = () => resolve();
+      request.onsuccess = () => {
+        // --- NEW: PUBLISH EVENT ---
+        if (this.controller) {
+          this.controller.publish('database:changed', { fileId: id, action: 'deleted' });
+        }
+        resolve();
+      };
       request.onerror = () => reject(request.error);
     });
+  }
+
+  /**
+   * Deletes a specific file by name from the app folder.
+   * @param {string} filename The name of the file to delete (e.g., 'notes.json').
+   */
+  async deleteFile(filename) {
+    const fileId = await this._findFileId(filename);
+    if (fileId) {
+      await this.gapi.client.drive.files.delete({ fileId: fileId });
+      console.log(`Deleted "${filename}" from Google Drive.`);
+    } else {
+      console.log(`File "${filename}" not found in Google Drive, skipping deletion.`);
+    }
   }
 
   /**

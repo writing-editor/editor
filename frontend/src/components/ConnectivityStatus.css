@@ -1,0 +1,129 @@
+/* --- 1. Main Container --- */
+#connectivity-status-container {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  z-index: 2000;
+}
+
+/* --- 2. Status Icons (Wrapper for SVGs) --- */
+.status-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px var(--color-shadow);
+  cursor: pointer;
+  background-color: var(--color-surface-light);
+  color: var(--color-text-muted);
+  transition: all 0.3s ease;
+}
+
+.status-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+  stroke: currentColor;
+  fill: none;
+}
+
+.status-icon.is-online {
+  color: var(--color-success);
+}
+
+.status-icon.is-offline {
+  color: var(--color-danger);
+}
+
+.status-icon.is-syncing svg {
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+
+/* --- 3. Google Sign-In Button --- */
+.google-sign-in-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 16px 6px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-light);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 12px var(--color-shadow);
+  transition: all 0.2s ease;
+}
+
+.google-sign-in-btn:hover {
+  box-shadow: 0 6px 16px var(--color-shadow);
+  transform: translateY(-1px);
+}
+
+.google-sign-in-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+
+/* --- 4. Tooltip for Sign Out --- */
+.status-tooltip {
+  position: absolute;
+  bottom: 110%;
+  left: 0;
+  width: max-content;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: var(--color-surface-light);
+  box-shadow: 0 4px 12px var(--color-shadow);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  
+  /* Start hidden */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: all 0.2s ease;
+}
+
+/* Show tooltip on container hover */
+#connectivity-status-container:hover .status-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.status-tooltip p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.sign-out-btn {
+  border: none;
+  background-color: var(--color-surface-medium);
+  color: var(--color-text);
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.sign-out-btn:hover {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+}

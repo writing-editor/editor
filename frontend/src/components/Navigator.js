@@ -1,7 +1,7 @@
 import './navigator.css';
 export class Navigator {
-  constructor(app, bookService) {
-    this.app = app;
+  constructor(controller, bookService) {
+    this.controller = controller;
     this.bookService = bookService;
     this.drawerEl = document.getElementById('navigator-drawer');
     this.isEditingTitle = false;
@@ -10,8 +10,6 @@ export class Navigator {
     this.drawerEl.addEventListener('click', this.handleClick.bind(this));
     this.drawerEl.addEventListener('dblclick', this.handleDoubleClick.bind(this));
   }
-
-  // --- Event Handlers ---
 
   handleDoubleClick(e) {
     const titleTarget = e.target.closest('[data-action="edit-book-title"]');
@@ -41,7 +39,6 @@ export class Navigator {
       return;
     }
 
-    // Actions now delegate to bookService or are pure UI
     if (action === 'show-library') this.showLibrary();
     else if (action === 'pin-book') this.pinBook(target.dataset.filename);
     else if (action === 'switch-book') { this.bookService.switchBook(target.dataset.filename); this.close(); }
@@ -52,35 +49,34 @@ export class Navigator {
     else if (viewId) { this.bookService.changeView(viewId); this.close(); }
   }
 
-  // --- Data Manipulation Methods (Simplified to delegate to BookService) ---
-
   async createNewBook() {
-    const title = await this.app.modalInput.show('Create New Book', 'Enter book title...');
+    const title = await this.controller.prompt('Create New Book', 'Enter book title...');
     if (title) {
-      const indicatorId = this.app.showIndicator('Creating Book...');
-      // The BookService now handles creating the book in IndexedDB
-      const { filename } = await this.bookService.createNewBook(title);
-      this.app.hideIndicator(indicatorId);
-
-      if (filename) {
-        await this.showLibrary(); // Refresh the navigator view from IndexedDB
-        await this.bookService.switchBook(filename);
-        this.open();
-      } else {
-        this.app.showIndicator('Error Creating Book', { isError: true, duration: 3000 });
+      const indicatorId = this.controller.showIndicator('Creating Book...');
+      try {
+        const { filename } = await this.bookService.createNewBook(title);
+        if (filename) {
+          await this.showLibrary();
+          await this.bookService.switchBook(filename);
+          this.open();
+        } else {
+          this.controller.showIndicator('Error Creating Book', { isError: true, duration: 3000 });
+        }
+      } finally {
+        this.controller.hideIndicator(indicatorId);
       }
     }
   }
 
   async createNewChapter() {
-    const title = await this.app.modalInput.show('Create New Chapter', 'Enter chapter title...');
+    const title = await this.controller.prompt('Create New Chapter', 'Enter chapter title...');
     if (title) {
       await this.bookService.createNewChapter(title);
     }
   }
 
   async createNewSection(chapterId) {
-    const title = await this.app.modalInput.show('Create New Section', 'Enter section title...');
+    const title = await this.controller.prompt('Create New Section', 'Enter section title...');
     if (title) {
       await this.bookService.createNewSection(chapterId, title);
     }
@@ -91,36 +87,38 @@ export class Navigator {
   }
 
   async deleteDocument(filename, title) {
-    const isConfirmed = await this.app.confirmationModal.show(
+    const isConfirmed = await this.controller.confirm(
       'Delete Document',
       `Are you sure you want to permanently delete "${title}"? This cannot be undone.`
     );
     if (isConfirmed) {
-      const indicatorId = this.app.showIndicator('Deleting...');
-      await this.bookService.deleteBook(filename); // Delegate to BookService
-      await this.app.rebuildSearchIndex();
-      this.app.hideIndicator(indicatorId);
-      this.app.showIndicator('Document Deleted', { duration: 2000 });
+      const indicatorId = this.controller.showIndicator('Deleting...');
+      try {
+        await this.bookService.deleteBook(filename);
+        await this.controller.rebuildSearchIndex();
+        this.controller.showIndicator('Document Deleted', { duration: 2000 });
 
-      if (this.bookService.currentBook && this.bookService.currentBook.filename === filename) {
-        await this.bookService.loadInitialBook();
-      } else {
-        await this.showLibrary();
+        if (this.bookService.currentBook && this.bookService.currentBook.filename === filename) {
+          await this.bookService.loadInitialBook();
+        } else {
+          await this.showLibrary();
+        }
+      } finally {
+        this.controller.hideIndicator(indicatorId);
       }
     }
   }
 
   async pinBook(filename) {
-    const indicatorId = this.app.showIndicator('Setting default...');
-
-    await this.bookService.pinBook(filename);
-
-    this.app.hideIndicator(indicatorId);
-    this.app.showIndicator('Default book set!', { duration: 1500 });
-    await this.showLibrary();
+    const indicatorId = this.controller.showIndicator('Setting default...');
+    try {
+      await this.bookService.pinBook(filename);
+      this.controller.showIndicator('Default book set!', { duration: 1500 });
+      await this.showLibrary();
+    } finally {
+      this.controller.hideIndicator(indicatorId);
+    }
   }
-
-  // --- UI and Helper Methods ---
 
   async showLibrary() {
     await this.bookService.refreshLibrary();
@@ -174,9 +172,7 @@ export class Navigator {
     let html = `<h2>Documents</h2><hr class="nav-divider">`;
     (documents || []).forEach(doc => {
       const isPinned = doc.filename === pinnedBook;
-      // Conditionally add an 'is-pinned' class
       const pinButtonClass = isPinned ? 'nav-action-btn pin-btn is-pinned' : 'nav-action-btn pin-btn';
-      // Change the title based on state
       const pinButtonTitle = isPinned ? 'Default document' : 'Set as default';
 
       html += `
@@ -185,15 +181,12 @@ export class Navigator {
             ${doc.title}
           </span>
           <div class="nav-item-actions">
-            <!-- Pin Button now uses dynamic class and title -->
             <button class="${pinButtonClass}" data-action="pin-book" data-filename="${doc.filename}" title="${pinButtonTitle}">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2v6l3 2-9 9-3-3 9-9-2-3H2V2h10z"/>
               </svg>
             </button>
-
-            <!-- Delete Button -->
             <button class="nav-action-btn delete-btn" data-action="delete-document" data-filename="${doc.filename}" data-title="${doc.title}" title="Delete Document">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
