@@ -118,6 +118,9 @@ export class App {
       } else {
         this.connectivityStatus.setState('signed-in', 'User');
       }
+      await this.syncService.performInitialSync();
+      await this.bookService.loadInitialBook(); 
+      await this.rebuildSearchIndex();
     } else {
       if (navigator.onLine) {
         this.connectivityStatus.setState('signed-out');
@@ -166,6 +169,7 @@ export class App {
       importLocal: () => this.syncService.importFromLocalFile(),
       getCloudFileList: () => this.syncService.getCloudFileList(),
       deleteAllCloudFiles: () => this.syncService.deleteAllCloudFiles(),
+      performInitialSync: () => this.syncService.performInitialSync(),
       deleteCloudAndLocalFile: async (cloudFileId, localFileName) => {
         const cloudSuccess = await this.syncService.deleteCloudFileById(cloudFileId);
 
@@ -203,12 +207,17 @@ export class App {
       signIn: async () => {
         try {
           const user = await this.googleSyncService.signIn();
-          if (user && user.name) {
-            this.connectivityStatus.setState('signed-in', user.name);
-            this.indicatorManager.show(`Signed in as ${user.name}`, { duration: 3000 });
-          } else if (user) {
-            this.connectivityStatus.setState('signed-in', 'User');
-            this.indicatorManager.show(`Signed in successfully`, { duration: 3000 });
+          if (user) {
+            if (user.name) {
+              this.connectivityStatus.setState('signed-in', user.name);
+              this.indicatorManager.show(`Signed in as ${user.name}`, { duration: 3000 });
+            } else {
+              this.connectivityStatus.setState('signed-in', 'User');
+              this.indicatorManager.show(`Signed in successfully`, { duration: 3000 });
+            }
+            await this.syncService.performInitialSync();
+            await this.bookService.loadInitialBook();
+            await this.rebuildSearchIndex();
           }
         } catch (error) {
           console.error("Sign-in failed:", error);

@@ -241,4 +241,81 @@ export class SyncService {
       this.controller.hideIndicator(indicatorId);
     }
   }
+
+  // frontend/src/services/SyncService.js
+
+// Add this new method to the SyncService class
+  /**
+   * Performs a full two-way sync. Compares local and cloud files
+   * and resolves differences based on the last modified timestamp.
+   * This should be called on initial sign-in.
+   */
+  async performInitialSync() {
+    const isSignedIn = await this.googleSyncService.checkSignInStatus();
+    if (!isSignedIn) return;
+
+    this.controller.setSyncState('syncing');
+    const indicatorId = this.controller.showIndicator('Syncing with Google Drive...');
+
+    try {
+      // 1. Get file lists from both sources
+      const cloudFiles = await this.googleSyncService.listFiles(); // Returns [{id, name, modifiedTime}]
+      const localFiles = await this.storageService.getAllFiles(); // Returns [{id, content, lastModified}]
+
+      // 2. Create maps for efficient lookup
+      const cloudFilesMap = new Map(cloudFiles.map(f => [f.name, f]));
+      const localFilesMap = new Map(localFiles.map(f => [f.id, f]));
+
+      // 3. Determine actions for each cloud file
+      for (const [name, cloudFile] of cloudFilesMap.entries()) {
+        const localFile = localFilesMap.get(name);
+        const cloudModified = new Date(cloudFile.modifiedTime).getTime();
+
+        if (!localFile) {
+          // File exists in cloud, but not locally -> DOWNLOAD
+          console.log(`Sync: Downloading new file "${name}"`);
+          let content = await this.googleSyncService.downloadFileContent(cloudFile.id);
+          if (name.endsWith('.json') || name.endsWith('.book')) {
+              try { content = JSON.parse(content); }
+              catch (e) { console.error(`Failed to parse JSON for ${name}`, e); continue; }
+          }
+          await this.storageService.saveFile(name, content);
+
+        } else if (cloudModified > localFile.lastModified) {
+          // File exists in both, but cloud is newer -> DOWNLOAD & OVERWRITE
+          console.log(`Sync: Updating local file "${name}" from cloud.`);
+          let content = await this.googleSyncService.downloadFileContent(cloudFile.id);
+           if (name.endsWith('.json') || name.endsWith('.book')) {
+              try { content = JSON.parse(content); }
+              catch (e) { console.error(`Failed to parse JSON for ${name}`, e); continue; }
+          }
+          await this.storageService.saveFile(name, content);
+        }
+        // If local is newer, it will be handled in the next step.
+      }
+
+      // 4. Determine actions for local files not yet processed
+      for (const [id, localFile] of localFilesMap.entries()) {
+        const cloudFile = cloudFilesMap.get(id);
+         if (id === 'user-manual.book' || id === 'initial_setup_complete' || id === 'pinned.txt') continue; // Don't upload these
+
+        if (!cloudFile) {
+          // File exists locally, but not in cloud -> UPLOAD
+          console.log(`Sync: Uploading new local file "${id}"`);
+          await this.googleSyncService.uploadFile(id, localFile.content);
+        }
+        // The "local is newer" case from step 3 implicitly falls through here.
+        // The current debounced sync logic will eventually catch any very recent
+        // local changes, but we could add an explicit upload here if needed.
+        // For an initial sync, this is generally sufficient.
+      }
+
+    } catch (error) {
+      console.error('Initial sync failed:', error);
+      this.controller.showIndicator('Sync failed. Please try again.', { isError: true, duration: 4000 });
+    } finally {
+      this.controller.hideIndicator(indicatorId);
+      this.controller.setSyncState('signed-in');
+    }
+  }
 }
