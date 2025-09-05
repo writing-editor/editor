@@ -110,14 +110,12 @@ export class App {
 
   async checkInitialAuthStatus() {
     await this.googleSyncService.initialize();
-    const isSignedIn = await this.googleSyncService.checkSignInStatus();
+    const isSignedIn = await this.googleSyncService.trySilentAuth(); 
     if (isSignedIn) {
       const user = await this.googleSyncService.getUserProfile();
-      // Add a check to ensure user is not null
       if (user && user.name) {
         this.connectivityStatus.setState('signed-in', user.name);
       } else {
-        // If we're signed in but can't get profile, show a generic signed-in state
         this.connectivityStatus.setState('signed-in', 'User');
       }
     } else {
@@ -199,6 +197,7 @@ export class App {
       getAvailableBooks: () => this.bookService.availableBooks,
       getCurrentBookFilename: () => this.bookService.currentBook?.filename,
       storageService: this.storageService,
+      searchService: this.searchService,
 
       // Auth methods for the UI to call
       signIn: async () => {

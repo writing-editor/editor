@@ -5,8 +5,7 @@ export class RewriteAgent extends BaseAgent {
         const { prompt_template, user_request, context } = payload;
 
         if (context.type !== "selection" || !context.selected_text) {
-            alert("Please select text to rewrite.");
-            return null;
+            throw new Error("Please select text to rewrite.");
         }
 
         let final_prompt = prompt_template.replace('{user_request}', user_request || "general improvements");

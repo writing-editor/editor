@@ -4,9 +4,6 @@ export class SearchPane {
   constructor(controller) {
     this.controller = controller;
     this.element = document.getElementById('search-drawer');
-    // We can get the search service from the controller if needed, but for now
-    // the controller will just mediate the search call.
-    this.searchService = this.controller.searchService;
 
     this.element.addEventListener('input', (e) => {
       if (e.target.id === 'search-input') {

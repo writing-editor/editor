@@ -89,7 +89,7 @@ export class DataManager {
   async handleDeleteSingleFile(fileId, fileName, listItem) {
     const isConfirmed = await this.controller.confirm(
       'Delete Cloud File?',
-      `Are you sure you want to permanently delete "${fileName}" from your Google Drive? This cannot be undone.`
+      `Are you sure you want to permanently delete "${fileName}" from your Google Drive and local storage? This cannot be undone.`
     );
     if (isConfirmed) {
       listItem.style.opacity = '0.5'; // Visual feedback
@@ -99,8 +99,9 @@ export class DataManager {
         listItem.style.transform = 'translateX(-20px)';
         listItem.style.opacity = '0';
         setTimeout(() => {
-            listItem.remove();
+            listItem.remove(); // Actually remove the element from the DOM
             const list = document.getElementById('data-manager-file-list');
+            // After removal, check if the list is empty
             if (list && list.children.length === 0) {
                  this.contentEl.innerHTML = `<p class="data-manager-loading">No application data found in your Google Drive.</p>`;
                  document.getElementById('data-manager-delete-all-btn').disabled = true;

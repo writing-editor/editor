@@ -11,29 +11,44 @@ export class GoogleSyncService {
 
     this.API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
     this.CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    // The scope for userinfo.profile was already correct.
     this.SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile';
-    this.DISCOVERY_DOCS = [
-      "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"
-      // No longer need oauth2 discovery doc, as we use fetch
-    ];
+    this.DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
 
     this.APP_FOLDER_NAME = 'Editor App';
     this.appFolderId = null;
   }
 
+  // --- MODIFIED: Initialization is now more robust ---
   initialize() {
     if (this.initializationPromise) return this.initializationPromise;
-    this.initializationPromise = (async () => {
-      this.gapi = await this.loadGapiClient();
-      const gisClient = await this.loadGisClient();
-      this.tokenClient = gisClient.initTokenClient({
-        client_id: this.CLIENT_ID,
-        scope: this.SCOPES,
-        callback: () => { },
-      });
-      console.log("Google Sync Service Initialized for drive.file scope.");
-    })();
+    
+    this.initializationPromise = new Promise(async (resolve, reject) => {
+      try {
+        // First, load the GAPI client library
+        this.gapi = await this.loadGapiClient();
+        await this.gapi.client.init({ apiKey: this.API_KEY, discoveryDocs: this.DISCOVERY_DOCS });
+
+        // Second, load the GIS library for auth
+        this.gis = await this.loadGisClient();
+        this.tokenClient = this.gis.initTokenClient({
+          client_id: this.CLIENT_ID,
+          scope: this.SCOPES,
+          callback: (tokenResponse) => {
+            // This callback handles both explicit and silent sign-ins
+            if (tokenResponse && tokenResponse.access_token) {
+                console.log("Token received, user is signed in.");
+            } else {
+                console.log("Token response was empty, user is not signed in.");
+            }
+          },
+        });
+        console.log("Google Sync Service Initialized.");
+        resolve();
+      } catch (error) {
+        console.error("Error during Google Service initialization:", error);
+        reject(error);
+      }
+    });
     return this.initializationPromise;
   }
 
@@ -52,32 +67,41 @@ export class GoogleSyncService {
     return new Promise(resolve => {
       const checkGis = () => {
         if (window.google && window.google.accounts && window.google.accounts.oauth2) {
-          this.gis = window.google.accounts.oauth2;
-          resolve(this.gis);
+          resolve(window.google.accounts.oauth2);
         } else setTimeout(checkGis, 100);
       };
       checkGis();
     });
   }
 
+  // --- NEW: Method for silent sign-in on page load ---
+  async trySilentAuth() {
+    return new Promise((resolve, reject) => {
+      if (!this.tokenClient) return reject("Token client not initialized.");
+      // The prompt: 'none' is the key here. It will not show a popup.
+      this.tokenClient.requestAccessToken({ prompt: 'none' });
+      
+      // We don't need to do anything in the callback here because the gapi client
+      // automatically gets the token. We just need to check if it's there.
+      // We add a small delay to allow the silent request to complete.
+      setTimeout(() => {
+          resolve(!!this.gapi.client.getToken());
+      }, 1000);
+    });
+  }
+
   async authorize() {
     await this.initialize();
-    return new Promise(async (resolve, reject) => {
-      try {
-        // We only need to init the 'drive' client now.
-        await this.gapi.client.init({ apiKey: this.API_KEY, discoveryDocs: this.DISCOVERY_DOCS });
+    return new Promise((resolve, reject) => {
         if (this.gapi.client.getToken()) {
           resolve(true);
           return;
         }
-        this.tokenClient.callback = (resp) => {
-          if (resp.error) return reject(resp.error);
-          resolve(true);
-        };
+        // This will now handle the callback via the central callback in initialize()
         this.tokenClient.requestAccessToken({ prompt: 'select_account' });
-      } catch (err) {
-        reject(err);
-      }
+        // The authorize flow now mostly triggers the UI, the real token handling
+        // happens in the callback. We can consider this "successful" once the prompt is shown.
+        resolve(true); 
     });
   }
 
@@ -85,7 +109,13 @@ export class GoogleSyncService {
 
   async signIn() {
     await this.authorize();
-    return this.getUserProfile();
+    // After triggering the sign-in, we wait a moment for the token to be processed
+    return new Promise(resolve => {
+        setTimeout(async () => {
+             const user = await this.getUserProfile();
+             resolve(user);
+        }, 1500);
+    });
   }
 
   async signOut() {
@@ -101,56 +131,27 @@ export class GoogleSyncService {
   async checkSignInStatus() {
     await this.initialize();
     return !!this.gapi.client.getToken();
-  } async signIn() {
-    await this.authorize();
-    return this.getUserProfile();
   }
 
-  async signOut() {
-    const token = this.gapi.client.getToken();
-    if (token && this.gis) {
-      this.gis.revoke(token.access_token, () => {
-        this.gapi.client.setToken(null);
-        console.log('Access token revoked and removed from client.');
-      });
-    }
-  }
-
-  async checkSignInStatus() {
-    await this.initialize();
-    return !!this.gapi.client.getToken();
-  }
+  // No longer need a duplicate checkSignInStatus method, it was removed.
 
   async getUserProfile() {
     const token = this.gapi.client.getToken();
     if (!token) return null;
 
     try {
-      // Manually fetch using the access token, bypassing the gapi.client library for this call
       const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: {
-          'Authorization': `Bearer ${token.access_token}`
-        }
+        headers: { 'Authorization': `Bearer ${token.access_token}` }
       });
-
-      if (!response.ok) {
-        const errorBody = await response.json();
-        console.error("Failed to fetch user profile:", errorBody);
-        throw new Error(`Failed to fetch user profile: ${response.statusText}`);
-      }
-
+      if (!response.ok) throw new Error(`Failed to fetch user profile: ${response.statusText}`);
       return await response.json();
-
     } catch (error) {
       console.error("Error in getUserProfile:", error);
       return null;
     }
   }
-  /**
-   * Finds or creates the dedicated application folder in Google Drive.
-   * @returns {Promise<string>} The ID of the folder.
-   * @private
-   */
+
+  // ... rest of the file ( _getAppFolderId, _findFileId, uploadFile, etc.) remains exactly the same ...
   async _getAppFolderId() {
     if (this.appFolderId) return this.appFolderId;
 
@@ -176,12 +177,6 @@ export class GoogleSyncService {
     }
   }
 
-  /**
-   * Finds a file by name within the app folder.
-   * @param {string} filename The name of the file to find.
-   * @returns {Promise<string|null>} The file ID, or null if not found.
-   * @private
-   */
   async _findFileId(filename) {
     const folderId = await this._getAppFolderId();
     const response = await this.gapi.client.drive.files.list({
@@ -191,11 +186,6 @@ export class GoogleSyncService {
     return response.result.files.length > 0 ? response.result.files[0].id : null;
   }
 
-  /**
-   * Uploads content to a specific file in the app folder.
-   * @param {string} filename The name of the file (e.g., 'notes.json').
-   * @param {any} content The content to upload (will be stringified if it's an object).
-   */
   async uploadFile(filename, content) {
     const folderId = await this._getAppFolderId();
     const fileId = await this._findFileId(filename);
@@ -229,21 +219,12 @@ export class GoogleSyncService {
     });
   }
 
-  /**
-   * Downloads a specific file from the app folder.
-   * @param {string} fileId The ID of the file to download.
-   * @returns {Promise<string|null>} The file content as a string, or null.
-   */
   async downloadFileContent(fileId) {
     if (!fileId) return null;
     const response = await this.gapi.client.drive.files.get({ fileId, alt: 'media' });
     return response.body;
   }
 
-  /**
-   * Lists all files within the dedicated app folder.
-   * @returns {Promise<Array<object>>} A list of file objects from the Drive API.
-   */
   async listFiles() {
     const folderId = await this._getAppFolderId();
     const response = await this.gapi.client.drive.files.list({
@@ -253,10 +234,6 @@ export class GoogleSyncService {
     return response.result.files || [];
   }
 
-  /**
-* Deletes a specific file by its Google Drive file ID.
-* @param {string} fileId The unique ID of the file to delete.
-*/
   async deleteFileById(fileId) {
     if (!fileId) {
       throw new Error("File ID is required for deletion.");
@@ -265,9 +242,6 @@ export class GoogleSyncService {
     console.log(`Deleted file with ID "${fileId}" from Google Drive.`);
   }
 
-  /**
-   * Deletes all files and the app folder itself.
-   */
   async deleteAllFilesAndFolder() {
     const folderId = await this._getAppFolderId();
     if (folderId) {

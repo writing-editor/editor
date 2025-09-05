@@ -77,15 +77,19 @@ export class CommandPalette {
         this.controller.openRightDrawer('assistant');
       }
     } else if (action === 'REWRITE') {
-      const rewritten_text = await this.controller.runRewrite(finalPayload);
-      if (rewritten_text) {
-        const suggestionPayload = {
-          original_text: finalPayload.context.selected_text,
-          suggested_text: rewritten_text,
-          range: finalPayload.context.range
-        };
-        this.controller.renderRewriteSuggestion(suggestionPayload);
-        this.controller.openRightDrawer('assistant');
+      try {
+        const rewritten_text = await this.controller.runRewrite(finalPayload);
+        if (rewritten_text) {
+          const suggestionPayload = {
+            original_text: finalPayload.context.selected_text,
+            suggested_text: rewritten_text,
+            range: finalPayload.context.range
+          };
+          this.controller.renderRewriteSuggestion(suggestionPayload);
+          this.controller.openRightDrawer('assistant');
+        }
+      } catch (error) {
+        this.controller.showIndicator(error.message, { isError: true, duration: 3000 });
       }
     }
   }
@@ -159,12 +163,12 @@ export class CommandPalette {
   updateContextIndicator() {
     const hasSelection = this.capturedContext?.context?.type === 'selection';
     this.contextIndicator.classList.toggle('hidden', !hasSelection);
-    
+
     const rewriteTabButton = this.tabBar.querySelector('[data-tab="rewrite"]');
     if (rewriteTabButton) {
       rewriteTabButton.disabled = !hasSelection;
     }
-    
+
     if (!hasSelection && this.activeTab === 'rewrite') {
       this.activeTab = 'analyze';
     }
