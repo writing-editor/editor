@@ -2,7 +2,7 @@
 
 import { Navigator } from './components/Navigator.js';
 import { Editor } from './components/Editor.js';
-import { CommandPalette } from './components/CommandPalette.js';
+import { AiStudio } from './components/AiStudio.js';
 import { ModalInput } from './components/ModalInput.js';
 import { AssistantPane } from './components/AssistantPane.js';
 import { NotebookPane } from './components/NotebookPane.js';
@@ -14,6 +14,7 @@ import { StorageService } from './services/StorageService.js';
 import { AnalystAgent } from './agents/AnalystAgent.js';
 import { RewriteAgent } from './agents/RewriteAgent.js';
 import { FindNotesAgent } from './agents/FindNotesAgent.js';
+import { DevelopmentAgent } from './agents/DevelopmentAgent.js'; 
 import { SyncService } from './services/SyncService.js';
 import { GoogleSyncService } from './services/GoogleSyncService.js';
 import { SearchService } from './services/SearchService.js';
@@ -21,9 +22,12 @@ import { SearchPane } from './components/SearchPane.js';
 import { DataManager } from './components/DataManager.js';
 import { EventBus } from './utils/EventBus.js';
 import { ConnectivityStatus } from './components/ConnectivityStatus.js';
-import { IndicatorManager } from './ui/IndicatorManager.js'; // NEW
-import { ExportService } from './services/ExportService.js'; // NEW
-import { uninstallApp } from './utils/uninstall.js'; // NEW
+import { IndicatorManager } from './ui/IndicatorManager.js'; 
+import { ExportService } from './services/ExportService.js'; 
+import { uninstallApp } from './utils/uninstall.js'; 
+import { TagGenerationAgent } from './agents/TagGenerationAgent.js';
+import { TagSyncService } from './services/TagSyncService.js';
+import { PromptsPane } from './components/PromptsPane.js';
 
 
 let instance = null;
@@ -69,16 +73,20 @@ export class App {
     this.analystAgent = new AnalystAgent(this.llmOrchestrator, controller);
     this.rewriteAgent = new RewriteAgent(this.llmOrchestrator, controller);
     this.findNotesAgent = new FindNotesAgent(this.llmOrchestrator, controller);
+    this.developmentAgent = new DevelopmentAgent(this.llmOrchestrator, controller);
+    this.tagGenerationAgent = new TagGenerationAgent(this.llmOrchestrator, controller);
+    this.tagSyncService = new TagSyncService(controller, this.storageService);
 
     // ====================================================================
     //  STEP 3: INITIALIZE UI COMPONENTS
     // ====================================================================
     this.navigator = new Navigator(controller, this.bookService);
     this.editor = new Editor(controller, this.bookService);
-    this.palette = new CommandPalette(controller, this.bookService, this.storageService);
+    this.palette = new AiStudio(controller, this.bookService, this.storageService);
     this.modalInput = new ModalInput();
     this.assistantPane = new AssistantPane(controller, this.bookService);
     this.notebookPane = new NotebookPane(controller, this.storageService);
+    this.promptsPane = new PromptsPane(controller, this.storageService);
     this.confirmationModal = new ConfirmationModal();
     this.searchPane = new SearchPane(controller);
     this.settingsPalette = new SettingsPalette(controller);
@@ -92,6 +100,7 @@ export class App {
       assistant: document.getElementById('assistant-drawer'),
       notebook: document.getElementById('notebook-drawer'),
       search: document.getElementById('search-drawer'),
+      prompts: document.getElementById('prompts-drawer'),
     };
 
     // ====================================================================
@@ -105,10 +114,21 @@ export class App {
       this.searchService.buildIndex(bookFiles);
       this.bookService.loadInitialBook();
       this.notebookPane.initialize();
+      this.promptsPane.initialize();
     });
   }
 
+
   async checkInitialAuthStatus() {
+    const userHasInitiatedSignIn = localStorage.getItem('userHasInitiatedSignIn');
+    if (!userHasInitiatedSignIn) {
+      console.log("User has not initiated sign-in before. Skipping silent auth.");
+      if (navigator.onLine) {
+        this.connectivityStatus.setState('signed-out');
+      }
+      return;
+    }
+
     await this.googleSyncService.initialize();
     const isSignedIn = await this.googleSyncService.trySilentAuth(); 
     if (isSignedIn) {
@@ -119,7 +139,7 @@ export class App {
         this.connectivityStatus.setState('signed-in', 'User');
       }
       await this.syncService.performInitialSync();
-      await this.bookService.loadInitialBook(); 
+      await this.bookService.loadInitialBook();
       await this.rebuildSearchIndex();
     } else {
       if (navigator.onLine) {
@@ -149,13 +169,16 @@ export class App {
       runAnalyst: (payload) => this.analystAgent.run(payload),
       runRewrite: (payload) => this.rewriteAgent.run(payload),
       runFindNotes: (payload) => this.findNotesAgent.run(payload),
+      runDeveloper: (payload) => this.developmentAgent.run(payload), 
+      runTagger: (payload) => this.tagGenerationAgent.run(payload), 
+      runAutoTagging: () => this.tagSyncService.run(), 
 
       renderRewriteSuggestion: (payload) => this.assistantPane.renderRewriteSuggestion(payload),
       // UI & Navigation
       openRightDrawer: (drawerName) => this.openRightDrawer(drawerName),
       closeRightDrawer: () => this.closeRightDrawer(),
       navigateTo: (filename, viewId) => this.navigateTo(filename, viewId),
-      showCommandPalette: (tabName) => this.palette.show(tabName),
+      showAiStudio: (tabName) => this.palette.show(tabName), 
       hideSettingsPalette: () => this.settingsPalette.hide(),
       showDataManager: () => this.dataManager.show(),
 
@@ -215,6 +238,7 @@ export class App {
               this.connectivityStatus.setState('signed-in', 'User');
               this.indicatorManager.show(`Signed in successfully`, { duration: 3000 });
             }
+            localStorage.setItem('userHasInitiatedSignIn', 'true');
             await this.syncService.performInitialSync();
             await this.bookService.loadInitialBook();
             await this.rebuildSearchIndex();
@@ -226,6 +250,7 @@ export class App {
       },
       signOut: async () => {
         await this.googleSyncService.signOut();
+        localStorage.removeItem('userHasInitiatedSignIn');
         this.connectivityStatus.setState('signed-out');
         this.indicatorManager.show('You have been signed out.', { duration: 3000 });
       },
@@ -290,7 +315,7 @@ export class App {
             break;
           case 'k':
             e.preventDefault();
-            this.palette.show();
+            this.palette.show('settings');
             break;
           case 'f':
             e.preventDefault();
@@ -345,19 +370,26 @@ export class App {
   getContextPayload() {
     const selection = this.editor.instance.state.selection;
     let context = {};
+
     if (!selection.empty) {
       context = {
         type: 'selection',
         selected_text: this.editor.instance.state.doc.textBetween(selection.from, selection.to),
-        range: { from: selection.from, to: selection.to }
+        range: { from: selection.from, to: selection.to },
+        view_content: this.editor.instance.getText(), // Keep full content available
       };
     } else {
-      context = { type: 'global', view_content: this.editor.instance.getJSON() };
+      context = { 
+        type: 'global', 
+        view_content: this.editor.instance.getText()
+      };
     }
+
     return {
       context: context,
       current_book_filename: this.bookService.currentBook?.filename,
       current_view_id: this.bookService.currentViewId,
+      book_structure: this.bookService.currentBook?.structure || 'No book loaded.',
     };
   }
 }

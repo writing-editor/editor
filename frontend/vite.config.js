@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
-          name: 'wWiting Editor',
+          name: 'Editor App',
           short_name: 'Editor',
           description: 'A simple no distrubance writing editor with AI assistance.',
           theme_color: '#1a1a1a',

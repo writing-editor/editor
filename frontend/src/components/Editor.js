@@ -33,7 +33,7 @@ export class Editor {
         }),
         BubbleMenu.configure({
           element: this.toolbar,
-          pluginKey: 'editorBubbleMenu', 
+          pluginKey: 'editorBubbleMenu',
           tippyOptions: {
             duration: 100,
             placement: 'top',
@@ -56,7 +56,7 @@ export class Editor {
               const isChapterView = this.bookService._isChapterId(this.bookService.currentViewId);
               h2Button.style.display = isChapterView ? '' : 'none';
             }
-            
+
             return hasFocus && !empty && editor.isEditable;
           },
         }),
@@ -73,9 +73,9 @@ export class Editor {
       onTransaction: () => {
         this.updateToolbarState();
         if (this.instance.state.selection.empty) {
-            this.toolbar.style.display = 'none';
+          this.toolbar.style.display = 'none';
         } else {
-            this.toolbar.style.display = '';
+          this.toolbar.style.display = '';
         }
       },
     });
@@ -146,6 +146,19 @@ export class Editor {
       const action = btn.dataset.action;
       const chain = this.instance.chain().focus();
 
+      // Get context for AI actions
+      const selection = this.instance.state.selection;
+      const selectedText = this.instance.state.doc.textBetween(selection.from, selection.to);
+      const payload = {
+        context: {
+          type: 'selection',
+          selected_text: selectedText,
+          range: { from: selection.from, to: selection.to }
+        },
+        current_book_filename: this.bookService.currentBook?.filename,
+        current_view_id: this.bookService.currentViewId,
+      };
+
       switch (action) {
         case 'bold':
           chain.toggleBold().run();
@@ -160,15 +173,46 @@ export class Editor {
           chain.toggleHeading({ level: 3 }).run();
           break;
         case 'analyze':
-          this.controller.showCommandPalette('analyze');
+          this.handleDirectAnalysis(payload);
           break;
         case 'rewrite':
-          this.controller.showCommandPalette('rewrite');
+          this.handleDirectRewrite(payload);
           break;
       }
     });
   }
 
+  async handleDirectAnalysis(payload) {
+      const ai_response = await this.controller.runAnalyst(payload);
+      if (ai_response) {
+          const blockData = {
+              type: 'analysis',
+              title: "AI Critique",
+              id: `analysis_${Date.now()}`,
+              content: { type: 'markdown', text: ai_response }
+          };
+          this.controller.addMarginBlock(payload.current_view_id, blockData);
+          this.controller.openRightDrawer('assistant');
+      }
+  }
+
+  async handleDirectRewrite(payload) {
+      try {
+          const rewritten_text = await this.controller.runRewrite(payload);
+          if (rewritten_text) {
+              const suggestionPayload = {
+                  original_text: payload.context.selected_text,
+                  suggested_text: rewritten_text,
+                  range: payload.context.range
+              };
+              this.controller.renderRewriteSuggestion(suggestionPayload);
+              this.controller.openRightDrawer('assistant');
+          }
+      } catch (error) {
+          this.controller.showIndicator(error.message, { isError: true, duration: 3000 });
+      }
+  }
+  
   updateToolbarState() {
     this.toolbar.querySelector('[data-action="bold"]').classList.toggle('is-active', this.instance.isActive('bold'));
     this.toolbar.querySelector('[data-action="italic"]').classList.toggle('is-active', this.instance.isActive('italic'));
@@ -179,16 +223,16 @@ export class Editor {
   render(content) {
     this.instance.commands.setContent(content, false);
     setTimeout(() => {
-        this.updateWordCount();
-        this.handleScroll();
+      this.updateWordCount();
+      this.handleScroll();
     }, 0);
   }
 
   setEditable(isEditable) {
     this.instance.setOptions({ editable: isEditable });
     setTimeout(() => {
-        this.updateWordCount();
-        this.handleScroll();
+      this.updateWordCount();
+      this.handleScroll();
     }, 0);
   }
 

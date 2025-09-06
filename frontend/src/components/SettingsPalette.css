@@ -320,3 +320,118 @@
   width: 16px;
   height: 16px;
 }
+/* --- AI Features & Pill Buttons --- */
+
+.settings-action-btn-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 20px; /* Pill shape */
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-light);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.2s ease-in-out;
+}
+
+.settings-action-btn-pill:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+/* Custom icon for the Manage Prompts button */
+.settings-action-btn-pill .icon-spark {
+  width: 16px;
+  height: 16px;
+  position: relative;
+}
+.settings-action-btn-pill .icon-spark span {
+  display: block;
+  position: absolute;
+  height: 2px;
+  width: 100%;
+  background: currentColor;
+  border-radius: 2px;
+  left: 0;
+  top: 7px;
+  transition: all 0.3s ease;
+}
+.settings-action-btn-pill .icon-spark span:nth-child(1) { transform: rotate(90deg); }
+.settings-action-btn-pill .icon-spark span:nth-child(2) { transform: rotate(45deg); }
+.settings-action-btn-pill .icon-spark span:nth-child(3) { transform: rotate(-45deg); }
+
+
+/* ---  Auto-Tagging Toggle --- */
+
+.setting-item-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 8px 0 16px; /* Less padding on the right */
+  border-radius: 20px; /* Pill shape */
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-light);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.setting-item-toggle label {
+  cursor: pointer; /* Allow clicking the label to toggle */
+  margin: 0;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-switch .slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--color-surface-medium);
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.toggle-switch .slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+input:checked + .slider {
+  background-color: var(--color-primary);
+}
+
+input:checked + .slider:before {
+  transform: translateX(20px);
+}

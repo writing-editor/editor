@@ -12,18 +12,18 @@ export class LlmOrchestrator {
     }
 
     async execute(prompt, isJson = false) {
+        // REVISED: Fetches settings from the isolated AI settings source.
         const settings = SettingsPalette.getSettings();
         const client = this.clients[settings.provider];
 
         if (!client) {
             const message = `LLM provider "${settings.provider}" is not supported.`;
-            console.error(message);
-            alert(`Error: ${message}`);
+            this.controller.showIndicator(message, { isError: true, duration: 4000 });
             return null;
         }
 
         if (!settings.apiKey) {
-            alert('API Key is not set. Please set it in the Settings panel.');
+            this.controller.showIndicator('API Key not set. Configure in AI settings', { isError: true, duration: 4000 });
             return null;
         }
 

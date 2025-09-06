@@ -16,6 +16,7 @@
     <div id="assistant-drawer" class="right-drawer"></div>
     <div id="notebook-drawer" class="right-drawer"></div>
     <div id="search-drawer" class="right-drawer"></div>
+    <div id="prompts-drawer" class="right-drawer"></div>
 
     <div id="app-controls">
         <div id="top-right-controls">
@@ -50,18 +51,19 @@
 
         </div>
     </div>
-    <div id="command-palette-container" class="hidden">
-        <div id="command-palette">
-            <div id="cp-context-indicator" class="hidden">&#x2713;</div>
+    <!-- RENAMED: from command-palette-container to ai-studio-container -->
+    <div id="ai-studio-container" class="hidden">
+        <div id="ai-studio">
+            <!-- NEW: A simple, clean header -->
+            <div id="ai-studio-header">
+                <h4>AI Workbench</h4>
+            </div>
+            <!-- The form now correctly wraps only the content area -->
             <form id="cp-form">
-                <div id="cp-tab-bar">
-                    <button class="cp-tab-btn active" data-tab="analyze" type="button">[ Analyze ]</button>
-                    <button class="cp-tab-btn" data-tab="rewrite" type="button">[ Rewrite ]</button>
-                </div>
                 <div id="cp-content-area">
-                    <div class="cp-tab-panel active" data-panel="analyze"></div>
-                    <div class="cp-tab-panel" data-panel="rewrite"></div>
+                    <div class="cp-tab-panel active" data-panel="workbench"></div>
                 </div>
+                <!-- This hidden submit button is good practice for form accessibility -->
                 <button type="submit" style="display: none;"></button>
             </form>
         </div>

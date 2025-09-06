@@ -1,168 +1,134 @@
-# Editor App
+Of course! Based on the comprehensive codebase you've provided, here is a detailed README.md file that covers the application's purpose, features, architecture, and setup instructions.
 
-**A modern, offline-first, block-based text editor for writers and researchers, designed for focused, uninterrupted work.**
+---
 
-Editor App is a powerful writing environment that combines a minimalist, distraction-free interface with advanced features like a hierarchical document structure, a personal notebook, and AI-powered assistance. It is built to work seamlessly offline, saving all your data locally in the browser, with optional Google Drive backup for recovery.
+# Editor App - An AI-Enhanced Writing Studio
+<img src="frontend/public/feather-pen.png" alt="Logo" style="width:100px;height:auto;">
 
-![Screenshot of Editor App](./screenshot.png)
-*(Replace with an actual screenshot of your application)*
+Editor App is a distraction-free, local-first writing environment designed for authors, researchers, and anyone working on long-form, structured content. It combines a minimalist text editor with a powerful suite of integrated AI tools, a personal knowledge base, and robust data management features, including cloud sync and various export formats.
 
-## Table of Contents
+The application is built as a Progressive Web App (PWA), ensuring it works seamlessly offline while offering the benefits of cloud synchronization when connected.
 
-- [Editor App](#editor-app)
-  - [Table of Contents](#table-of-contents)
-  - [Core Features](#core-features)
-  - [Getting Started](#getting-started)
-    - [Prerequisites](#prerequisites)
-    - [Local Installation \& Setup](#local-installation--setup)
-    - [Configuration](#configuration)
-  - [How to Use the Editor](#how-to-use-the-editor)
-    - [The Navigator Panel](#the-navigator-panel)
-    - [Hierarchical Structure](#hierarchical-structure)
-    - [Editing Content](#editing-content)
-  - [Keyboard Shortcuts](#keyboard-shortcuts)
-  - [Advanced Features](#advanced-features)
-    - [AI Assistant](#ai-assistant)
-    - [Personal Notebook](#personal-notebook)
-    - [Data Management](#data-management)
-  - [Technology Stack](#technology-stack)
+## ✨ Key Features
 
-## Core Features
+### ✍️ Core Writing Experience
+*   **Structured Documents:** Organize your work into Books, Chapters, and Sections. The intuitive navigator makes it easy to manage complex projects.
+*   **Distraction-Free Editor:** A clean, minimalist writing pane powered by Tiptap, with a floating bubble menu for essential formatting (Bold, Italic, Headings).
+*   **Word & Character Count:** A subtle, non-intrusive counter keeps you informed of your progress.
 
-*   **Offline-First:** Your work is always saved locally to your browser's database. No internet connection is required to write, edit, or access your documents.
-*   **Hierarchical Document Structure:** Organize your work into books, chapters, and sections. The editor's unique save engine allows you to restructure your documents on the fly simply by editing headings.
-*   **Distraction-Free Writing:** A clean, minimalist interface that puts your content front and center.
-*   **Personal Notebook:** A separate, searchable space for jotting down ideas, research notes, and snippets that aren't yet part of a main document.
-*   **AI-Powered Tools:** (Optional) Connect your own API key to leverage powerful AI models for text analysis and rewriting suggestions.
-*   **Data Portability:** Easily export your entire library for local backup or export individual documents to `.docx` and LaTeX (`.tex`) formats.
-*   **Cloud Backup:** (Optional) Connect your Google Drive account to create a secure, user-visible backup of your application data for disaster recovery.
+### 🤖 AI-Powered Assistance
+*   **Multi-Provider Support:** Configure the app to use your own API keys for either **Google Gemini** or **Anthropic Claude** models.
+*   **Direct AI Actions:**
+    *   **Analyze:** Select text and get an AI-powered critique, which appears as a suggestion in the Assistant Pane.
+    *   **Rewrite:** Get instant proofreading and suggestions for improving selected text. Accept or reject changes with a single click.
+*   **AI Workbench:** Open a dedicated modal to make complex, open-ended requests to the AI based on the context of your current document or selection (e.g., "Suggest three alternative titles for this chapter," "Expand on this paragraph," "Check for inconsistencies").
+*   **Customizable Prompts:** A dedicated "Manage Prompts" section allows power users to edit the underlying system prompts for every AI agent, tailoring the AI's personality and output to their exact needs.
 
-## Getting Started
+### 🧠 Integrated Knowledge Management
+*   **Notebook:** A separate, dedicated space for capturing thoughts, research notes, and fleeting ideas.
+*   **Advanced Note Search:**
+    *   **Local Search:** Instantly search your notes with a high-performance, local full-text search engine (FlexSearch).
+    *   **AI "Deep" Search:** Perform semantic, concept-based searches on your notes using the AI model for more relevant results.
+*   **Automatic Tagging:** The app can intelligently analyze your untagged notes in the background and suggest relevant conceptual tags to keep your knowledge base organized.
 
-Follow these instructions to get a copy of the project up and running on your local machine for development and testing purposes.
+### 💾 Data Management & Portability
+*   **Local-First Storage:** All data is stored securely and reliably in your browser's IndexedDB, making the entire application fully functional offline.
+*   **Google Drive Sync:** Optionally sign in with your Google account to seamlessly and automatically sync all your documents, notes, and settings to a dedicated app folder in your Google Drive.
+*   **Backup & Restore:** Export your entire local database to a single `.json` file for backup, or import a backup file to restore your work on any machine.
+*   **Multiple Export Formats:** Export individual documents to standard academic and professional formats, including **LaTeX (.tex)** and **Microsoft Word (.docx)**.
+
+### 🎨 Customization
+*   **Theming:** Choose from a variety of light and dark themes (including Nord, Solarized Dark, Monokai, and more) to suit your preference.
+*   **Editor Fonts:** Customize the editor's font family (Serif, Sans-Serif, Monospace) and font size for a comfortable reading and writing experience.
+
+## 🚀 Getting Started
 
 ### Prerequisites
+*   [Node.js](https://nodejs.org/) (v18 or later recommended)
+*   [npm](https://www.npmjs.com/), [yarn](https://yarnpkg.com/), or [pnpm](https://pnpm.io/)
 
-*   **Node.js:** Make sure you have Node.js (version 18 or newer) and npm installed.
-*   **Web Browser:** A modern web browser that supports IndexedDB and Service Workers (e.g., Chrome, Firefox, Edge).
+### Local Development Setup
 
-### Local Installation & Setup
-
-1.  **Clone the Repository**
+1.  **Clone the repository:**
     ```bash
-    git clone <your-repository-url>
-    cd editor-app
+    git clone <repository-url>
+    cd <repository-folder>/frontend
     ```
 
-2.  **Navigate to the Frontend Directory**
-    The project is contained within the `frontend` directory.
-    ```bash
-    cd frontend
-    ```
-
-3.  **Install Dependencies**
-    This will install all the necessary packages defined in `package.json`.
+2.  **Install dependencies:**
     ```bash
     npm install
     ```
 
-4.  **Run the Development Server**
-    This command starts the Vite development server.
+3.  **Configure Environment Variables:**
+    This application uses Google APIs for authentication and cloud sync. You will need to create a project in the [Google Cloud Console](https://console.cloud.google.com/) and enable the "Google Drive API".
+
+    Create a file named `.env.local` in the `frontend/` directory and add your credentials:
+    ```.env
+    # Get this from your Google Cloud Console project
+    VITE_GOOGLE_API_KEY=YOUR_GOOGLE_API_KEY
+
+    # Get this from the "OAuth 2.0 Client IDs" section of your credentials
+    VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com
+    ```
+    > **Note:** The AI provider API keys (for Gemini or Claude) are **not** set here. They are configured within the application's settings UI after it is running.
+
+4.  **Run the development server:**
     ```bash
     npm run dev
     ```
-    The terminal will display a local URL (usually `http://localhost:5173`). Open this URL in your web browser to see the application running.
+    The application will be available at `http://localhost:5173`.
 
-### Configuration
+### Building for Production
+To create a production-ready build of the app:
+```bash
+npm run build
+```
+The output will be in the `frontend/dist` directory. You can serve these static files with any web server.
 
-To enable the optional AI and Google Drive features, you need to create a `.env` file in the `frontend` directory.
+## 🏛️ Architecture & Project Structure
 
-1.  Create a file named `.env` in `frontend/`.
-2.  Add the following variables, replacing the placeholder values with your own keys:
+The application is built with modern, vanilla JavaScript (ES Modules) and follows a clear, decoupled architecture.
 
-    ```env
-    # .env
+*   **Controller Pattern:** `src/App.js` acts as the central orchestrator. It initializes all services and UI components, and it passes a `controller` object to them. This object serves as a public API for components to interact with the rest of the application, avoiding tight coupling.
+*   **Service-Oriented:** Core logic is encapsulated in services (`BookService`, `StorageService`, `SyncService`, `LlmOrchestrator`).
+*   **Agent-Based AI:** AI logic is modularized into `Agent` classes (`AnalystAgent`, `RewriteAgent`, etc.), each responsible for a specific task. This makes it easy to modify or add new AI capabilities.
+*   **Local-First:** `StorageService` provides a simple async wrapper around IndexedDB, ensuring the application is always responsive and works offline. `SyncService` builds on top of this to provide optional cloud backup.
+*   **Component-Based UI:** The UI is broken down into components (`Navigator`, `Editor`, `SettingsPalette`, etc.), each managing its own piece of the DOM and logic.
 
-    # For Google Drive Backup
-    VITE_GOOGLE_API_KEY=YOUR_GOOGLE_CLOUD_API_KEY
-    VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com
+### Project Directory
+```
+frontend/
+├── public/
+│   ├── html-templates/   # HTML snippets loaded dynamically
+│   └── feather-pen.png   # App icon
+├── src/
+│   ├── agents/           # Self-contained AI logic modules (Analyst, Rewrite, etc.)
+│   ├── components/       # UI components (JS, CSS)
+│   ├── llm/              # API clients for different LLM providers (Gemini, Anthropic)
+│   ├── services/         # Core application logic (Data, Sync, AI Orchestration)
+│   ├── ui/               # UI helper modules (e.g., status indicators)
+│   ├── utils/            # Reusable helper functions (debounce, converters, etc.)
+│   ├── App.js            # Main application controller/orchestrator
+│   ├── main.js           # Application entry point
+│   └── main.css          # Global styles and theming
+├── .env.local            # (You create this) Local environment variables
+├── index.html            # Main HTML entry file
+├── package.json          # Project dependencies and scripts
+└── vite.config.js        # Vite build and PWA configuration
+```
 
-    # For AI Features (Google Gemini)
-    # This key is used for AI text generation.
-    # Note: This is separate from the Google Cloud API Key.
-    VITE_GEMINI_API_KEY=YOUR_GEMINI_API_KEY
-    ```
-    *(Note: The Gemini API Key is now set directly in the application's settings panel, so this variable may be deprecated.)*
+## 🛠️ Tech Stack
 
-## How to Use the Editor
+*   **Build Tool:** [Vite](https://vitejs.dev/)
+*   **Editor:** [Tiptap](https://tiptap.dev/)
+*   **Local Storage:** [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
+*   **Local Search:** [FlexSearch](https://github.com/nextapps-de/flexsearch)
+*   **Styling:** Plain CSS with CSS Variables for robust theming
+*   **PWA:** [vite-plugin-pwa](https://vite-pwa-org.netlify.app/)
+*   **.docx Export:** [docx](https://docx.js.org/)
+*   **.json Export/Import:** [File System Access API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API)
 
-### The Navigator Panel
+## 📄 License
 
-The Navigator is your central hub for managing all your documents. Open it using the hamburger icon (`☰`) in the top-left corner or with the `Ctrl/Cmd + B` shortcut.
-
-*   **Library View:** See all your "books" or top-level documents. From here you can create new documents, delete existing ones, or set a "pinned" document that loads by default.
-*   **Contents View:** Once you select a document, the navigator shows its hierarchical structure of chapters and sections. Click on any item to load it into the editor.
-
-### Hierarchical Structure
-
-The editor's most powerful feature is its ability to understand structure.
-
-*   `Heading 2` (`##`) represents a **Chapter**.
-*   `Heading 3` (`###`) represents a **Section**.
-
-You can create, split, merge, and rename chapters and sections directly within the editor just by manipulating these headings.
-
-*   **To Split a Chapter:** While editing a chapter, add a new `Heading 2`. Everything below it will become a new chapter.
-*   **To Merge Chapters:** Delete the `Heading 2` of a chapter. Its content and sections will be automatically merged into the chapter above it.
-*   **The same logic applies to Sections** using `Heading 3`.
-
-### Editing Content
-
-*   **Views:** You can edit a single section or an entire chapter at once. Click on the desired item in the Navigator to load its "view."
-*   **Saving:** Your work is saved automatically every 10 seconds. You can also manually save at any time using the `Ctrl/Cmd + S` shortcut.
-
-## Keyboard Shortcuts
-
-| Shortcut | Action |
-| :--- | :--- |
-| `Ctrl` / `Cmd` + `S` | Manually save the current view. |
-| `Ctrl` / `Cmd` + `K` | Open the Command Palette (for AI actions). |
-| `Ctrl` / `Cmd` + `F` | Open the global Search panel. |
-| `Ctrl` / `Cmd` + `B` | Toggle the Navigator panel. |
-| `Ctrl` + `Enter` | Execute command in Command Palette or Notebook. |
-| `Esc` | Close any open modal or palette. |
-
-## Advanced Features
-
-### AI Assistant
-
-Open the AI Assistant using the spark icon (`✨`) in the top-right.
-
-1.  **Configure:** Go to Settings (`⚙️`) -> AI Settings and enter your API key for either Google Gemini or Anthropic Claude.
-2.  **Use:** Select a piece of text in the editor and press `Ctrl/Cmd + K` to open the Command Palette.
-    *   **Analyze:** Get a detailed analysis of the selected text based on your prompt. The result appears as a note in the Assistant panel.
-    *   **Rewrite:** Ask the AI to rewrite your selected text. The result is presented as a "diff" view, which you can accept to replace your original text.
-
-### Personal Notebook
-
-Open the Notebook using the pages icon (`📖`) in the top-right. This is a separate space for unstructured notes.
-*   Notes are saved locally and are fully searchable.
-*   You can pin important notes to keep them at the top of the list.
-
-### Data Management
-
-All data management options are available in the Settings (`⚙️`) panel under the "Data Management" tab.
-
-*   **Local Backup:** Export your entire local database to a single `.json` file for backup. You can import this file on another machine to restore your data.
-*   **Cloud Backup (Google Drive):** Connect your Google account to back up your data to a dedicated `Editor App App Data` folder in your Google Drive. This is a simple backup/restore mechanism, not a real-time sync.
-*   **Document Export:** Export individual documents to `.docx` (Microsoft Word) or `.tex` (LaTeX) formats.
-*   **Uninstall:** A "Disconnect & Reset" option is available to completely wipe all application data from your browser, including service workers and the database.
-
-## Technology Stack
-
-*   **Core:** Vanilla JavaScript (ES Modules)
-*   **Editor:** [TipTap](https://tiptap.dev/) (a headless, block-based editor framework)
-*   **Local Storage:** IndexedDB (via a custom `StorageService` wrapper)
-*   **Frontend Tooling:** [Vite](https://vitejs.dev/)
-*   **Search:** [FlexSearch](https://github.com/nextapps-de/flexsearch)
-*   **Styling:** Plain CSS with CSS Variables for theming.
+This project is licensed under the MIT License. See the LICENSE file for details.

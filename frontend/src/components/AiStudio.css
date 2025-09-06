@@ -1,0 +1,131 @@
+/* frontend/src/components/AiStudio.css */
+
+/* --- 1. Main Container & Overlay --- */
+#ai-studio-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(10, 10, 10, 0.3);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 4000;
+  opacity: 1;
+  transition: opacity 0.2s ease-in-out;
+}
+
+#ai-studio-container.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+
+/* --- 2. The Main AI Studio Panel --- */
+#ai-studio {
+  width: 70%;
+  height: 80%;
+  max-width: 1100px;
+  min-height: 600px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-surface-light);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 16px 40px var(--color-shadow);
+  overflow: hidden;
+  position: relative;
+}
+
+#cp-form {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* --- 3. Content Area & Workbench Styles --- */
+#cp-content-area {
+  flex-grow: 1;
+  overflow: hidden; 
+  min-height: 0; 
+  display: flex; /* Make the content area a flex container */
+}
+
+.cp-tab-panel {
+  flex-grow: 1; /* Make the panel fill the content area */
+  display: flex;
+  padding: var(--spacing-lg);
+}
+
+.workbench-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#workbench-input {
+    flex-grow: 1; /* Take up all available vertical space */
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    padding: 12px 15px;
+    font-size: 16px;
+    font-family: var(--font-sans);
+    resize: none;
+    background-color: var(--color-background);
+    color: var(--color-text);
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+#workbench-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.workbench-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+#workbench-context-display {
+    font-size: 13px;
+    color: var(--color-text-muted);
+    padding: 8px 12px;
+    border-radius: 6px;
+    background-color: var(--color-surface-medium);
+}
+
+.hidden {
+  display: none !important;
+}
+
+#ai-studio-header {
+  padding: 12px var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-background);
+  flex-shrink: 0;
+}
+
+#ai-studio-header h4 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+
+#cp-form {
+    display: flex;
+    flex-direction: column;
+    /* This needs to grow to fill the space left by the header */
+    flex-grow: 1; 
+    min-height: 0;
+}
