@@ -136,7 +136,6 @@ export class GoogleSyncService {
 
   async _getAppFolderId() {
     if (this.appFolderId) return this.appFolderId;
-    // ... (rest of the method is unchanged)
     const response = await this.gapi.client.drive.files.list({
       q: `mimeType='application/vnd.google-apps.folder' and name='${this.APP_FOLDER_NAME}' and trashed=false`,
       fields: 'files(id, name)',
@@ -158,8 +157,7 @@ export class GoogleSyncService {
       return this.appFolderId;
     }
   }
-
-  // --- NEW: Method to get or create the 'notes' subfolder ---
+  
   async _getNotesFolderId() {
     if (this.notesFolderId) return this.notesFolderId;
     
@@ -184,7 +182,6 @@ export class GoogleSyncService {
     }
   }
 
-  // --- REVISED: Now accepts a parent folder ID for searching ---
   async _findFileId(filename, parentFolderId) {
     const response = await this.gapi.client.drive.files.list({
       q: `'${parentFolderId}' in parents and name='${filename}' and trashed=false`,
@@ -193,17 +190,15 @@ export class GoogleSyncService {
     return response.result.files.length > 0 ? response.result.files[0].id : null;
   }
 
-  // --- NEW: Gets a file's metadata (including ETag) without its content ---
   async getFileMetadata(filename) {
     const parentFolderId = filename.endsWith('.note') ? await this._getNotesFolderId() : await this._getAppFolderId();
     const response = await this.gapi.client.drive.files.list({
         q: `'${parentFolderId}' in parents and name='${filename}' and trashed=false`,
-        fields: 'files(id, name, etag, modifiedTime)', // Request etag specifically
+        fields: 'files(id, name, etag, modifiedTime)',
     });
     return response.result.files.length > 0 ? response.result.files[0] : null;
   }
 
-  // --- REVISED: Handles subfolders and returns ETag on success ---
   async uploadFile(filename, content) {
     const isNote = filename.endsWith('.note');
     const folderId = isNote ? await this._getNotesFolderId() : await this._getAppFolderId();
@@ -233,15 +228,14 @@ export class GoogleSyncService {
 
     const response = await this.gapi.client.request({
       path, method,
-      params: { uploadType: 'multipart', fields: 'id,etag' }, // Ask for etag in response
+      params: { uploadType: 'multipart', fields: 'id,etag' },
       headers: { 'Content-Type': 'multipart/related; boundary="' + boundary + '"' },
       body: multipartRequestBody,
     });
     
-    return response.result.etag; // Return the new ETag
+    return response.result.etag;
   }
 
-  // --- REVISED: Returns content and ETag ---
   async downloadFileContent(fileId) {
     if (!fileId) return null;
     
@@ -253,14 +247,13 @@ export class GoogleSyncService {
     return { content: contentResponse.body, etag: etag };
   }
 
-  // --- REVISED: Lists files from both the main folder and the notes subfolder ---
   async listFiles() {
     const appFolderId = await this._getAppFolderId();
-    const notesFolderId = await this._getNotesFolderId(); // Ensure it exists
+    const notesFolderId = await this._getNotesFolderId();
     
     const response = await this.gapi.client.drive.files.list({
       q: `'${appFolderId}' in parents or '${notesFolderId}' in parents and trashed=false`,
-      fields: 'files(id, name, modifiedTime, etag)',
+      fields: 'files(id, name, modifiedTime)',
     });
     return response.result.files || [];
   }
@@ -273,7 +266,6 @@ export class GoogleSyncService {
     console.log(`Deleted file with ID "${fileId}" from Google Drive.`);
   }
 
-  // NEW: Deletes a file by name, useful for background sync
   async deleteFileByName(filename) {
     const fileMeta = await this.getFileMetadata(filename);
     if (fileMeta && fileMeta.id) {
