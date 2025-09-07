@@ -16,25 +16,22 @@ export class GoogleSyncService {
 
     this.APP_FOLDER_NAME = 'Editor App';
     this.appFolderId = null;
+    this.notesFolderId = null; 
   }
 
-  // --- MODIFIED: Initialization is now more robust ---
   initialize() {
     if (this.initializationPromise) return this.initializationPromise;
     
     this.initializationPromise = new Promise(async (resolve, reject) => {
       try {
-        // First, load the GAPI client library
         this.gapi = await this.loadGapiClient();
         await this.gapi.client.init({ apiKey: this.API_KEY, discoveryDocs: this.DISCOVERY_DOCS });
 
-        // Second, load the GIS library for auth
         this.gis = await this.loadGisClient();
         this.tokenClient = this.gis.initTokenClient({
           client_id: this.CLIENT_ID,
           scope: this.SCOPES,
           callback: (tokenResponse) => {
-            // This callback handles both explicit and silent sign-ins
             if (tokenResponse && tokenResponse.access_token) {
                 console.log("Token received, user is signed in.");
             } else {
@@ -74,16 +71,10 @@ export class GoogleSyncService {
     });
   }
 
-  // --- NEW: Method for silent sign-in on page load ---
   async trySilentAuth() {
     return new Promise((resolve, reject) => {
       if (!this.tokenClient) return reject("Token client not initialized.");
-      // The prompt: 'none' is the key here. It will not show a popup.
       this.tokenClient.requestAccessToken({ prompt: 'none' });
-      
-      // We don't need to do anything in the callback here because the gapi client
-      // automatically gets the token. We just need to check if it's there.
-      // We add a small delay to allow the silent request to complete.
       setTimeout(() => {
           resolve(!!this.gapi.client.getToken());
       }, 1000);
@@ -97,19 +88,13 @@ export class GoogleSyncService {
           resolve(true);
           return;
         }
-        // This will now handle the callback via the central callback in initialize()
         this.tokenClient.requestAccessToken({ prompt: 'select_account' });
-        // The authorize flow now mostly triggers the UI, the real token handling
-        // happens in the callback. We can consider this "successful" once the prompt is shown.
         resolve(true); 
     });
   }
 
-  // --- AUTH FLOW METHODS ---
-
   async signIn() {
     await this.authorize();
-    // After triggering the sign-in, we wait a moment for the token to be processed
     return new Promise(resolve => {
         setTimeout(async () => {
              const user = await this.getUserProfile();
@@ -133,8 +118,6 @@ export class GoogleSyncService {
     return !!this.gapi.client.getToken();
   }
 
-  // No longer need a duplicate checkSignInStatus method, it was removed.
-
   async getUserProfile() {
     const token = this.gapi.client.getToken();
     if (!token) return null;
@@ -151,10 +134,9 @@ export class GoogleSyncService {
     }
   }
 
-  // ... rest of the file ( _getAppFolderId, _findFileId, uploadFile, etc.) remains exactly the same ...
   async _getAppFolderId() {
     if (this.appFolderId) return this.appFolderId;
-
+    // ... (rest of the method is unchanged)
     const response = await this.gapi.client.drive.files.list({
       q: `mimeType='application/vnd.google-apps.folder' and name='${this.APP_FOLDER_NAME}' and trashed=false`,
       fields: 'files(id, name)',
@@ -177,34 +159,58 @@ export class GoogleSyncService {
     }
   }
 
-  async _findFileId(filename) {
-    const folderId = await this._getAppFolderId();
+  // --- NEW: Method to get or create the 'notes' subfolder ---
+  async _getNotesFolderId() {
+    if (this.notesFolderId) return this.notesFolderId;
+    
+    const parentFolderId = await this._getAppFolderId();
     const response = await this.gapi.client.drive.files.list({
-      q: `'${folderId}' in parents and name='${filename}' and trashed=false`,
+      q: `'${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and name='notes' and trashed=false`,
+      fields: 'files(id, name)',
+    });
+    
+    if (response.result.files.length > 0) {
+      this.notesFolderId = response.result.files[0].id;
+      return this.notesFolderId;
+    } else {
+      const fileMetadata = {
+        name: 'notes',
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [parentFolderId],
+      };
+      const newFolder = await this.gapi.client.drive.files.create({ resource: fileMetadata, fields: 'id' });
+      this.notesFolderId = newFolder.result.id;
+      return this.notesFolderId;
+    }
+  }
+
+  // --- REVISED: Now accepts a parent folder ID for searching ---
+  async _findFileId(filename, parentFolderId) {
+    const response = await this.gapi.client.drive.files.list({
+      q: `'${parentFolderId}' in parents and name='${filename}' and trashed=false`,
       fields: 'files(id, name)',
     });
     return response.result.files.length > 0 ? response.result.files[0].id : null;
   }
 
-  /**
-   * Deletes a file from the app's Google Drive folder by its filename.
-   * This is used for background sync where we only have the filename.
-   * @param {string} filename The name of the file to delete.
-   */
-  async deleteFile(filename) {
-    const fileId = await this._findFileId(filename);
-    if (fileId) {
-      await this.deleteFileById(fileId);
-    } else {
-      console.log(`File "${filename}" not found in Google Drive, no cloud deletion needed.`);
-    }
+  // --- NEW: Gets a file's metadata (including ETag) without its content ---
+  async getFileMetadata(filename) {
+    const parentFolderId = filename.endsWith('.note') ? await this._getNotesFolderId() : await this._getAppFolderId();
+    const response = await this.gapi.client.drive.files.list({
+        q: `'${parentFolderId}' in parents and name='${filename}' and trashed=false`,
+        fields: 'files(id, name, etag, modifiedTime)', // Request etag specifically
+    });
+    return response.result.files.length > 0 ? response.result.files[0] : null;
   }
 
+  // --- REVISED: Handles subfolders and returns ETag on success ---
   async uploadFile(filename, content) {
-    const folderId = await this._getAppFolderId();
-    const fileId = await this._findFileId(filename);
+    const isNote = filename.endsWith('.note');
+    const folderId = isNote ? await this._getNotesFolderId() : await this._getAppFolderId();
+    const fileId = await this._findFileId(filename, folderId);
+
     const contentString = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-    const mimeType = filename.endsWith('.json') || filename.endsWith('.book') ? 'application/json' : 'text/plain';
+    const mimeType = filename.endsWith('.json') || filename.endsWith('.book') || filename.endsWith('.note') ? 'application/json' : 'text/plain';
 
     const boundary = '-------314159265358979323846';
     const delimiter = "\r\n--" + boundary + "\r\n";
@@ -225,25 +231,36 @@ export class GoogleSyncService {
       delimiter + 'Content-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(metadata) +
       delimiter + `Content-Type: ${mimeType}\r\n\r\n` + contentString + close_delim;
 
-    await this.gapi.client.request({
+    const response = await this.gapi.client.request({
       path, method,
-      params: { uploadType: 'multipart' },
+      params: { uploadType: 'multipart', fields: 'id,etag' }, // Ask for etag in response
       headers: { 'Content-Type': 'multipart/related; boundary="' + boundary + '"' },
       body: multipartRequestBody,
     });
+    
+    return response.result.etag; // Return the new ETag
   }
 
+  // --- REVISED: Returns content and ETag ---
   async downloadFileContent(fileId) {
     if (!fileId) return null;
-    const response = await this.gapi.client.drive.files.get({ fileId, alt: 'media' });
-    return response.body;
+    
+    const metaResponse = await this.gapi.client.drive.files.get({ fileId: fileId, fields: 'etag' });
+    const etag = metaResponse.result.etag;
+
+    const contentResponse = await this.gapi.client.drive.files.get({ fileId, alt: 'media' });
+    
+    return { content: contentResponse.body, etag: etag };
   }
 
+  // --- REVISED: Lists files from both the main folder and the notes subfolder ---
   async listFiles() {
-    const folderId = await this._getAppFolderId();
+    const appFolderId = await this._getAppFolderId();
+    const notesFolderId = await this._getNotesFolderId(); // Ensure it exists
+    
     const response = await this.gapi.client.drive.files.list({
-      q: `'${folderId}' in parents and trashed=false`,
-      fields: 'files(id, name, modifiedTime)',
+      q: `'${appFolderId}' in parents or '${notesFolderId}' in parents and trashed=false`,
+      fields: 'files(id, name, modifiedTime, etag)',
     });
     return response.result.files || [];
   }
@@ -256,11 +273,23 @@ export class GoogleSyncService {
     console.log(`Deleted file with ID "${fileId}" from Google Drive.`);
   }
 
+  // NEW: Deletes a file by name, useful for background sync
+  async deleteFileByName(filename) {
+    const fileMeta = await this.getFileMetadata(filename);
+    if (fileMeta && fileMeta.id) {
+        await this.deleteFileById(fileMeta.id);
+        return true;
+    }
+    console.warn(`Could not find cloud file "${filename}" to delete.`);
+    return false;
+  }
+
   async deleteAllFilesAndFolder() {
     const folderId = await this._getAppFolderId();
     if (folderId) {
       await this.gapi.client.drive.files.delete({ fileId: folderId });
       this.appFolderId = null;
+      this.notesFolderId = null;
     }
   }
 }

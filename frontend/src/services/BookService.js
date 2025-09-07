@@ -1,30 +1,156 @@
 import { debounce } from '../utils/debounce.js';
 
-// --- Default content now uses the NEW hierarchical structure ---
 const DEFAULT_USER_MANUAL = {
   metadata: { title: "User Manual" },
-  chapters: [{
-    id: "ch_manual_1",
-    title: "Welcome to the Editor",
-    content_json: {
-      type: "doc",
-      content: [
-        { type: "paragraph", content: [{ type: "text", text: "This is your user manual. It is also a fully functional document you can explore." }] }
+  chapters: [
+    {
+      id: "ch_manual_1",
+      title: "Welcome to Your Editor",
+      content_json: {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "Welcome! This manual is a fully functional document. You can navigate it, see how it's structured, and get a feel for the writing experience. The editor is designed to be a clean, focused space for writers and researchers." }] },
+          { type: "paragraph", content: [{ type: "text", text: "Let's explore the key areas of the application." }] }
+        ]
+      },
+      sections: [
+        {
+          id: "sec_manual_1_1",
+          title: "The Three Panes of Your Workspace",
+          content_json: {
+            type: "doc",
+            content: [
+              { type: "paragraph", content: [{ type: "text", text: "The interface is divided into three main areas:" }] },
+              { type: "paragraph", content: [{ type: "text", text: "1. ", marks: [{ type: "bold" }] }, { type: "text", text: "The Navigator (Left):" , marks: [{ type: "bold" }] }, { type: "text", text: " Opened with the hamburger icon (☰), this is where you manage your documents, chapters, and sections." }] },
+              { type: "paragraph", content: [{ type: "text", text: "2. ", marks: [{ type: "bold" }] }, { type: "text", text: "The Editor (Center):" , marks: [{ type: "bold" }] }, { type: "text", text: " The main text area where you are reading and writing now." }] },
+              { type: "paragraph", content: [{ type: "text", text: "3. ", marks: [{ type: "bold" }] }, { type: "text", text: "The Drawers (Right):" , marks: [{ type: "bold" }] }, { type: "text", text: " Home to the AI Assistant and your Notebook, toggled by the icons in the top-right." }] }
+            ]
+          }
+        },
+        {
+          id: "sec_manual_1_2",
+          title: "Writing and Formatting",
+          content_json: {
+            type: "doc",
+            content: [
+              { type: "paragraph", content: [{ type: "text", text: "Simply start typing in the center pane. To format text, select it with your mouse. A bubble menu will appear, allowing you to apply " }, { type: "text", text: "bold", marks: [{ type: "bold" }] }, { type: "text", text: ", " }, { type: "text", text: "italic", marks: [{ type: "italic" }] }, { type: "text", text: ", and heading styles (H2 and H3)." }] },
+              { type: "paragraph", content: [{ type: "text", text: "Your work is saved automatically in the background. You can also manually save at any time using the keyboard shortcut Ctrl+S (or Cmd+S on Mac)." }] }
+            ]
+          }
+        }
       ]
     },
-    sections: [
-      {
-        id: crypto.randomUUID(),
-        title: "The Navigator",
-        content_json: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Use the hamburger menu icon (☰) in the top-left to open the navigator." }] }] }
+    {
+      id: "ch_manual_2",
+      title: "Organizing Your Work",
+      content_json: {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "The Navigator is the heart of your project's structure. It has two primary views: the Library and the Contents." }] }
+        ]
       },
-      {
-        id: crypto.randomUUID(),
-        title: "AI Assistant & Notebook",
-        content_json: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Use the icons in the top-right to open the AI Assistant and your personal Notebook." }] }] }
-      }
-    ]
-  }]
+      sections: [
+        {
+          id: "sec_manual_2_1",
+          title: "The Document Library",
+          content_json: {
+            type: "doc",
+            content: [
+              { type: "paragraph", content: [{ type: "text", text: "When you first open the Navigator, you'll see your Document Library. From here, you can create a new document, switch between existing ones, delete a document, or set a default document to open on startup using the pin icon." }] }
+            ]
+          }
+        },
+        {
+          id: "sec_manual_2_2",
+          title: "Book Contents and Structure",
+          content_json: {
+            type: "doc",
+            content: [
+              { type: "paragraph", content: [{ type: "text", text: "Once you select a document, the Navigator switches to show its contents. This manual, for example, is structured into chapters (like this one) and sections (like this specific one). You can create new chapters and sections using the '+' buttons. This structure is automatically used when exporting your work." }] }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      id: "ch_manual_3",
+      title: "AI Tools and Assistance",
+      content_json: {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "The editor integrates powerful AI tools to assist your writing process. You will need to add your own API key in the Settings panel to enable these features." }] }
+        ]
+      },
+      sections: [
+        {
+          id: "sec_manual_3_1",
+          title: "The Bubble Menu: Analyze & Rewrite",
+          content_json: {
+            type: "doc",
+            content: [
+              { type: "paragraph", content: [{ type: "text", text: "When you select text, the bubble menu appears with two AI actions:" }] },
+              { type: "paragraph", content: [{ type: "text", text: "Analyze:", marks: [{ type: "bold" }] }, { type: "text", text: " This sends the selected text to the AI for a critique. The response appears in the AI Assistant drawer, offering you questions and insights to improve your work." }] },
+              { type: "paragraph", content: [{ type: "text", text: "Rewrite:", marks: [{ type: "bold" }] }, { type: "text", text: " This asks the AI to proofread and correct the selected text. The suggestion appears in the AI Assistant, where you can accept or reject the change." }] }
+            ]
+          }
+        },
+        {
+          id: "sec_manual_3_2",
+          title: "The AI Workbench",
+          content_json: {
+            type: "doc",
+            content: [
+              { type: "paragraph", content: [{ type: "text", text: "For more complex tasks, press Ctrl+K (or Cmd+K) to open the AI Workbench. This is a powerful, general-purpose tool. You can ask it to summarize a selection, generate ideas, suggest alternative titles, check for inconsistencies across the entire document, and much more. The AI's response will be added to the Assistant drawer." }] }
+            ]
+          }
+        },
+        {
+          id: "sec_manual_3_3",
+          title: "The Notebook and Auto-Tagging",
+          content_json: {
+            type: "doc",
+            content: [
+              { type: "paragraph", content: [{ type: "text", text: "The Notebook (page icon in the top-right) is your personal scratchpad. You can jot down ideas, save snippets, and keep research notes. If you enable Auto-Tagging in the AI Settings, the system will periodically read your untagged notes and suggest relevant conceptual tags to help you organize your thoughts." }] }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      id: "ch_manual_4",
+      title: "Data and Portability",
+      content_json: {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "Your data belongs to you. The application is built to be reliable offline and to make your work portable." }] }
+        ]
+      },
+      sections: [
+        {
+          id: "sec_manual_4_1",
+          title: "Syncing, Backups, and Conflicts",
+          content_json: {
+            type: "doc",
+            content: [
+              { type: "paragraph", content: [{ type: "text", text: "All your work is saved in your browser (local-first). If you sign in with a Google account, your documents and notes will sync automatically to a private folder in your Google Drive." }] },
+              { type: "paragraph", content: [{ type: "text", text: "The sync system includes conflict detection.", marks: [{ type: "bold" }] }, { type: "text", text: " If you edit the same file on two devices without syncing, your work is never lost. The app will save your local changes as a new file labeled \"(conflict)\" and download the cloud version. You can then merge any changes manually." }] },
+              { type: "paragraph", content: [{ type: "text", text: "You can also perform a full backup of all your data to a local JSON file via the Settings panel." }] }
+            ]
+          }
+        },
+        {
+          id: "sec_manual_4_2",
+          title: "Exporting Your Work",
+          content_json: {
+            type: "doc",
+            content: [
+              { type: "paragraph", content: [{ type: "text", text: "When you're ready to share or publish, go to the Settings panel (gear icon). In the Data Management tab, you can export any of your documents to standard formats, including LaTeX (.tex) and Microsoft Word (.docx)." }] }
+            ]
+          }
+        }
+      ]
+    }
+  ]
 };
 
 const DEFAULT_PROMPTS = {

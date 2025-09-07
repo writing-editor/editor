@@ -7,7 +7,7 @@ export class StorageService {
     this.dbName = dbName;
     this.version = version;
     this.db = null;
-    this.controller = null; // Will be set by App.js
+    this.controller = null;
   }
 
   setController(controller) {
@@ -86,8 +86,6 @@ export class StorageService {
       request.onerror = () => reject(request.error);
     });
   }
-
-  // REMOVED: The misplaced Google Drive deleteFile method was here.
 
   async getAllFilesBySuffix(suffix) {
     return new Promise((resolve, reject) => {

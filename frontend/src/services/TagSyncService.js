@@ -19,9 +19,12 @@ export class TagSyncService {
             return;
         }
         this.isSyncing = true;
+        console.log("Starting auto-tagging process...");
 
         try {
-            const allNotes = await this.storageService.getFile('notes.json') || [];
+            // --- CHANGE 1: Fetch all individual .note files instead of notes.json ---
+            const noteFiles = await this.storageService.getAllFilesBySuffix('.note') || [];
+            const allNotes = noteFiles.map(file => file.content); // Extract the note object from the file content
             const untaggedNotes = allNotes.filter(note => !note.tags || note.tags.length === 0);
 
             if (untaggedNotes.length === 0) {
@@ -29,10 +32,9 @@ export class TagSyncService {
                 return;
             }
 
-            console.log(`Found ${untaggedNotes.length} untagged notes. Processing in batches.`);
+            console.log(`Found ${untaggedNotes.length} untagged notes. Processing...`);
             const untaggedNotesPayload = untaggedNotes.map(n => ({ id: n.id, content: n.plain_text }));
-
-            let autoTagPrompt = await this.storageService.getFile('AUTOTAG.txt');
+            const autoTagPrompt = await this.storageService.getFile('AUTOTAG.txt');
 
             const payload = {
                 notes: untaggedNotesPayload,
@@ -43,19 +45,22 @@ export class TagSyncService {
 
             if (results && results.length > 0) {
                 const tagsMap = new Map(results.map(item => [item.id, item.tags]));
-                let updated = false;
+                const savePromises = [];
 
+                // --- CHANGE 2: Iterate and save notes back to their individual files ---
                 allNotes.forEach(note => {
                     if (tagsMap.has(note.id)) {
                         note.tags = tagsMap.get(note.id);
-                        updated = true;
+                        // Instead of just marking an update, we now save the individual file.
+                        // We collect these save operations into an array of promises.
+                        savePromises.push(this.storageService.saveFile(`${note.id}.note`, note));
                     }
                 });
 
-                if (updated) {
-                    await this.storageService.saveFile('notes.json', allNotes);
-                    this.controller.publish('tags:updated', {});
-                    console.log("Successfully applied new tags.");
+                if (savePromises.length > 0) {
+                    await Promise.all(savePromises); // Execute all save operations concurrently
+                    this.controller.publish('tags:updated', {}); // Notify the UI (NotebookPane) to refresh
+                    console.log(`Successfully applied new tags to ${savePromises.length} notes.`);
                 }
             }
         } catch (error) {

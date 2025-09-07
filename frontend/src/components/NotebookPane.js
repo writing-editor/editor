@@ -32,7 +32,6 @@ export class NotebookPane {
         this.isEditorVisible = false;
         this.editingNoteId = null;
         this.mainEditorInstance = null;
-        this.activeFilterTag = null;
         this.activeFilterTags = new Set();
 
         this.noteIndex = new FlexSearch.Document({
@@ -51,14 +50,13 @@ export class NotebookPane {
         this.controller.runAutoTagging();
     }
 
-    async fetchAllNotes() {
-        const notes = await this.storageService.getFile('notes.json');
-        this.allNotes = notes || [];
+   async fetchAllNotes() {
+        const noteFiles = await this.storageService.getAllFilesBySuffix('.note');
+        this.allNotes = noteFiles.map(file => file.content);
         this.buildNoteIndex();
         this.renderUI();
     }
 
-    // Method to build the local search index
     buildNoteIndex() {
         this.noteIndex.clear();
         this.allNotes.forEach(note => {
@@ -74,18 +72,15 @@ export class NotebookPane {
         // --- 1. Filter Logic ---
         let notesToDisplay;
         if (this.noteSearchResults !== null) {
-            notesToDisplay = this.noteSearchResults; // Use search results if they exist
+            notesToDisplay = this.noteSearchResults;
         } else {
-            notesToDisplay = this.allNotes; // Otherwise, use all notes
+            notesToDisplay = this.allNotes;
         }
-
-        // Apply multi-tag "OR" filter if any tags are active
         if (this.activeFilterTags.size > 0) {
             notesToDisplay = notesToDisplay.filter(note =>
                 note.tags && note.tags.some(tag => this.activeFilterTags.has(tag))
             );
         }
-
         const sortedNotes = [...notesToDisplay].sort((a, b) => {
             if (a.pinned && !b.pinned) return -1;
             if (!a.pinned && b.pinned) return 1;
@@ -256,33 +251,34 @@ export class NotebookPane {
         const indicatorId = this.controller.showIndicator('Saving Note...');
         try {
             const plainText = tiptapJsonToText(contentJson);
-            let noteTitle = plainText.split(/\s+/).slice(0, 5).join(" ");
-            if (plainText.split(/\s+/).length > 5) noteTitle += "...";
-
-            // Manual tags are preserved. Auto-tagger will skip notes that have tags.
-            const manualTags = [...new Set((plainText.match(/#(\w+)/g) || []).map(tag => tag.substring(1).toLowerCase()))];
+            let noteToSave;
 
             if (this.editingNoteId) {
-                const noteIndex = this.allNotes.findIndex(n => n.id === this.editingNoteId);
-                if (noteIndex > -1) {
-                    this.allNotes[noteIndex].content_json = contentJson;
-                    this.allNotes[noteIndex].plain_text = plainText;
-                    this.allNotes[noteIndex].title = noteTitle;
-                    // Only update tags if they were manually changed.
-                    if (manualTags.length > 0) this.allNotes[noteIndex].tags = manualTags;
-                }
+                noteToSave = this.allNotes.find(n => n.id === this.editingNoteId);
+                if (!noteToSave) throw new Error("Could not find note to update.");
             } else {
-                const newNote = { id: `note_${Date.now()}`, type: "note", title: noteTitle, pinned: false, content_json: contentJson, plain_text: plainText, tags: manualTags };
-                this.allNotes.unshift(newNote);
+                noteToSave = { id: `note_${Date.now()}`, type: "note", pinned: false };
+            }
+            let noteTitle = plainText.split(/\s+/).slice(0, 5).join(" ");
+            if (plainText.split(/\s+/).length > 5) noteTitle += "...";
+            const manualTags = [...new Set((plainText.match(/#(\w+)/g) || []).map(tag => tag.substring(1).toLowerCase()))];
+            
+            noteToSave.content_json = contentJson;
+            noteToSave.plain_text = plainText;
+            noteToSave.title = noteTitle;
+            if (manualTags.length > 0 || !this.editingNoteId) {
+                noteToSave.tags = manualTags; 
             }
 
-            await this.storageService.saveFile('notes.json', this.allNotes);
+            // Save the single file
+            await this.storageService.saveFile(`${noteToSave.id}.note`, noteToSave);
+            
             this.controller.showIndicator('Note Saved!', { duration: 2000 });
 
             this.editingNoteId = null;
             this.isEditorVisible = false;
-            await this.fetchAllNotes(); // Use await here
-            this.controller.runAutoTagging(); // Trigger auto-tagger after save
+            await this.fetchAllNotes();
+            this.controller.runAutoTagging();
         } finally {
             this.controller.hideIndicator(indicatorId);
         }
@@ -291,14 +287,13 @@ export class NotebookPane {
     async deleteNote(noteId) {
         const indicatorId = this.controller.showIndicator('Deleting Note...');
         try {
-            this.allNotes = this.allNotes.filter(note => note.id !== noteId);
-            await this.storageService.saveFile('notes.json', this.allNotes);
+            await this.storageService.deleteFile(`${noteId}.note`);
             this.controller.showIndicator('Note Deleted', { duration: 2000 });
             if (this.editingNoteId === noteId) {
                 this.editingNoteId = null;
                 this.isEditorVisible = false;
             }
-            await this.fetchAllNotes(); // Use await here
+            await this.fetchAllNotes();
         } finally {
             this.controller.hideIndicator(indicatorId);
         }
@@ -308,12 +303,11 @@ export class NotebookPane {
         const note = this.allNotes.find(n => n.id === noteId);
         if (note) {
             note.pinned = !note.pinned;
-            await this.storageService.saveFile('notes.json', this.allNotes);
+            await this.storageService.saveFile(`${noteId}.note`, note);
             this.renderUI();
         }
     }
 
-    // This is now the first stage (local search)
     performLocalSearch(query) {
         const trimmedQuery = query.trim();
         if (!trimmedQuery) {
@@ -322,12 +316,11 @@ export class NotebookPane {
             return;
         }
         const results = this.noteIndex.search(trimmedQuery, { enrich: true });
-        // Flatten and get the full document from the stored results
         const uniqueDocs = new Map();
         results.forEach(fieldResult => {
             fieldResult.result.forEach(doc => {
                 if (!uniqueDocs.has(doc.id)) {
-                    uniqueDocs.set(doc.id, doc.doc.doc); // Access the stored 'doc' object
+                    uniqueDocs.set(doc.id, doc.doc.doc); 
                 }
             });
         });
@@ -337,7 +330,6 @@ export class NotebookPane {
         this.renderUI();
     }
 
-    // This is the second stage (AI search)
     async performAiSearch() {
         const trimmedQuery = this.searchQuery.trim();
         if (!trimmedQuery) return;
