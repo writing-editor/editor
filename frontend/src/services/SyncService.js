@@ -36,58 +36,54 @@ export class SyncService {
     }
 
     this.controller.setSyncState('syncing');
-    const etagKey = `cloud_etag_${fileId}`;
+    const modifiedKey = `cloud_modified_${fileId}`;
     try {
       if (action === 'deleted') {
         await this.googleSyncService.deleteFileByName(fileId);
-        localStorage.removeItem(etagKey);
+        localStorage.removeItem(modifiedKey);
         console.log(`Successfully synced deletion for "${fileId}" to Google Drive.`);
         return;
       }
       
-      // Handle saved files with conflict detection
       const localContent = await this.storageService.getFile(fileId);
       if (localContent === null) {
-        // File was deleted locally before save sync could run, treat as deletion
         await this.googleSyncService.deleteFileByName(fileId);
-        localStorage.removeItem(etagKey);
+        localStorage.removeItem(modifiedKey);
         return;
       }
 
-      const lastKnownETag = localStorage.getItem(etagKey);
       const cloudMeta = await this.googleSyncService.getFileMetadata(fileId);
-
-      // --- CONFLICT DETECTION LOGIC ---
-      if (cloudMeta && lastKnownETag && cloudMeta.etag !== lastKnownETag) {
-        console.warn(`CONFLICT DETECTED for "${fileId}"!`);
-        // 1. Create a conflict filename
+      const localMeta = (await this.storageService.getAllFiles()).find(f => f.id === fileId);
+      const localModified = localMeta ? localMeta.lastModified : 0;
+      const cloudModified = cloudMeta ? new Date(cloudMeta.modifiedTime).getTime() : 0;
+      
+      if (cloudMeta && cloudModified > localModified) {
+        console.warn(`CONFLICT DETECTED for "${fileId}"! Cloud version is newer.`);
         const extension = fileId.substring(fileId.lastIndexOf('.'));
         const baseName = fileId.substring(0, fileId.lastIndexOf('.'));
         const dateStamp = new Date().toISOString().split('T')[0];
         const conflictFilename = `${baseName} (conflict ${dateStamp})${extension}`;
         
-        // 2. Upload local changes as a new "conflict" file
         await this.googleSyncService.uploadFile(conflictFilename, localContent);
         this.controller.showIndicator(
             `Conflict: Your local changes for ${baseName} were saved to a new file.`, 
             { isError: true, duration: 10000 }
         );
         
-        // 3. Resolve the state by downloading the "winning" cloud version to the original file
-        const { content: cloudContent, etag: newEtag } = await this.googleSyncService.downloadFileContent(cloudMeta.id);
+        const { content: cloudContent, modifiedTime: cloudTime } = await this.googleSyncService.downloadFileContent(cloudMeta.id);
         let parsedCloudContent = cloudContent;
         if (fileId.endsWith('.json') || fileId.endsWith('.book') || fileId.endsWith('.note')) {
             try { parsedCloudContent = JSON.parse(cloudContent); }
             catch (e) { console.error(`Failed to parse conflicting cloud file ${fileId}`, e); return; }
         }
         await this.storageService.saveFile(fileId, parsedCloudContent);
-        localStorage.setItem(etagKey, newEtag);
+        localStorage.setItem(modifiedKey, cloudTime);
 
       } else {
         // --- NO CONFLICT: Safe to upload ---
         console.log(`Syncing saved file "${fileId}" to Google Drive.`);
-        const newEtag = await this.googleSyncService.uploadFile(fileId, localContent);
-        localStorage.setItem(etagKey, newEtag);
+        const newModifiedTime = await this.googleSyncService.uploadFile(fileId, localContent);
+        localStorage.setItem(modifiedKey, newModifiedTime);
       }
       
     } catch (error) {
@@ -97,7 +93,6 @@ export class SyncService {
       this.controller.setSyncState('signed-in');
     }
   }
-
 
   async exportToLocalFile() {
     const indicatorId = this.controller.showIndicator('Exporting data...');
@@ -198,17 +193,14 @@ export class SyncService {
           await this.storageService.saveFile(item.id, item.content);
         }
       } else if (item.id.endsWith('.note')) {
-        // Atomized notes can just be saved directly
         await this.storageService.saveFile(item.id, item.content);
       } else if (item.id === 'notes.json') {
-        // Handle legacy backup files that have notes.json
         if (Array.isArray(item.content)) {
             for (const note of item.content) {
                 await this.storageService.saveFile(`${note.id}.note`, note);
             }
         }
       } else {
-        // For all other files (settings, prompts) just overwrite
         await this.storageService.saveFile(item.id, item.content);
       }
     }
@@ -255,7 +247,7 @@ export class SyncService {
     }
   }
 
-  // --- REVISED: Now stores ETags on download ---
+  // --- REVISED: Now stores modifiedTime on download ---
   async performInitialSync() {
     const isSignedIn = await this.googleSyncService.checkSignInStatus();
     if (!isSignedIn) return;
@@ -276,15 +268,14 @@ export class SyncService {
 
         if (!localFile || cloudModified > localFile.lastModified) {
           console.log(`Sync: Downloading ${localFile ? 'updated' : 'new'} file "${name}"`);
-          const { content, etag } = await this.googleSyncService.downloadFileContent(cloudFile.id);
+          const { content, modifiedTime } = await this.googleSyncService.downloadFileContent(cloudFile.id);
           let parsedContent = content;
           if (name.endsWith('.json') || name.endsWith('.book') || name.endsWith('.note')) {
               try { parsedContent = JSON.parse(content); }
               catch (e) { console.error(`Failed to parse JSON for ${name}`, e); continue; }
           }
           await this.storageService.saveFile(name, parsedContent);
-          // *** CRITICAL: Store the ETag after a successful download ***
-          localStorage.setItem(`cloud_etag_${name}`, etag);
+          localStorage.setItem(`cloud_modified_${name}`, modifiedTime);
         }
       }
 
@@ -293,9 +284,8 @@ export class SyncService {
         
         if (!cloudFilesMap.has(id)) {
           console.log(`Sync: Uploading new local file "${id}"`);
-          const newEtag = await this.googleSyncService.uploadFile(id, localFile.content);
-          // *** CRITICAL: Store the ETag after a successful upload ***
-          localStorage.setItem(`cloud_etag_${id}`, newEtag);
+          const newModifiedTime = await this.googleSyncService.uploadFile(id, localFile.content);
+          localStorage.setItem(`cloud_modified_${id}`, newModifiedTime);
         }
       }
 

@@ -16,12 +16,12 @@ export class GoogleSyncService {
 
     this.APP_FOLDER_NAME = 'Editor App';
     this.appFolderId = null;
-    this.notesFolderId = null; 
+    this.notesFolderId = null;
   }
 
   initialize() {
     if (this.initializationPromise) return this.initializationPromise;
-    
+
     this.initializationPromise = new Promise(async (resolve, reject) => {
       try {
         this.gapi = await this.loadGapiClient();
@@ -33,9 +33,9 @@ export class GoogleSyncService {
           scope: this.SCOPES,
           callback: (tokenResponse) => {
             if (tokenResponse && tokenResponse.access_token) {
-                console.log("Token received, user is signed in.");
+              console.log("Token received, user is signed in.");
             } else {
-                console.log("Token response was empty, user is not signed in.");
+              console.log("Token response was empty, user is not signed in.");
             }
           },
         });
@@ -76,7 +76,7 @@ export class GoogleSyncService {
       if (!this.tokenClient) return reject("Token client not initialized.");
       this.tokenClient.requestAccessToken({ prompt: 'none' });
       setTimeout(() => {
-          resolve(!!this.gapi.client.getToken());
+        resolve(!!this.gapi.client.getToken());
       }, 1000);
     });
   }
@@ -84,22 +84,22 @@ export class GoogleSyncService {
   async authorize() {
     await this.initialize();
     return new Promise((resolve, reject) => {
-        if (this.gapi.client.getToken()) {
-          resolve(true);
-          return;
-        }
-        this.tokenClient.requestAccessToken({ prompt: 'select_account' });
-        resolve(true); 
+      if (this.gapi.client.getToken()) {
+        resolve(true);
+        return;
+      }
+      this.tokenClient.requestAccessToken({ prompt: 'select_account' });
+      resolve(true);
     });
   }
 
   async signIn() {
     await this.authorize();
     return new Promise(resolve => {
-        setTimeout(async () => {
-             const user = await this.getUserProfile();
-             resolve(user);
-        }, 1500);
+      setTimeout(async () => {
+        const user = await this.getUserProfile();
+        resolve(user);
+      }, 1500);
     });
   }
 
@@ -136,6 +136,7 @@ export class GoogleSyncService {
 
   async _getAppFolderId() {
     if (this.appFolderId) return this.appFolderId;
+
     const response = await this.gapi.client.drive.files.list({
       q: `mimeType='application/vnd.google-apps.folder' and name='${this.APP_FOLDER_NAME}' and trashed=false`,
       fields: 'files(id, name)',
@@ -157,16 +158,16 @@ export class GoogleSyncService {
       return this.appFolderId;
     }
   }
-  
+
   async _getNotesFolderId() {
     if (this.notesFolderId) return this.notesFolderId;
-    
+
     const parentFolderId = await this._getAppFolderId();
     const response = await this.gapi.client.drive.files.list({
       q: `'${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and name='notes' and trashed=false`,
       fields: 'files(id, name)',
     });
-    
+
     if (response.result.files.length > 0) {
       this.notesFolderId = response.result.files[0].id;
       return this.notesFolderId;
@@ -193,8 +194,8 @@ export class GoogleSyncService {
   async getFileMetadata(filename) {
     const parentFolderId = filename.endsWith('.note') ? await this._getNotesFolderId() : await this._getAppFolderId();
     const response = await this.gapi.client.drive.files.list({
-        q: `'${parentFolderId}' in parents and name='${filename}' and trashed=false`,
-        fields: 'files(id, name, etag, modifiedTime)',
+      q: `'${parentFolderId}' in parents and name='${filename}' and trashed=false`,
+      fields: 'files(id, name, modifiedTime)',
     });
     return response.result.files.length > 0 ? response.result.files[0] : null;
   }
@@ -226,33 +227,48 @@ export class GoogleSyncService {
       delimiter + 'Content-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(metadata) +
       delimiter + `Content-Type: ${mimeType}\r\n\r\n` + contentString + close_delim;
 
-    const response = await this.gapi.client.request({
+    // *** FIX STEP 1: Upload the file and ONLY ask for the 'id' ***
+    const uploadResponse = await this.gapi.client.request({
       path, method,
-      params: { uploadType: 'multipart', fields: 'id,etag' },
+      params: { uploadType: 'multipart', fields: 'id' },
       headers: { 'Content-Type': 'multipart/related; boundary="' + boundary + '"' },
       body: multipartRequestBody,
     });
-    
-    return response.result.etag;
+
+    const newFileId = uploadResponse.result.id;
+
+    // *** FIX STEP 2: Use the ID to make a VALID metadata request ***
+    const metaResponse = await this.gapi.client.drive.files.get({
+      fileId: newFileId,
+      fields: 'id, modifiedTime' // Requesting 'id' alongside 'modifiedTime' is a valid call
+    });
+
+    return metaResponse.result.modifiedTime;
   }
 
   async downloadFileContent(fileId) {
     if (!fileId) return null;
-    
-    const metaResponse = await this.gapi.client.drive.files.get({ fileId: fileId, fields: 'etag' });
-    const etag = metaResponse.result.etag;
+
+    // *** FIX: Correct the metadata request to be valid ***
+    const metaResponse = await this.gapi.client.drive.files.get({
+      fileId: fileId,
+      fields: 'id, modifiedTime' // Request 'id' and 'modifiedTime'
+    });
+    const modifiedTime = metaResponse.result.modifiedTime;
 
     const contentResponse = await this.gapi.client.drive.files.get({ fileId, alt: 'media' });
-    
-    return { content: contentResponse.body, etag: etag };
+
+    return { content: contentResponse.body, modifiedTime: modifiedTime };
   }
 
   async listFiles() {
     const appFolderId = await this._getAppFolderId();
     const notesFolderId = await this._getNotesFolderId();
-    
+
+    const query = `('${appFolderId}' in parents or '${notesFolderId}' in parents) and trashed=false and mimeType != 'application/vnd.google-apps.folder'`;
+
     const response = await this.gapi.client.drive.files.list({
-      q: `'${appFolderId}' in parents or '${notesFolderId}' in parents and trashed=false`,
+      q: query,
       fields: 'files(id, name, modifiedTime)',
     });
     return response.result.files || [];
@@ -269,8 +285,8 @@ export class GoogleSyncService {
   async deleteFileByName(filename) {
     const fileMeta = await this.getFileMetadata(filename);
     if (fileMeta && fileMeta.id) {
-        await this.deleteFileById(fileMeta.id);
-        return true;
+      await this.deleteFileById(fileMeta.id);
+      return true;
     }
     console.warn(`Could not find cloud file "${filename}" to delete.`);
     return false;
