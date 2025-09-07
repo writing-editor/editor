@@ -186,6 +186,20 @@ export class GoogleSyncService {
     return response.result.files.length > 0 ? response.result.files[0].id : null;
   }
 
+  /**
+   * Deletes a file from the app's Google Drive folder by its filename.
+   * This is used for background sync where we only have the filename.
+   * @param {string} filename The name of the file to delete.
+   */
+  async deleteFile(filename) {
+    const fileId = await this._findFileId(filename);
+    if (fileId) {
+      await this.deleteFileById(fileId);
+    } else {
+      console.log(`File "${filename}" not found in Google Drive, no cloud deletion needed.`);
+    }
+  }
+
   async uploadFile(filename, content) {
     const folderId = await this._getAppFolderId();
     const fileId = await this._findFileId(filename);
