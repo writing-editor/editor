@@ -7,7 +7,8 @@ export class RewriteAgent extends BaseAgent {
         const { user_request, context } = payload;
         
         // NEW: The agent now fetches its own prompt template.
-        const prompt_template = await this.controller.storageService.getFile('REWRITE.txt');
+        const promptFile = await this.controller.storageService.getFile('REWRITE.txt');
+        const prompt_template = promptFile ? promptFile.content : null;
 
         if (!prompt_template) {
             console.error("Rewrite Error: Prompt template 'REWRITE.txt' could not be loaded.");

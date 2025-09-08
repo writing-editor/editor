@@ -21,9 +21,9 @@ const DEFAULT_USER_MANUAL = {
             type: "doc",
             content: [
               { type: "paragraph", content: [{ type: "text", text: "The interface is divided into three main areas:" }] },
-              { type: "paragraph", content: [{ type: "text", text: "1. ", marks: [{ type: "bold" }] }, { type: "text", text: "The Navigator (Left):" , marks: [{ type: "bold" }] }, { type: "text", text: " Opened with the hamburger icon (☰), this is where you manage your documents, chapters, and sections." }] },
-              { type: "paragraph", content: [{ type: "text", text: "2. ", marks: [{ type: "bold" }] }, { type: "text", text: "The Editor (Center):" , marks: [{ type: "bold" }] }, { type: "text", text: " The main text area where you are reading and writing now." }] },
-              { type: "paragraph", content: [{ type: "text", text: "3. ", marks: [{ type: "bold" }] }, { type: "text", text: "The Drawers (Right):" , marks: [{ type: "bold" }] }, { type: "text", text: " Home to the AI Assistant and your Notebook, toggled by the icons in the top-right." }] }
+              { type: "paragraph", content: [{ type: "text", text: "1. ", marks: [{ type: "bold" }] }, { type: "text", text: "The Navigator (Left):", marks: [{ type: "bold" }] }, { type: "text", text: " Opened with the hamburger icon (☰), this is where you manage your documents, chapters, and sections." }] },
+              { type: "paragraph", content: [{ type: "text", text: "2. ", marks: [{ type: "bold" }] }, { type: "text", text: "The Editor (Center):", marks: [{ type: "bold" }] }, { type: "text", text: " The main text area where you are reading and writing now." }] },
+              { type: "paragraph", content: [{ type: "text", text: "3. ", marks: [{ type: "bold" }] }, { type: "text", text: "The Drawers (Right):", marks: [{ type: "bold" }] }, { type: "text", text: " Home to the AI Assistant and your Notebook, toggled by the icons in the top-right." }] }
             ]
           }
         },
@@ -194,7 +194,8 @@ export class BookService {
     await this.checkForFirstRun(); // Check if we need to seed the database
     await this.refreshLibrary();
 
-    const pinnedBookFilename = await this.storageService.getFile('pinned.txt');
+    const pinnedBookRecord = await this.storageService.getFile('pinned.txt');
+    const pinnedBookFilename = pinnedBookRecord ? pinnedBookRecord.content : null;
     if (pinnedBookFilename) {
       // Check if the pinned book actually exists in the DB
       const bookExists = this.availableBooks.some(book => book.filename === pinnedBookFilename);
@@ -207,14 +208,14 @@ export class BookService {
       }
     } else {
       console.log("No pinned book found. Displaying library.");
-      // If no book is pinned, we simply remain in the library view.
     }
   }
 
   async checkForFirstRun() {
-    const hasRunFlag = await this.storageService.getFile('initial_setup_complete');
+    const hasRunFlagRecord = await this.storageService.getFile('initial_setup_complete');
+    const hasRunFlag = hasRunFlagRecord ? hasRunFlagRecord.content : null;
     if (hasRunFlag) {
-      return; // Not the first run
+      return;
     }
 
     console.log("Performing first-time setup: Seeding database with default content...");
@@ -233,20 +234,32 @@ export class BookService {
 
   async refreshLibrary() {
     this.navigatorView = 'library';
-    this.pinnedBook = await this.storageService.getFile('pinned.txt');
+    const pinnedBookRecord = await this.storageService.getFile('pinned.txt');
+    this.pinnedBook = pinnedBookRecord ? pinnedBookRecord.content : null;
+    
     const bookFiles = await this.storageService.getAllFilesBySuffix('.book');
-    this.availableBooks = bookFiles.map(file => ({
-      filename: file.id.replace('.book', ''),
-      title: file.content.metadata.title,
-    }));
+    this.availableBooks = bookFiles
+      .map(file => {
+        if (file && file.content && file.content.metadata && file.content.metadata.title) {
+          return {
+            filename: file.id.replace('.book', ''),
+            title: file.content.metadata.title,
+          };
+        }
+        console.warn(`Found a malformed or incomplete book record with id: ${file.id}. It will be ignored.`);
+        return null;
+      })
+      .filter(book => book !== null); 
+
     this.appController.renderNavigator(this.getStateForNavigator());
   }
 
   async switchBook(filename, viewId = null) {
     this.navigatorView = 'contents';
-    const bookFileContent = await this.storageService.getFile(`${filename}.book`);
+    const bookFileRecord = await this.storageService.getFile(`${filename}.book`);
 
-    if (bookFileContent) {
+    if (bookFileRecord && bookFileRecord.content) {
+      const bookFileContent = bookFileRecord.content;
       this.currentBook = {
         filename: filename,
         title: bookFileContent.metadata.title,
@@ -340,8 +353,8 @@ export class BookService {
   async deleteBook(filename) {
     await this.storageService.deleteFile(`${filename}.book`);
     await this.storageService.deleteFile(`${filename}.metadata.json`);
-    // Also check if this was the pinned book
-    const pinned = await this.storageService.getFile('pinned.txt');
+    const pinnedRecord = await this.storageService.getFile('pinned.txt');
+    const pinned = pinnedRecord ? pinnedRecord.content : null;
     if (pinned === filename) {
       await this.storageService.deleteFile('pinned.txt');
     }
@@ -864,8 +877,8 @@ export class BookService {
   // --- Metadata Management ---
 
   async loadMetadata(filename) {
-    const metadata = await this.storageService.getFile(`${filename}.metadata.json`);
-    this.metadata = metadata || {};
+    const metadataRecord = await this.storageService.getFile(`${filename}.metadata.json`);
+    this.metadata = metadataRecord ? metadataRecord.content : {};
   }
 
   async _saveMetadata() {

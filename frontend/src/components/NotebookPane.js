@@ -1,4 +1,3 @@
-import './NotebookPane.css';
 import { noteBlockWrapper } from '../utils/noteBlockWrapper.js';
 import { Editor as TipTapEditor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
@@ -43,6 +42,16 @@ export class NotebookPane {
         this.element.addEventListener('input', this.handleInput.bind(this));
         this.element.addEventListener('keydown', this.handleKeydown.bind(this));
         this.controller.subscribe('tags:updated', () => this.fetchAllNotes());
+        this.controller.subscribe('database:changed', (payload) => {
+            if (payload.fileId.endsWith('.note')) {
+                console.log("NotebookPane detected a change to a note file, refreshing...");
+                this.fetchAllNotes();
+            }
+        });
+        this.controller.subscribe('notebook:needs-refresh', () => {
+             console.log("NotebookPane received a refresh request from sync service.");
+             this.fetchAllNotes();
+        });
     }
 
     async initialize() {

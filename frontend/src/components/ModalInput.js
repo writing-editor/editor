@@ -1,5 +1,3 @@
-import './ModalInput.css';
-
 export class ModalInput {
   constructor() {
     this.containerEl = document.getElementById('modal-input-container');

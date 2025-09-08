@@ -1,6 +1,3 @@
-/**
- * Manages authentication and file operations with the Google Drive API.
- */
 export class GoogleSyncService {
   constructor(controller) {
     this.controller = controller;
@@ -8,6 +5,7 @@ export class GoogleSyncService {
     this.gapi = null;
     this.gis = null;
     this.initializationPromise = null;
+    this.tokenResolver = null;
 
     this.API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
     this.CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -31,12 +29,19 @@ export class GoogleSyncService {
         this.tokenClient = this.gis.initTokenClient({
           client_id: this.CLIENT_ID,
           scope: this.SCOPES,
+          // --- FIX: A single, robust callback for all token responses ---
           callback: (tokenResponse) => {
             if (tokenResponse && tokenResponse.access_token) {
-              console.log("Token received, user is signed in.");
+              // This is the crucial step that was missing.
+              // Explicitly set the token for the gapi client.
+              this.gapi.client.setToken(tokenResponse);
+              if (this.tokenResolver) this.tokenResolver.resolve(tokenResponse);
             } else {
-              console.log("Token response was empty, user is not signed in.");
+              // Handle errors or empty responses
+              const error = new Error(tokenResponse?.error_description || 'Sign-in failed or was cancelled.');
+              if (this.tokenResolver) this.tokenResolver.reject(error);
             }
+            this.tokenResolver = null;
           },
         });
         console.log("Google Sync Service Initialized.");
@@ -72,36 +77,72 @@ export class GoogleSyncService {
   }
 
   async trySilentAuth() {
-    return new Promise((resolve, reject) => {
-      if (!this.tokenClient) return reject("Token client not initialized.");
-      this.tokenClient.requestAccessToken({ prompt: 'none' });
-      setTimeout(() => {
-        resolve(!!this.gapi.client.getToken());
-      }, 1000);
+    const token = gapi.client.getToken();
+    if (token) {
+      return true;
+    }
+
+    return new Promise((resolve) => {
+      this.tokenClient.callback = (resp) => {
+        if (resp && resp.access_token) {
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      };
+      this.tokenClient.requestAccessToken({
+        prompt: "",
+      });
     });
   }
 
-  async authorize() {
-    await this.initialize();
-    return new Promise((resolve, reject) => {
-      if (this.gapi.client.getToken()) {
-        resolve(true);
-        return;
-      }
-      this.tokenClient.requestAccessToken({ prompt: 'select_account' });
-      resolve(true);
-    });
-  }
+
 
   async signIn() {
-    await this.authorize();
-    return new Promise(resolve => {
-      setTimeout(async () => {
-        const user = await this.getUserProfile();
-        resolve(user);
-      }, 1500);
+    return new Promise((resolve, reject) => {
+      this.tokenClient.callback = async (resp) => {
+        if (resp && resp.access_token) {
+          try {
+            const profile = await this.getUserProfile();
+            resolve(profile);
+          } catch (err) {
+            reject(err);
+          }
+        } else {
+          reject(new Error("Failed to sign in"));
+        }
+      };
+
+      this.tokenClient.requestAccessToken({
+        prompt: "consent",   // only first time
+        access_type: "offline", // persistent session
+      });
     });
   }
+
+  async getUserProfile() {
+  const token = gapi.client.getToken();
+  if (!token) return null;
+
+  try {
+    const resp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: {
+        Authorization: `Bearer ${token.access_token}`,
+      },
+    });
+
+    if (!resp.ok) {
+      console.error("Failed to fetch profile", await resp.text());
+      return null;
+    }
+
+    return await resp.json(); // contains name, picture, email
+  } catch (err) {
+    console.error("Failed to fetch user profile", err);
+    return null;
+  }
+}
+
 
   async signOut() {
     const token = this.gapi.client.getToken();
@@ -116,22 +157,6 @@ export class GoogleSyncService {
   async checkSignInStatus() {
     await this.initialize();
     return !!this.gapi.client.getToken();
-  }
-
-  async getUserProfile() {
-    const token = this.gapi.client.getToken();
-    if (!token) return null;
-
-    try {
-      const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: { 'Authorization': `Bearer ${token.access_token}` }
-      });
-      if (!response.ok) throw new Error(`Failed to fetch user profile: ${response.statusText}`);
-      return await response.json();
-    } catch (error) {
-      console.error("Error in getUserProfile:", error);
-      return null;
-    }
   }
 
   async _getAppFolderId() {

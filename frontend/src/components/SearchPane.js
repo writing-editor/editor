@@ -1,5 +1,3 @@
-import './RightDrawer.css';
-
 export class SearchPane {
   constructor(controller) {
     this.controller = controller;

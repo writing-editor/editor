@@ -1,5 +1,3 @@
-import './RightDrawer.css';
-import './AssistantPane.css'; 
 import { renderBlocks } from '../utils/renderBlocks.js';
 
 export class AssistantPane {

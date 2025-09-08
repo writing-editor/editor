@@ -1,4 +1,3 @@
-import './DataManager.css';
 import { loadHTML } from '../utils/htmlLoader.js';
 
 export class DataManager {

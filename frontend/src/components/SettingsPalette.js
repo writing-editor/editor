@@ -1,4 +1,3 @@
-import './SettingsPalette.css';
 import { loadHTML } from '../utils/htmlLoader.js';
 
 const DEFAULT_SETTINGS = {

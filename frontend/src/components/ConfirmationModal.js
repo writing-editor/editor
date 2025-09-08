@@ -1,5 +1,3 @@
-import './ConfirmationModal.css';
-
 export class ConfirmationModal {
   constructor() {
     this.containerEl = document.getElementById('confirmation-modal-container');

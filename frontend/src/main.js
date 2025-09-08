@@ -1,7 +1,5 @@
 import './main.css';
 import { App } from './App.js';
-import './components/EditorToolbar.css';
-import './components/ConnectivityStatus.css';
 import { loadHTML } from './utils/htmlLoader.js';
 
 const rootElement = document.getElementById('root');

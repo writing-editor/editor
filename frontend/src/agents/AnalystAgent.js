@@ -7,7 +7,8 @@ export class AnalystAgent extends BaseAgent {
         const { user_request, context } = payload;
 
         // NEW: The agent now fetches its own prompt template.
-        const prompt_template = await this.controller.storageService.getFile('ANALYZE.txt');
+        const promptFile = await this.controller.storageService.getFile('ANALYZE.txt');
+        const prompt_template = promptFile ? promptFile.content : null;
 
         if (!prompt_template) {
             console.error("Analysis Error: Prompt template 'ANALYZE.txt' could not be loaded.");

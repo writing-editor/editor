@@ -1,34 +1,46 @@
-// frontend/src/App.js
-
-import { Navigator } from './components/Navigator.js';
-import { Editor } from './components/Editor.js';
 import { AiStudio } from './components/AiStudio.js';
-import { ModalInput } from './components/ModalInput.js';
+import './components/AiStudio.css';
 import { AssistantPane } from './components/AssistantPane.js';
-import { NotebookPane } from './components/NotebookPane.js';
+import './components/AssistantPane.css';
 import { ConfirmationModal } from './components/ConfirmationModal.js';
+import './components/ConfirmationModal.css';
+import { ConnectivityStatus } from './components/ConnectivityStatus.js';
+import './components/ConnectivityStatus.css';
+import { DataManager } from './components/DataManager.js';
+import './components/DataManager.css'
+import { Editor } from './components/Editor.js';
+import './components/Editor.css';
+import './components/EditorToolbar.css'
+import { MergeConflictModal } from './components/MergeConflictModal.js';
+import './components/MergeConflictModal.css';
+import { ModalInput } from './components/ModalInput.js';
+import './components/ModalInput.css';
+import { Navigator } from './components/Navigator.js';
+import './components/Navigator.css';
+import { NotebookPane } from './components/NotebookPane.js';
+import './components/NotebookPane.css';
+import { PromptsPane } from './components/PromptsPane.js';
+import './components/PromptsPane.css';
+import './components/RightDrawer.css';
+import { SearchPane } from './components/SearchPane.js';
 import { SettingsPalette } from './components/SettingsPalette.js';
+import './components/SettingsPalette.css';
 import { LlmOrchestrator } from './services/LlmOrchestrator.js';
 import { BookService } from './services/BookService.js';
 import { StorageService } from './services/StorageService.js';
 import { AnalystAgent } from './agents/AnalystAgent.js';
 import { RewriteAgent } from './agents/RewriteAgent.js';
 import { FindNotesAgent } from './agents/FindNotesAgent.js';
-import { DevelopmentAgent } from './agents/DevelopmentAgent.js'; 
+import { DevelopmentAgent } from './agents/DevelopmentAgent.js';
 import { SyncService } from './services/SyncService.js';
 import { GoogleSyncService } from './services/GoogleSyncService.js';
 import { SearchService } from './services/SearchService.js';
-import { SearchPane } from './components/SearchPane.js';
-import { DataManager } from './components/DataManager.js';
 import { EventBus } from './utils/EventBus.js';
-import { ConnectivityStatus } from './components/ConnectivityStatus.js';
-import { IndicatorManager } from './ui/IndicatorManager.js'; 
-import { ExportService } from './services/ExportService.js'; 
-import { uninstallApp } from './utils/uninstall.js'; 
+import { IndicatorManager } from './ui/IndicatorManager.js';
+import { ExportService } from './services/ExportService.js';
+import { uninstallApp } from './utils/uninstall.js';
 import { TagGenerationAgent } from './agents/TagGenerationAgent.js';
 import { TagSyncService } from './services/TagSyncService.js';
-import { PromptsPane } from './components/PromptsPane.js';
-
 
 let instance = null;
 
@@ -92,7 +104,7 @@ export class App {
     this.settingsPalette = new SettingsPalette(controller);
     this.dataManager = new DataManager(controller);
     this.connectivityStatus = new ConnectivityStatus(controller);
-
+    this.mergeConflictModal = new MergeConflictModal();
 
     // --- UI State Management (remains in App.js) ---
     this.activeRightDrawer = null;
@@ -115,6 +127,7 @@ export class App {
       this.bookService.loadInitialBook();
       this.notebookPane.initialize();
       this.promptsPane.initialize();
+      this.eventBus.subscribe('app:online', () => this.reconcileOnline());
     });
   }
 
@@ -130,15 +143,23 @@ export class App {
     }
 
     await this.googleSyncService.initialize();
-    const isSignedIn = await this.googleSyncService.trySilentAuth(); 
+    const isSignedIn = await this.googleSyncService.trySilentAuth();
     if (isSignedIn) {
       const user = await this.googleSyncService.getUserProfile();
       if (user && user.name) {
-        this.connectivityStatus.setState('signed-in', user.name);
+        this.connectivityStatus.setState('signed-in', {
+          name: user.name,
+          picture: user.picture
+        });
       } else {
         this.connectivityStatus.setState('signed-in', 'User');
       }
-      await this.syncService.performInitialSync();
+
+      if (navigator.onLine) {
+        await this.syncService.performInitialSync();
+      } else {
+        console.log("Skipping initial sync: Application is offline.");
+      }
       await this.bookService.loadInitialBook();
       await this.rebuildSearchIndex();
     } else {
@@ -159,6 +180,7 @@ export class App {
       hideIndicator: (...args) => this.indicatorManager.hide(...args),
       confirm: (...args) => this.confirmationModal.show(...args),
       prompt: (...args) => this.modalInput.show(...args),
+      showMergeConflict: (payload) => this.mergeConflictModal.show(payload),
 
       // Editor & Context
       getContext: () => this.getContextPayload(),
@@ -169,16 +191,16 @@ export class App {
       runAnalyst: (payload) => this.analystAgent.run(payload),
       runRewrite: (payload) => this.rewriteAgent.run(payload),
       runFindNotes: (payload) => this.findNotesAgent.run(payload),
-      runDeveloper: (payload) => this.developmentAgent.run(payload), 
-      runTagger: (payload) => this.tagGenerationAgent.run(payload), 
-      runAutoTagging: () => this.tagSyncService.run(), 
+      runDeveloper: (payload) => this.developmentAgent.run(payload),
+      runTagger: (payload) => this.tagGenerationAgent.run(payload),
+      runAutoTagging: () => this.tagSyncService.run(),
 
       renderRewriteSuggestion: (payload) => this.assistantPane.renderRewriteSuggestion(payload),
       // UI & Navigation
       openRightDrawer: (drawerName) => this.openRightDrawer(drawerName),
       closeRightDrawer: () => this.closeRightDrawer(),
       navigateTo: (filename, viewId) => this.navigateTo(filename, viewId),
-      showAiStudio: (tabName) => this.palette.show(tabName), 
+      showAiStudio: (tabName) => this.palette.show(tabName),
       hideSettingsPalette: () => this.settingsPalette.hide(),
       showDataManager: () => this.dataManager.show(),
 
@@ -226,13 +248,15 @@ export class App {
       storageService: this.storageService,
       searchService: this.searchService,
 
-      // Auth methods for the UI to call
       signIn: async () => {
         try {
           const user = await this.googleSyncService.signIn();
           if (user) {
             if (user.name) {
-              this.connectivityStatus.setState('signed-in', user.name);
+              this.connectivityStatus.setState('signed-in', {
+                name: user.name,
+                picture: user.picture
+              });
               this.indicatorManager.show(`Signed in as ${user.name}`, { duration: 3000 });
             } else {
               this.connectivityStatus.setState('signed-in', 'User');
@@ -245,7 +269,7 @@ export class App {
           }
         } catch (error) {
           console.error("Sign-in failed:", error);
-          this.indicatorManager.show('Sign-in failed. See console for details.', { isError: true });
+          this.indicatorManager.show('Sign-in failed. See console for details.', { isError: true, duration: 5000 });
         }
       },
       signOut: async () => {
@@ -254,10 +278,9 @@ export class App {
         this.connectivityStatus.setState('signed-out');
         this.indicatorManager.show('You have been signed out.', { duration: 3000 });
       },
+      checkSignInStatus: () => this.googleSyncService.checkSignInStatus(),
 
       setSyncState: (state) => {
-        // Only change state if the user is currently signed in.
-        // This prevents the "syncing" icon from overriding the "offline" or "signed-out" states.
         if (this.connectivityStatus.state === 'signed-in' || this.connectivityStatus.state === 'syncing') {
           this.connectivityStatus.setState(state);
         }
@@ -379,8 +402,8 @@ export class App {
         view_content: this.editor.instance.getText(), // Keep full content available
       };
     } else {
-      context = { 
-        type: 'global', 
+      context = {
+        type: 'global',
         view_content: this.editor.instance.getText()
       };
     }
@@ -391,5 +414,18 @@ export class App {
       current_view_id: this.bookService.currentViewId,
       book_structure: this.bookService.currentBook?.structure || 'No book loaded.',
     };
+  }
+
+  async reconcileOnline() {
+    const isSignedIn = await this.googleSyncService.checkSignInStatus();
+    if (!isSignedIn) {
+      console.log("Reconciliation skipped: User not signed in.");
+      return;
+    }
+    // This will be our new smart sync function
+    await this.syncService.reconcileAllFiles();
+    // After syncing, we should reload the book to reflect any merged changes
+    await this.bookService.loadInitialBook();
+    await this.rebuildSearchIndex();
   }
 }

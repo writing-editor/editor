@@ -19,9 +19,10 @@ export class ExportService {
     async exportBookAsLatex(filename) {
         const indicatorId = this.controller.showIndicator('Converting to LaTeX...');
         try {
-            const bookData = await this.controller.storageService.getFile(`${filename}.book`);
+            const bookRecord = await this.controller.storageService.getFile(`${filename}.book`);
+            const bookData = bookRecord ? bookRecord.content : null;
             if (!bookData) throw new Error('Could not find book data to export.');
-            
+
             const converter = new LatexConverter(bookData, bookData.metadata.title);
             const latexContent = converter.convert();
             const downloadFilename = filename.endsWith('.tex') ? filename : `${filename}.tex`;
@@ -37,7 +38,8 @@ export class ExportService {
     async exportBookAsDocx(filename) {
         const indicatorId = this.controller.showIndicator('Converting to .docx...');
         try {
-            const bookData = await this.controller.storageService.getFile(`${filename}.book`);
+            const bookRecord = await this.controller.storageService.getFile(`${filename}.book`);
+            const bookData = bookRecord ? bookRecord.content : null;
             if (!bookData) throw new Error('Could not find book data to export.');
 
             const converter = new DocxConverter(bookData, bookData.metadata.title);

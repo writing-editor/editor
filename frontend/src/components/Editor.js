@@ -1,4 +1,3 @@
-import './editor.css';
 import { debounce } from '../utils/debounce.js';
 import { Editor as TipTapEditor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
@@ -183,36 +182,36 @@ export class Editor {
   }
 
   async handleDirectAnalysis(payload) {
-      const ai_response = await this.controller.runAnalyst(payload);
-      if (ai_response) {
-          const blockData = {
-              type: 'analysis',
-              title: "AI Critique",
-              id: `analysis_${Date.now()}`,
-              content: { type: 'markdown', text: ai_response }
-          };
-          this.controller.addMarginBlock(payload.current_view_id, blockData);
-          this.controller.openRightDrawer('assistant');
-      }
+    const ai_response = await this.controller.runAnalyst(payload);
+    if (ai_response) {
+      const blockData = {
+        type: 'analysis',
+        title: "AI Critique",
+        id: `analysis_${Date.now()}`,
+        content: { type: 'markdown', text: ai_response }
+      };
+      this.controller.addMarginBlock(payload.current_view_id, blockData);
+      this.controller.openRightDrawer('assistant');
+    }
   }
 
   async handleDirectRewrite(payload) {
-      try {
-          const rewritten_text = await this.controller.runRewrite(payload);
-          if (rewritten_text) {
-              const suggestionPayload = {
-                  original_text: payload.context.selected_text,
-                  suggested_text: rewritten_text,
-                  range: payload.context.range
-              };
-              this.controller.renderRewriteSuggestion(suggestionPayload);
-              this.controller.openRightDrawer('assistant');
-          }
-      } catch (error) {
-          this.controller.showIndicator(error.message, { isError: true, duration: 3000 });
+    try {
+      const rewritten_text = await this.controller.runRewrite(payload);
+      if (rewritten_text) {
+        const suggestionPayload = {
+          original_text: payload.context.selected_text,
+          suggested_text: rewritten_text,
+          range: payload.context.range
+        };
+        this.controller.renderRewriteSuggestion(suggestionPayload);
+        this.controller.openRightDrawer('assistant');
       }
+    } catch (error) {
+      this.controller.showIndicator(error.message, { isError: true, duration: 3000 });
+    }
   }
-  
+
   updateToolbarState() {
     this.toolbar.querySelector('[data-action="bold"]').classList.toggle('is-active', this.instance.isActive('bold'));
     this.toolbar.querySelector('[data-action="italic"]').classList.toggle('is-active', this.instance.isActive('italic'));

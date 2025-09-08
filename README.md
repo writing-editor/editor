@@ -33,11 +33,11 @@ The application is built as a Progressive Web App (PWA), ensuring it works seaml
 
 ### 💾 Data Management & Portability
 *   **Local-First Storage:** All data is stored securely and reliably in your browser's IndexedDB, making the entire application fully functional offline.
-*   **Google Drive Sync:** Optionally sign in to seamlessly sync your work for a **single user** across multiple devices. All documents, notes, and settings are automatically saved to a dedicated app folder in your Google Drive.
-*   **Built-in Conflict Detection:** The sync engine is designed to protect your data. If you edit the same file on two different devices without syncing, the app will detect the conflict. Instead of overwriting, it will automatically save your local version as a separate "(conflict)" file. **Your work is never silently deleted.**
+*   **Google Drive Sync & Collaboration:** Sign in with a Google account to sync your work across multiple devices. The system is designed for a single user but now supports near-live updates, making multi-device workflows much smoother. Deletions are also synced instantly.
+*   **Intelligent Conflict Resolution:** The sync engine protects your data. Simple, non-overlapping changes are merged automatically in the background. If a complex conflict is detected (e.g., the same paragraph is edited on two devices), a clear side-by-side comparison appears, allowing you to choose the correct version. **Your work is never silently overwritten or lost.**
 *   > **Best Practices for a Smooth Sync:**
-    > *   **Sync Before You Start:** When you open the app on a device, give it a moment to sync and pull down the latest changes from the cloud.
-    > *   **Work on One Device at a Time:** To avoid creating "(conflict)" files, it's best to finish and sync your work on one device before switching to another.
+    > *   **Stay Online:** A stable internet connection provides the best experience.
+    > *   **Check the Sync Status:** Before closing the app or switching devices, ensure the cloud icon in the bottom-left is not spinning. This guarantees your latest changes are saved to the cloud.
 *   **Backup & Restore:** Export your entire local database to a single `.json` file for backup, or import a backup file to restore your work on any machine.
 *   **Multiple Export Formats:** Export individual documents to standard academic and professional formats, including **LaTeX (.tex)** and **Microsoft Word (.docx)**.
 

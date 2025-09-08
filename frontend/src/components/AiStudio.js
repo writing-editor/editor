@@ -1,5 +1,3 @@
-import './AiStudio.css';
-
 export class AiStudio {
   constructor(controller) {
     this.controller = controller;
@@ -16,14 +14,12 @@ export class AiStudio {
   }
 
   handleClick(e) {
-    // Close the modal if the overlay is clicked.
     if (e.target === this.containerEl) {
       this.hide();
     }
   }
 
   handleKeydown(e) {
-    // Close on Escape key.
     if (e.key === 'Escape' && !this.containerEl.classList.contains('hidden')) {
       this.hide();
     }

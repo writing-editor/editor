@@ -4,7 +4,8 @@ export class FindNotesAgent extends BaseAgent {
     async run(payload) {
         const { query, all_notes } = payload;
 
-        let prompt_template = await this.controller.storageService.getFile('FINDNOTES.txt');
+        const promptFile = await this.controller.storageService.getFile('FINDNOTES.txt');
+        const prompt_template = promptFile ? promptFile.content : null;
 
         const notes_json_string = JSON.stringify(
             all_notes.map(note => ({ id: note.id, content: note.plain_text }))

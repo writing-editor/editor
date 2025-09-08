@@ -1,4 +1,3 @@
-import './navigator.css';
 export class Navigator {
   constructor(controller, bookService) {
     this.controller = controller;

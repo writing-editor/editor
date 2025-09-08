@@ -1,4 +1,5 @@
 import { debounce } from '../utils/debounce.js';
+import { diff_match_patch } from 'diff-match-patch';
 
 /**
  * Manages data synchronization with local files and cloud providers.
@@ -8,89 +9,268 @@ export class SyncService {
     this.storageService = storageService;
     this.controller = controller;
     this.googleSyncService = googleSyncService;
+    this.dmp = new diff_match_patch();
+    this.syncQueue = new Map(); // For queuing sync requests per file
 
     this.debouncedSyncers = new Map();
-    this.SYNC_DEBOUNCE_DELAY = 5000; 
+    this.SYNC_DEBOUNCE_DELAY = 5000;
     this.controller.subscribe('database:changed', (payload) => this.scheduleSync(payload));
+
+    // --- NEW: Start a periodic check for cloud deletions ---
+    this.tombstoneCheckInterval = null;
+    this.startTombstoneChecker();
   }
 
+  // --- NEW: Method to start the periodic checker ---
+  startTombstoneChecker() {
+    if (this.tombstoneCheckInterval) {
+      clearInterval(this.tombstoneCheckInterval);
+    }
+    // Check for deletions every 60 seconds
+    this.tombstoneCheckInterval = setInterval(async () => {
+      if (navigator.onLine && await this.googleSyncService.checkSignInStatus()) {
+        await this._processCloudTombstones();
+      }
+    }, 60000);
+  }
+
+  // --- NEW: Isolated logic to process cloud tombstones ---
+  async _processCloudTombstones() {
+    console.log("[Sync] Periodically checking for cloud deletions...");
+    const tombstoneMeta = await this.googleSyncService.getFileMetadata('tombstones.json');
+    if (tombstoneMeta) {
+      const downloadResult = await this.googleSyncService.downloadFileContent(tombstoneMeta.id);
+      let cloudTombstones = {};
+      try {
+        cloudTombstones = typeof downloadResult.content === 'string' ? JSON.parse(downloadResult.content) : downloadResult.content;
+      } catch (e) {
+        console.warn("Could not parse cloud tombstones.json during periodic check.");
+        return; // Exit if the file is corrupt
+      }
+
+      let refreshNeeded = false;
+      for (const fileId in cloudTombstones) {
+        const localFile = await this.storageService.getFile(fileId);
+        if (localFile) {
+          console.log(`[Sync] Found cloud tombstone for local file "${fileId}". Deleting locally.`);
+          await this.storageService.deleteFile(fileId);
+          if (fileId.endsWith('.note')) {
+            refreshNeeded = true; // Mark that the notebook pane needs a refresh
+          }
+        }
+      }
+
+      if (refreshNeeded) {
+        // This event will be picked up by the NotebookPane
+        this.controller.publish('notebook:needs-refresh', {});
+      }
+    }
+  }
+
+
   scheduleSync({ fileId, action }) {
+    if (!navigator.onLine) {
+      console.log(`Sync for "${fileId}" ignored: Application is offline.`);
+      return;
+    }
+
     if (fileId === 'user-manual.book' || fileId === 'pinned.txt') return;
 
     console.log(`Scheduling sync for "${fileId}", action: ${action}`);
 
     if (!this.debouncedSyncers.has(fileId)) {
       this.debouncedSyncers.set(fileId, debounce(async (latestAction) => {
-        await this._syncFile(fileId, latestAction);
+        await this.reconcileFile(fileId, latestAction);
         this.debouncedSyncers.delete(fileId);
       }, this.SYNC_DEBOUNCE_DELAY));
     }
     this.debouncedSyncers.get(fileId)(action);
   }
+  async reconcileFile(fileId, action = "sync") {
+    if (!this.syncQueue.has(fileId)) {
+      this.syncQueue.set(fileId, Promise.resolve());
+    }
 
-  async _syncFile(fileId, action) {
+    const task = async () => {
+      await this._reconcileFileInternal(fileId, action);
+    };
+
+    // Chain the new task onto the end of the promise chain for this fileId
+    const newPromise = this.syncQueue.get(fileId).then(task, task); // Ensure it runs even if previous fails
+    this.syncQueue.set(fileId, newPromise);
+    return newPromise;
+  }
+
+  async _reconcileFileInternal(fileId, action) {
+    // --- Helpers ---
+    function stableStringify(obj) {
+      if (obj === null || typeof obj !== "object") {
+        return JSON.stringify(obj);
+      }
+      if (Array.isArray(obj)) {
+        return `[${obj.map(stableStringify).join(",")}]`;
+      }
+      const keys = Object.keys(obj).sort();
+      return `{${keys.map(k => JSON.stringify(k) + ":" + stableStringify(obj[k])).join(",")}}`;
+    }
+
+    function normalize(content) {
+      if (typeof content === "string") {
+        // Standardize line endings and remove leading/trailing whitespace
+        return content.replace(/\r\n/g, "\n").trim();
+      }
+      if (content && typeof content === "object") {
+        return stableStringify(content);
+      }
+      return String(content ?? "");
+    }
+
     const isSignedIn = await this.googleSyncService.checkSignInStatus();
     if (!isSignedIn) {
-      console.log('Sync skipped: User not signed in.');
+      console.log(`[Sync] Skipped ${fileId}: user not signed in.`);
       return;
     }
 
-    this.controller.setSyncState('syncing');
+    this.controller.setSyncState("syncing");
     const modifiedKey = `cloud_modified_${fileId}`;
+
     try {
-      if (action === 'deleted') {
-        await this.googleSyncService.deleteFileByName(fileId);
-        localStorage.removeItem(modifiedKey);
-        console.log(`Successfully synced deletion for "${fileId}" to Google Drive.`);
-        return;
-      }
-      
-      const localContent = await this.storageService.getFile(fileId);
-      if (localContent === null) {
-        await this.googleSyncService.deleteFileByName(fileId);
-        localStorage.removeItem(modifiedKey);
-        return;
-      }
-
-      const cloudMeta = await this.googleSyncService.getFileMetadata(fileId);
-      const localMeta = (await this.storageService.getAllFiles()).find(f => f.id === fileId);
-      const localModified = localMeta ? localMeta.lastModified : 0;
-      const cloudModified = cloudMeta ? new Date(cloudMeta.modifiedTime).getTime() : 0;
-      
-      if (cloudMeta && cloudModified > localModified) {
-        console.warn(`CONFLICT DETECTED for "${fileId}"! Cloud version is newer.`);
-        const extension = fileId.substring(fileId.lastIndexOf('.'));
-        const baseName = fileId.substring(0, fileId.lastIndexOf('.'));
-        const dateStamp = new Date().toISOString().split('T')[0];
-        const conflictFilename = `${baseName} (conflict ${dateStamp})${extension}`;
-        
-        await this.googleSyncService.uploadFile(conflictFilename, localContent);
-        this.controller.showIndicator(
-            `Conflict: Your local changes for ${baseName} were saved to a new file.`, 
-            { isError: true, duration: 10000 }
-        );
-        
-        const { content: cloudContent, modifiedTime: cloudTime } = await this.googleSyncService.downloadFileContent(cloudMeta.id);
-        let parsedCloudContent = cloudContent;
-        if (fileId.endsWith('.json') || fileId.endsWith('.book') || fileId.endsWith('.note')) {
-            try { parsedCloudContent = JSON.parse(cloudContent); }
-            catch (e) { console.error(`Failed to parse conflicting cloud file ${fileId}`, e); return; }
+      if (action === "deleted") {
+        console.log(`[Sync] Deleting ${fileId} from cloud and updating tombstone.`);
+        const tombstoneMeta = await this.googleSyncService.getFileMetadata('tombstones.json');
+        let tombstones = {};
+        if (tombstoneMeta) {
+          const downloadResult = await this.googleSyncService.downloadFileContent(tombstoneMeta.id);
+          try {
+            tombstones = typeof downloadResult.content === 'string' ? JSON.parse(downloadResult.content) : downloadResult.content;
+          } catch (e) {
+            console.warn("Could not parse cloud tombstones.json, starting fresh.");
+            tombstones = {};
+          }
         }
-        await this.storageService.saveFile(fileId, parsedCloudContent);
-        localStorage.setItem(modifiedKey, cloudTime);
-
-      } else {
-        // --- NO CONFLICT: Safe to upload ---
-        console.log(`Syncing saved file "${fileId}" to Google Drive.`);
-        const newModifiedTime = await this.googleSyncService.uploadFile(fileId, localContent);
-        localStorage.setItem(modifiedKey, newModifiedTime);
+        tombstones[fileId] = new Date().toISOString();
+        await this.googleSyncService.uploadFile('tombstones.json', tombstones);
+        await this.googleSyncService.deleteFileByName(fileId);
+        localStorage.removeItem(modifiedKey);
+        return;
       }
-      
-    } catch (error) {
-      console.error(`Failed to sync "${fileId}":`, error);
+
+      const localFile = await this.storageService.getFile(fileId);
+      const cloudMeta = await this.googleSyncService.getFileMetadata(fileId);
+
+      if (!cloudMeta && localFile) {
+        console.log(`[Sync] Uploading ${fileId}, missing remotely.`);
+        const newTime = await this.googleSyncService.uploadFile(fileId, localFile.content);
+        await this.storageService.saveFile(fileId, localFile.content, { baseContent: localFile.content });
+        localStorage.setItem(modifiedKey, newTime);
+        return;
+      }
+
+      if (cloudMeta && !localFile) {
+        console.log(`[Sync] Downloading ${fileId}, missing locally.`);
+        const { content: remoteContent, modifiedTime: remoteTime } =
+          await this.googleSyncService.downloadFileContent(cloudMeta.id);
+        await this._saveParsed(fileId, remoteContent, remoteTime);
+        return;
+      }
+
+      if (localFile && cloudMeta) {
+        const { content: localContent, baseContent } = localFile;
+        const localStr = normalize(localContent);
+        const baseStr = normalize(baseContent);
+        const isDirty = localStr !== baseStr;
+
+        const lastKnownCloudModified = localStorage.getItem(modifiedKey);
+        const currentCloudModified = cloudMeta.modifiedTime;
+        const cloudHasChanged = currentCloudModified !== lastKnownCloudModified;
+
+        if (!isDirty && cloudHasChanged) {
+          console.log(`[Sync] ${fileId} clean locally, updating from cloud.`);
+          const { content: remoteContent, modifiedTime: remoteTime } =
+            await this.googleSyncService.downloadFileContent(cloudMeta.id);
+          await this._saveParsed(fileId, remoteContent, remoteTime);
+        } else if (isDirty && !cloudHasChanged) {
+          console.log(`[Sync] Uploading local changes for ${fileId}.`);
+          const newTime = await this.googleSyncService.uploadFile(fileId, localContent);
+          await this.storageService.saveFile(fileId, localContent, { baseContent: localContent });
+          localStorage.setItem(modifiedKey, newTime);
+        } else if (isDirty && cloudHasChanged) {
+          console.warn(`[Sync] Conflict in ${fileId}, attempting merge.`);
+          const { content: remoteContent, modifiedTime: remoteTime } =
+            await this.googleSyncService.downloadFileContent(cloudMeta.id);
+          const remoteStr = normalize(remoteContent);
+
+          const patches = this.dmp.patch_make(baseStr, localStr);
+          const [mergedStr, results] = this.dmp.patch_apply(patches, remoteStr);
+
+          if (results.every(Boolean)) {
+            console.log(`[Sync] Auto-merge succeeded for ${fileId}.`);
+            const mergedContent = JSON.parse(mergedStr);
+            const newTime = await this.googleSyncService.uploadFile(fileId, mergedContent);
+            await this._saveParsed(fileId, mergedContent, newTime);
+          } else {
+            await this._handleConflict(fileId, localContent, remoteContent, remoteTime);
+          }
+        } else {
+          console.log(`[Sync] ${fileId} already in sync.`);
+        }
+      }
+    } catch (err) {
+      console.error(`[Sync] reconcileFile failed for ${fileId}:`, err);
       this.controller.showIndicator(`Sync failed for ${fileId}`, { isError: true, duration: 4000 });
     } finally {
-      this.controller.setSyncState('signed-in');
+      this.controller.setSyncState("signed-in");
+    }
+  }
+
+  async _saveParsed(fileId, remoteContent, remoteTime) {
+    let parsed = remoteContent;
+    if (typeof remoteContent === "string" &&
+      (fileId.endsWith(".json") || fileId.endsWith(".book") || fileId.endsWith(".note"))) {
+      try {
+        parsed = JSON.parse(remoteContent);
+      } catch (e) {
+        console.error(`[Sync] Failed to parse JSON for ${fileId}, storing raw string.`);
+      }
+    }
+    await this.storageService.saveFile(fileId, parsed, { baseContent: parsed });
+    localStorage.setItem(`cloud_modified_${fileId}`, remoteTime);
+  }
+
+  async _handleConflict(fileId, localContent, remoteContent, remoteTime) {
+    this.controller.showIndicator(`Conflict detected for ${fileId}. Please resolve.`, { duration: 5000 });
+    
+    const choice = await this.controller.showMergeConflict({
+      fileId,
+      localContent: localContent,
+      remoteContent: remoteContent,
+    });
+    
+    if (choice === "local") {
+      const contentToSave = localContent;
+      const newTime = await this.googleSyncService.uploadFile(fileId, contentToSave);
+      await this.storageService.saveFile(fileId, contentToSave, { baseContent: contentToSave });
+      localStorage.setItem(`cloud_modified_${fileId}`, newTime);
+    } else {
+      await this._saveParsed(fileId, remoteContent, remoteTime);
+    }
+  }
+
+  async reconcileAllFiles() {
+    const indicatorId = this.controller.showIndicator('Reconciling offline changes...');
+    try {
+      const allFiles = await this.storageService.getAllFiles();
+      for (const file of allFiles) {
+        if (!['user-manual.book', 'initial_setup_complete', 'pinned.txt'].includes(file.id)) {
+          await this.reconcileFile(file.id, 'reconcile');
+        }
+      }
+      this.controller.showIndicator('Reconciliation complete!', { duration: 3000 });
+    } catch (error) {
+      console.error("Reconciliation process failed:", error);
+      this.controller.showIndicator('Could not reconcile offline changes.', { isError: true, duration: 4000 });
+    } finally {
+      this.controller.hideIndicator(indicatorId);
     }
   }
 
@@ -188,25 +368,18 @@ export class SyncService {
     const existingBookIds = new Set(existingBooks.map(b => b.id));
 
     for (const item of importedData) {
+      const content = item.content;
       if (item.id.endsWith('.book')) {
         if (!existingBookIds.has(item.id)) {
-          await this.storageService.saveFile(item.id, item.content);
-        }
-      } else if (item.id.endsWith('.note')) {
-        await this.storageService.saveFile(item.id, item.content);
-      } else if (item.id === 'notes.json') {
-        if (Array.isArray(item.content)) {
-            for (const note of item.content) {
-                await this.storageService.saveFile(`${note.id}.note`, note);
-            }
+          await this.storageService.saveFile(item.id, content, { baseContent: content });
         }
       } else {
-        await this.storageService.saveFile(item.id, item.content);
+        await this.storageService.saveFile(item.id, content, { baseContent: content });
       }
     }
   }
-  
-  async deleteCloudFileById(fileId) { 
+
+  async deleteCloudFileById(fileId) {
     const indicatorId = this.controller.showIndicator('Deleting cloud file...');
     try {
       await this.googleSyncService.authorize();
@@ -221,19 +394,19 @@ export class SyncService {
       this.controller.hideIndicator(indicatorId);
     }
   }
-  
+
   async getCloudFileList() {
     try {
       await this.googleSyncService.authorize();
       return await this.googleSyncService.listFiles();
     } catch (error) {
       console.error("Failed to get cloud file list:", error);
-      this.controller.showIndicator('Failed to connect to Drive.', { isError: true, duration: 6000});
+      this.controller.showIndicator('Failed to connect to Drive.', { isError: true, duration: 6000 });
       return null;
     }
   }
 
-  async deleteAllCloudFiles() { 
+  async deleteAllCloudFiles() {
     const indicatorId = this.controller.showIndicator('Deleting cloud data...');
     try {
       await this.googleSyncService.authorize();
@@ -247,7 +420,6 @@ export class SyncService {
     }
   }
 
-  // --- REVISED: Now stores modifiedTime on download ---
   async performInitialSync() {
     const isSignedIn = await this.googleSyncService.checkSignInStatus();
     if (!isSignedIn) return;
@@ -256,37 +428,26 @@ export class SyncService {
     const indicatorId = this.controller.showIndicator('Syncing with Google Drive...');
 
     try {
+      // --- MODIFIED: Use the new centralized method ---
+      await this._processCloudTombstones();
+
+      const localTombstones = await this.storageService.getAllTombstones();
+      for (const tombstone of localTombstones) {
+        console.log(`Sync: Processing local tombstone for "${tombstone.fileId}"`);
+        await this.reconcileFile(tombstone.fileId, 'deleted');
+        await this.storageService.removeTombstone(tombstone.fileId);
+      }
+
       const cloudFiles = await this.googleSyncService.listFiles();
       const localFiles = await this.storageService.getAllFiles();
 
       const cloudFilesMap = new Map(cloudFiles.map(f => [f.name, f]));
       const localFilesMap = new Map(localFiles.map(f => [f.id, f]));
+      const allFileIds = new Set([...cloudFilesMap.keys(), ...localFilesMap.keys()]);
 
-      for (const [name, cloudFile] of cloudFilesMap.entries()) {
-        const localFile = localFilesMap.get(name);
-        const cloudModified = new Date(cloudFile.modifiedTime).getTime();
-
-        if (!localFile || cloudModified > localFile.lastModified) {
-          console.log(`Sync: Downloading ${localFile ? 'updated' : 'new'} file "${name}"`);
-          const { content, modifiedTime } = await this.googleSyncService.downloadFileContent(cloudFile.id);
-          let parsedContent = content;
-          if (name.endsWith('.json') || name.endsWith('.book') || name.endsWith('.note')) {
-              try { parsedContent = JSON.parse(content); }
-              catch (e) { console.error(`Failed to parse JSON for ${name}`, e); continue; }
-          }
-          await this.storageService.saveFile(name, parsedContent);
-          localStorage.setItem(`cloud_modified_${name}`, modifiedTime);
-        }
-      }
-
-      for (const [id, localFile] of localFilesMap.entries()) {
-        if (id === 'user-manual.book' || id === 'initial_setup_complete' || id === 'pinned.txt') continue;
-        
-        if (!cloudFilesMap.has(id)) {
-          console.log(`Sync: Uploading new local file "${id}"`);
-          const newModifiedTime = await this.googleSyncService.uploadFile(id, localFile.content);
-          localStorage.setItem(`cloud_modified_${id}`, newModifiedTime);
-        }
+      for (const fileId of allFileIds) {
+        if (['user-manual.book', 'initial_setup_complete', 'pinned.txt', 'tombstones.json'].includes(fileId)) continue;
+        await this.reconcileFile(fileId, 'sync');
       }
 
     } catch (error) {

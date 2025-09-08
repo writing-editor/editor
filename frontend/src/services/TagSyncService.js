@@ -34,7 +34,14 @@ export class TagSyncService {
 
             console.log(`Found ${untaggedNotes.length} untagged notes. Processing...`);
             const untaggedNotesPayload = untaggedNotes.map(n => ({ id: n.id, content: n.plain_text }));
-            const autoTagPrompt = await this.storageService.getFile('AUTOTAG.txt');
+            const autoTagPromptFile = await this.storageService.getFile('AUTOTAG.txt');
+            const autoTagPrompt = autoTagPromptFile ? autoTagPromptFile.content : null;
+
+            if (!autoTagPrompt) {
+                console.error("Auto-tagging prompt 'AUTOTAG.txt' is missing.");
+                this.isSyncing = false;
+                return;
+            }
 
             const payload = {
                 notes: untaggedNotesPayload,

@@ -1,5 +1,4 @@
 
-import './PromptsPane.css';
 import { promptBlockWrapper } from '../utils/promptBlockWrapper.js';
 import { Editor as TipTapEditor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
@@ -30,7 +29,8 @@ export class PromptsPane {
 
     async initialize() {
         for (const key of Object.keys(PROMPT_CONFIG)) {
-            this.promptTemplates[key] = await this.storageService.getFile(`${key}.txt`);
+            const fileRecord = await this.storageService.getFile(`${key}.txt`);
+            this.promptTemplates[key] = fileRecord ? fileRecord.content : null; 
         }
         this.renderUI();
     }
