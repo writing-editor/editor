@@ -119,14 +119,15 @@
   transition: opacity 0.25s ease;
 }
 
-/* Show tooltip + arrow on hover */
-.status-icon:hover .status-tooltip {
+.status-icon:hover .status-tooltip,
+.status-tooltip:hover {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0); /* slides up */
+  transform: translateY(0);
 }
 
-.status-icon:hover .status-tooltip::after {
+.status-icon:hover .status-tooltip::after,
+.status-tooltip:hover::after {
   opacity: 1;
 }
 
