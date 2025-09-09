@@ -12,12 +12,15 @@ export class GeminiClient extends BaseLlm {
     }
 
     const url = `${this.BASE_URL}${modelName}:generateContent?key=${apiKey}`;
+    
     const body = {
       contents: [{ parts: [{ text: prompt }] }],
+      ...(isJson && {
+        generationConfig: {
+          response_mime_type: "application/json",
+        },
+      }),
     };
-
-    // For Gemini, we can suggest JSON output via the prompt itself,
-    // as the API doesn't have a structured output toggle like some others.
 
     try {
       const response = await fetch(url, {
