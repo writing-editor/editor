@@ -23,12 +23,14 @@ export class LatexConverter {
       .replace(/}/g, '\\}')
       .replace(/~/g, '\\textasciitilde{}')
       .replace(/\^/g, '\\textasciicircum{}')
-      .replace(/"/g, "''")
-      .replace(/“/g, "``")
-      .replace(/”/g, "''")
-      .replace(/'/g, "'")
-      .replace(/‘/g, "`")
-      .replace(/’/g, "'");
+
+      // Handle double quotes (straight or curly) → ``…''
+      .replace(/"([^"]*)"/g, '``$1\'\'')
+      .replace(/“([^”]*)”/g, '``$1\'\'')
+
+      // Handle single quotes (straight or curly) → `…'
+      .replace(/'([^']*)'/g, '`$1\'')
+      .replace(/‘([^’]*)’/g, '`$1\'');
   }
 
   convert() {
