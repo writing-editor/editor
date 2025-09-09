@@ -5,7 +5,6 @@ import { BubbleMenu } from '@tiptap/extension-bubble-menu';
 import { FloatingMenu } from '@tiptap/extension-floating-menu';
 import Link from '@tiptap/extension-link';
 import CharacterCount from '@tiptap/extension-character-count';
-import { Footnote, FootnoteReference, FOOTNOTE_PLUGIN_KEY } from '../editor/FootnoteExtension.js';
 
 export class Editor {
   constructor(controller, bookService) {
