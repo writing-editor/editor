@@ -10,28 +10,42 @@ export class LatexConverter {
     };
   }
 
-  escapeLatex(text) {
-    if (typeof text !== 'string') return '';
-    return text
-      .replace(/\\/g, '\\textbackslash{}')
-      .replace(/&/g, '\\&')
-      .replace(/%/g, '\\%')
-      .replace(/\$/g, '\\$')
-      .replace(/#/g, '\\#')
-      .replace(/_/g, '\\_')
-      .replace(/{/g, '\\{')
-      .replace(/}/g, '\\}')
-      .replace(/~/g, '\\textasciitilde{}')
-      .replace(/\^/g, '\\textasciicircum{}')
+escapeLatex(text) {
+  if (typeof text !== 'string') return '';
 
-      // Handle double quotes (straight or curly) → ``…''
-      .replace(/"([^"]*)"/g, '``$1\'\'')
-      .replace(/“([^”]*)”/g, '``$1\'\'')
+  // Escape LaTeX special characters first
+  let escaped = text
+    .replace(/\\/g, '\\textbackslash{}')
+    .replace(/&/g, '\\&')
+    .replace(/%/g, '\\%')
+    .replace(/\$/g, '\\$')
+    .replace(/#/g, '\\#')
+    .replace(/_/g, '\\_')
+    .replace(/{/g, '\\{')
+    .replace(/}/g, '\\}')
+    .replace(/~/g, '\\textasciitilde{}')
+    .replace(/\^/g, '\\textasciicircum{}');
 
-      // Handle single quotes (straight or curly) → `…'
-      .replace(/'([^']*)'/g, '`$1\'')
-      .replace(/‘([^’]*)’/g, '`$1\'');
+  // Handle quotes
+  let result = '';
+  let doubleOpen = true;
+  let singleOpen = true;
+
+  for (const ch of escaped) {
+    if (ch === '"' || ch === '“' || ch === '”') {
+      result += doubleOpen ? '``' : "''";
+      doubleOpen = !doubleOpen;
+    } else if (ch === "'" || ch === '‘' || ch === '’') {
+      result += singleOpen ? '`' : "'";
+      singleOpen = !singleOpen;
+    } else {
+      result += ch;
+    }
   }
+
+  return result;
+}
+
 
   convert() {
     this.writePreamble();
