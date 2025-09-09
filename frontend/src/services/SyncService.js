@@ -382,7 +382,7 @@ export class SyncService {
   async deleteCloudFileById(fileId) {
     const indicatorId = this.controller.showIndicator('Deleting cloud file...');
     try {
-      await this.googleSyncService.authorize();
+      // await this.googleSyncService.authorize(); // This line is removed
       await this.googleSyncService.deleteFileById(fileId);
       this.controller.showIndicator('File deleted from cloud.', { duration: 3000 });
       return true;
@@ -397,7 +397,7 @@ export class SyncService {
 
   async getCloudFileList() {
     try {
-      await this.googleSyncService.authorize();
+      // await this.googleSyncService.authorize(); // This line is removed
       return await this.googleSyncService.listFiles();
     } catch (error) {
       console.error("Failed to get cloud file list:", error);
@@ -409,7 +409,7 @@ export class SyncService {
   async deleteAllCloudFiles() {
     const indicatorId = this.controller.showIndicator('Deleting cloud data...');
     try {
-      await this.googleSyncService.authorize();
+      // await this.googleSyncService.authorize(); // This line is removed
       await this.googleSyncService.deleteAllFilesAndFolder();
       this.controller.showIndicator('All cloud data deleted successfully.', { duration: 4000 });
     } catch (error) {
