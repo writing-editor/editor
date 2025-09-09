@@ -249,7 +249,7 @@ export class BookService {
         console.warn(`Found a malformed or incomplete book record with id: ${file.id}. It will be ignored.`);
         return null;
       })
-      .filter(book => book !== null); 
+      .filter(book => book !== null);
 
     this.appController.renderNavigator(this.getStateForNavigator());
   }
@@ -399,6 +399,9 @@ export class BookService {
     try {
       const bookCopy = JSON.parse(JSON.stringify(this.currentBook));
       const nodes = editorContent.content || [];
+
+      const oldStructureJSON = JSON.stringify(this._getBookStructure(bookCopy));
+
       const navigateToId = this._deconstructAndSaveView(viewId, nodes, bookCopy);
 
       if (this.metadata.margin_blocks && navigateToId !== viewId) {
@@ -419,7 +422,10 @@ export class BookService {
       await this.saveCurrentBookToFile();
 
       this.appController.showIndicator('Saved!', { duration: 2000 });
-      this._updateBookState({ chapters: this.currentBook.chapters }, navigateToId);
+      const newStructureJSON = JSON.stringify(this._getBookStructure(this.currentBook));
+      if (oldStructureJSON !== newStructureJSON) {
+        this._updateBookState({ chapters: this.currentBook.chapters }, navigateToId);
+      }
     } finally {
       this.appController.hideIndicator(indicatorId);
     }

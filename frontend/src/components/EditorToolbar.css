@@ -1,3 +1,4 @@
+
 .editor-toolbar {
   display: flex;
   align-items: center;
@@ -7,6 +8,7 @@
   border-radius: 8px;
   border: 1px solid var(--color-border);
   box-shadow: 0 4px 12px var(--color-shadow);
+  z-index: 10;
 }
 
 .toolbar-btn {
@@ -40,9 +42,71 @@
   fill: none;
 }
 
+.toolbar-btn[data-action="link"] svg {
+    stroke-width: 2.2;
+}
+
 .toolbar-divider {
   width: 1px;
   height: 16px;
   background-color: var(--color-border);
   margin: 0 4px;
 }
+
+/* Floating menu */
+.floating-menu {
+  display: flex;
+  flex-direction: row;
+  background-color: var(--color-background-soft);
+  padding: 0.3rem;
+  border-radius: var(--border-radius-large);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.95) translateX(10px);
+  transition: opacity 150ms ease-in-out, transform 150ms ease-in-out, visibility 150ms ease-in-out;
+  z-index: 10;
+}
+
+/* This class is added by Tippy.js when the menu should be visible */
+.tippy-box[data-tippy-root] .floating-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1) translateX(0);
+}
+
+.floating-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  color: var(--color-text-soft);
+  border-radius: var(--border-radius-medium);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.floating-menu-btn:hover {
+  background-color: var(--color-background-mute);
+  color: var(--color-text);
+}
+
+.floating-menu-btn svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  fill: none;
+}
+
+.floating-menu-btn[data-action="h2"] svg,
+.floating-menu-btn[data-action="h3"] svg {
+    stroke-width: 2;
+}
+

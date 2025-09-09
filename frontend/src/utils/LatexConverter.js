@@ -1,13 +1,8 @@
-/**
- * Converts a TipTap JSON object into a LaTeX string.
- * This is a frontend implementation of the original Python logic.
- */
 export class LatexConverter {
   constructor(tiptapJson, bookTitle) {
     this.json = tiptapJson;
     this.bookTitle = this.escapeLatex(bookTitle || 'Untitled');
     this.latexString = "";
-    // A document is considered an 'article' if it has only one chapter.
     this.isArticle = (this.json.chapters || []).length === 1;
     this.marksMap = {
       'bold': text => `\\textbf{${text}}`,
@@ -15,11 +10,6 @@ export class LatexConverter {
     };
   }
 
-  /**
-   * Escapes special LaTeX characters in a string.
-   * @param {string} text The text to escape.
-   * @returns {string} The escaped text.
-   */
   escapeLatex(text) {
     if (typeof text !== 'string') return '';
     return text
@@ -32,13 +22,15 @@ export class LatexConverter {
       .replace(/{/g, '\\{')
       .replace(/}/g, '\\}')
       .replace(/~/g, '\\textasciitilde{}')
-      .replace(/\^/g, '\\textasciicircum{}');
+      .replace(/\^/g, '\\textasciicircum{}')
+      .replace(/"/g, "''")
+      .replace(/“/g, "``")
+      .replace(/”/g, "''")
+      .replace(/'/g, "'")
+      .replace(/‘/g, "`")
+      .replace(/’/g, "'");
   }
 
-  /**
-   * Main conversion method.
-   * @returns {string} The complete LaTeX document as a string.
-   */
   convert() {
     this.writePreamble();
     for (const chapter of this.json.chapters || []) {
@@ -51,6 +43,8 @@ export class LatexConverter {
   writePreamble() {
     const docClass = this.isArticle ? 'article' : 'report';
     this.latexString += `\\documentclass{${docClass}}\n`;
+    this.latexString += `\\usepackage{hyperref}\n`;
+    this.latexString += `\\hypersetup{colorlinks=true, urlcolor=blue}\n`;
     this.latexString += `\\title{${this.bookTitle}}\n`;
     this.latexString += `\\author{Editor App}\n`;
     this.latexString += `\\begin{document}\n`;
@@ -59,34 +53,65 @@ export class LatexConverter {
 
   writeChapter(chapterJson) {
     const chapterTitle = this.escapeLatex(chapterJson.title || 'Untitled Chapter');
-    // In 'article' mode, we don't use the \chapter command.
     if (!this.isArticle) {
       this.latexString += `\\chapter{${chapterTitle}}\n\n`;
     }
     const content = chapterJson.content_json?.content || [];
     this.nodesToLatex(content);
+    (chapterJson.sections || []).forEach(section => {
+      const sectionTitle = this.escapeLatex(section.title || 'Untitled Section');
+      const sectionContent = section.content_json?.content || [];
+      this.latexString += `\\section{${sectionTitle}}\n\n`;
+      this.nodesToLatex(sectionContent);
+    });
   }
 
   nodesToLatex(nodes) {
     for (const node of nodes) {
       const nodeType = node.type;
-      if (nodeType === 'heading') {
-        const level = node.attrs?.level || 2;
-        let sectionCmd;
-        if (this.isArticle) {
-          // In an article, H2 is a section, H3 is a subsection, etc.
-          sectionCmd = { 2: 'section', 3: 'subsection', 4: 'subsubsection' }[level] || 'subsection';
-        } else {
-          // In a report (book), H2 is a chapter (handled above), H3 is a section, etc.
-          sectionCmd = { 2: 'section', 3: 'subsection', 4: 'subsubsection' }[level] || 'section';
+      switch (nodeType) {
+        case 'heading': {
+          const level = node.attrs?.level || 2;
+          const cmd = { 2: 'section', 3: 'subsection' }[level] || 'subsubsection';
+          const text = this.renderTextContent(node.content || []);
+          this.latexString += `\\${cmd}{${text}}\n\n`;
+          break;
         }
-        const text = this.renderTextContent(node.content || []);
-        this.latexString += `\\${sectionCmd}{${text}}\n\n`;
-      } else if (nodeType === 'paragraph') {
-        const text = this.renderTextContent(node.content || []);
-        if (text) { // Don't write empty paragraphs
-          this.latexString += text + '\n\n';
+        case 'paragraph': {
+          const text = this.renderTextContent(node.content || []);
+          if (text) this.latexString += text + '\n\n';
+          break;
         }
+        case 'bulletList':
+          this.latexString += '\\begin{itemize}\n';
+          this.nodesToLatex(node.content || []);
+          this.latexString += '\\end{itemize}\n\n';
+          break;
+        case 'orderedList':
+          this.latexString += '\\begin{enumerate}\n';
+          this.nodesToLatex(node.content || []);
+          this.latexString += '\\end{enumerate}\n\n';
+          break;
+        case 'listItem': {
+          const itemContent = (node.content || []).map(childNode => {
+            return this.renderTextContent(childNode.content || []);
+          }).join('').trim();
+          this.latexString += `  \\item ${itemContent}\n`;
+          break;
+        }
+        case 'blockquote':
+          this.latexString += '\\begin{quote}\n';
+          this.nodesToLatex(node.content || []);
+          this.latexString += '\\end{quote}\n\n';
+          break;
+        case 'codeBlock': {
+          const code = node.content?.[0]?.text || '';
+          this.latexString += `\\begin{verbatim}\n${code}\n\\end{verbatim}\n\n`;
+          break;
+        }
+        case 'horizontalRule':
+          this.latexString += '\\hrule\n\n';
+          break;
       }
     }
   }
@@ -99,6 +124,9 @@ export class LatexConverter {
         for (const mark of node.marks) {
           if (this.marksMap[mark.type]) {
             text = this.marksMap[mark.type](text);
+          } else if (mark.type === 'link') {
+            const url = this.escapeLatex(mark.attrs.href);
+            text = `\\href{${url}}{${text}}`;
           }
         }
       }

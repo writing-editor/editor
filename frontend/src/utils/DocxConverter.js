@@ -1,133 +1,135 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, ExternalHyperlink, ShadingType } from 'docx';
 import { saveAs } from 'file-saver';
 
-/**
- * Converts a TipTap JSON object into a .docx file and triggers a download.
- */
 export class DocxConverter {
-  constructor(tiptapJson, bookTitle) {
-    this.json = tiptapJson;
+  constructor(bookData, bookTitle) {
+    this.bookData = bookData;
     this.bookTitle = bookTitle || 'Untitled Document';
-    this.isArticle = (this.json.chapters || []).length === 1;
   }
 
-  /**
-   * Main conversion method. Generates the .docx file and prompts for download.
-   */
   async convertAndSave() {
     const doc = this.createDocument();
-
-    // Use the Packer to generate a Blob
     const blob = await Packer.toBlob(doc);
-
-    // Use file-saver to trigger the download
     const filename = `${this.bookTitle.toLowerCase().replace(/\s+/g, '-')}.docx`;
     saveAs(blob, filename);
   }
 
-  /**
-   * Creates the docx Document object from the TipTap JSON.
-   * @returns {Document} The docx Document object.
-   */
-  createDocument() {
-    const children = []; // This will hold all paragraphs, headings, etc.
-
-    // Add the main title for articles
-    if (this.isArticle) {
+    createDocument() {
+      const children = [];
+  
       children.push(new Paragraph({
         text: this.bookTitle,
         heading: HeadingLevel.TITLE,
       }));
-    }
-
-    (this.json.chapters || []).forEach(chapter => {
-      // Add a chapter title for multi-chapter books
-      if (!this.isArticle) {
+  
+      (this.bookData.chapters || []).forEach(chapter => {
         children.push(new Paragraph({
           text: chapter.title || 'Untitled Chapter',
           heading: HeadingLevel.HEADING_1,
         }));
-      }
-
-      const contentNodes = chapter.content_json?.content || [];
-      this.nodesToDocx(contentNodes, children);
-    });
-
-    // Create the document with the assembled children
-    const doc = new Document({
-      sections: [{
-        properties: {},
-        children: children,
-      }],
-      styles: {
-        paragraphStyles: [
-          // You can define custom styles here if needed later
-        ]
-      }
-    });
-
-    return doc;
-  }
-
-  /**
-   * Converts an array of TipTap nodes into docx Paragraphs and adds them to the children array.
-   * @param {Array} nodes - The TipTap nodes to convert.
-   * @param {Array} children - The array to push the resulting docx objects into.
-   */
-  nodesToDocx(nodes, children) {
-    for (const node of nodes) {
-      if (node.type === 'heading') {
-        const level = node.attrs?.level || 2;
-        // Map TipTap heading levels (H2, H3, ...) to docx HeadingLevels
-        const headingLevelMap = {
-          2: HeadingLevel.HEADING_2,
-          3: HeadingLevel.HEADING_3,
-          4: HeadingLevel.HEADING_4,
-          5: HeadingLevel.HEADING_5,
-          6: HeadingLevel.HEADING_6,
-        };
-
-        children.push(new Paragraph({
-          children: this.renderTextRuns(node.content || []),
-          heading: headingLevelMap[level] || HeadingLevel.HEADING_2,
-        }));
-
-      } else if (node.type === 'paragraph') {
-        // Only add a paragraph if it contains text
-        if (node.content && node.content.some(n => n.text)) {
+        this.nodesToDocx(chapter.content_json?.content || [], children);
+        (chapter.sections || []).forEach(section => {
           children.push(new Paragraph({
-            children: this.renderTextRuns(node.content || []),
+            text: section.title || 'Untitled Section',
+            heading: HeadingLevel.HEADING_2,
           }));
-        }
-      }
+          this.nodesToDocx(section.content_json?.content || [], children);
+        });
+      });
+  
+      return new Document({
+        numbering: {
+          config: [
+            { reference: "default-bullet-list", levels: [{ level: 0, format: "bullet", text: "•", alignment: "left", indent: { left: 720 } }] },
+            { reference: "default-number-list", levels: [{ level: 0, format: "decimal", text: "%1.", alignment: "left", indent: { left: 720 } }] },
+          ],
+        },
+        styles: {
+          paragraphStyles: [
+            { id: "Quote", name: "Quote", basedOn: "Normal", next: "Normal", run: { color: "555555", italics: true }, paragraph: { indent: { left: 720 }, spacing: { before: 120, after: 120 } } },
+            { id: "SourceCode", name: "Source Code", basedOn: "Normal", next: "Normal", run: { font: "Courier New", size: 20 }, paragraph: { indent: { left: 720 }, spacing: { before: 120, after: 120 } } },
+          ]
+        },
+        sections: [{ properties: {}, children }],
+      });
     }
+  
+    nodesToDocx(nodes, children, listLevel = 0) {
+      nodes.forEach(node => {
+        switch (node.type) {
+          case 'heading':
+            children.push(new Paragraph({
+              children: this.renderTextRuns(node.content || []),
+              heading: { 2: HeadingLevel.HEADING_2, 3: HeadingLevel.HEADING_3 }[node.attrs.level] || HeadingLevel.HEADING_4,
+            }));
+            break;
+          case 'paragraph':
+            if (node.content && node.content.some(n => n.text)) {
+              children.push(new Paragraph({ children: this.renderTextRuns(node.content || []) }));
+            }
+            break;
+          case 'bulletList':
+          case 'orderedList':
+            (node.content || []).forEach(listItem => this.renderListItem(listItem, node.type, children, listLevel));
+            break;
+          case 'blockquote':
+            (node.content || []).forEach(innerNode => {
+              if (innerNode.type === 'paragraph') {
+                children.push(new Paragraph({ children: this.renderTextRuns(innerNode.content || []), style: "Quote" }));
+              }
+            });
+            break;
+          case 'codeBlock':
+            children.push(new Paragraph({ text: (node.content || []).map(n => n.text).join('\n'), style: "SourceCode", shading: { type: ShadingType.CLEAR, fill: "F1F1F1" } }));
+            break;
+          case 'horizontalRule':
+            children.push(new Paragraph({
+              border: {
+                bottom: {
+                  color: "auto",
+                  space: 1,
+                  style: "single",
+                  size: 6,
+                },
+              },
+            }));
+            break;
+        }
+      });
+    }
+
+  renderListItem(listItemNode, listType, children, listLevel) {
+    (listItemNode.content || []).forEach(childNode => {
+      if (childNode.type === 'paragraph') {
+        const numbering = listType === 'bulletList'
+          ? { bullet: { level: listLevel } }
+          : { numbering: { reference: 'default-number-list', level: listLevel } };
+        children.push(new Paragraph({
+          children: this.renderTextRuns(childNode.content || []),
+          ...numbering,
+        }));
+      }
+      if (childNode.type === 'bulletList' || childNode.type === 'orderedList') {
+        (childNode.content || []).forEach(nestedItem => this.renderListItem(nestedItem, childNode.type, children, listLevel + 1));
+      }
+    });
   }
 
-  /**
-   * Converts an array of TipTap text nodes (with marks) into an array of docx TextRuns.
-   * @param {Array} contentNodes - The array of TipTap text nodes.
-   * @returns {Array<TextRun>} An array of TextRun objects.
-   */
   renderTextRuns(contentNodes) {
-    if (!contentNodes) return [];
-
-    return contentNodes.map(node => {
-      const textRunOptions = {
-        text: node.text || "",
-      };
-
-      if (node.marks) {
-        node.marks.forEach(mark => {
-          if (mark.type === 'bold') {
-            textRunOptions.bold = true;
-          }
-          if (mark.type === 'italic') {
-            textRunOptions.italics = true;
-          }
+    return (contentNodes || []).flatMap(node => {
+      const linkMark = node.marks?.find(m => m.type === 'link');
+      if (linkMark) {
+        return new ExternalHyperlink({
+          children: [new TextRun({ text: node.text || "", style: "Hyperlink" })],
+          link: linkMark.attrs.href,
         });
       }
-
-      return new TextRun(textRunOptions);
+      const opts = { text: node.text || "" };
+      (node.marks || []).forEach(m => {
+        if (m.type === 'bold') opts.bold = true;
+        if (m.type === 'italic') opts.italics = true;
+      });
+      return new TextRun(opts);
     });
   }
 }

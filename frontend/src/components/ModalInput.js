@@ -23,14 +23,13 @@ export class ModalInput {
     });
   }
 
-  // This is a modern way to handle async user input
-  show(title, placeholder) {
+  show(title, placeholder, defaultValue = '') {
     this.titleEl.textContent = title;
     this.inputEl.placeholder = placeholder;
-    this.inputEl.value = ''; // Clear previous input
+    this.inputEl.value = defaultValue; // Set the value
     this.containerEl.classList.remove('hidden');
     this.inputEl.focus();
-
+    this.inputEl.select();
     return new Promise((resolve) => {
       this.resolvePromise = resolve;
     });
@@ -38,14 +37,15 @@ export class ModalInput {
 
   submit() {
     const value = this.inputEl.value.trim();
-    if (value) {
-      this.resolvePromise(value);
-      this.hide();
+    if (this.resolvePromise) {
+        this.resolvePromise(value);
     }
+    this.hide();
   }
 
-  cancel() {
-    this.resolvePromise(null);
+  cancel() {if (this.resolvePromise) {
+        this.resolvePromise(null);
+    }
     this.hide();
   }
 

@@ -2,7 +2,10 @@ import { debounce } from '../utils/debounce.js';
 import { Editor as TipTapEditor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { BubbleMenu } from '@tiptap/extension-bubble-menu';
+import { FloatingMenu } from '@tiptap/extension-floating-menu';
+import Link from '@tiptap/extension-link';
 import CharacterCount from '@tiptap/extension-character-count';
+import { Footnote, FootnoteReference, FOOTNOTE_PLUGIN_KEY } from '../editor/FootnoteExtension.js';
 
 export class Editor {
   constructor(controller, bookService) {
@@ -10,6 +13,7 @@ export class Editor {
     this.bookService = bookService;
     this.element = document.getElementById('editor-pane');
     this.toolbar = this.createToolbarElement();
+    this.floatingMenu = this.createFloatingMenuElement();
     this.wordCountEl = document.getElementById('word-count-display');
     this.scrollPane = document.getElementById('editor-pane');
 
@@ -28,7 +32,16 @@ export class Editor {
       element: this.element,
       extensions: [
         StarterKit.configure({
-          heading: { levels: [2, 3] }, // Limit to H2 and H3 for simplicity
+          heading: { levels: [2, 3] },
+          bulletList: { keepMarks: true, keepAttributes: true },
+          orderedList: { keepMarks: true, keepAttributes: true },
+          blockquote: true,
+          codeBlock: true,
+          horizontalRule: true,
+        }),
+        Link.configure({
+          openOnClick: false,
+          autolink: true,
         }),
         BubbleMenu.configure({
           element: this.toolbar,
@@ -44,19 +57,37 @@ export class Editor {
             },
           },
           shouldShow: ({ editor, view, state, from, to }) => {
-            if (!this.isReady) {
+            if (!this.isReady) return false;
+            const { empty } = state.selection;
+            const hasFocus = view.hasFocus();
+            return hasFocus && !empty && editor.isEditable;
+          },
+        }),
+        FloatingMenu.configure({
+          element: this.floatingMenu,
+          pluginKey: 'editorFloatingMenu',
+          tippyOptions: {
+            duration: 100,
+            placement: 'left',
+            offset: [0, 8],
+          },
+          shouldShow: ({ editor, state }) => {
+            const { selection } = state;
+            const { $from, empty } = selection;
+            const isRoot = $from.depth === 1;
+            const isEmpty = $from.parent.nodeSize === 2;
+
+            if (!editor.isEditable || !empty || !isRoot || !isEmpty) {
               return false;
             }
 
-            const { empty } = state.selection;
-            const hasFocus = view.hasFocus();
-            const h2Button = this.toolbar.querySelector('[data-action="h2"]');
+            const h2Button = this.floatingMenu.querySelector('[data-action="h2"]');
             if (h2Button) {
               const isChapterView = this.bookService._isChapterId(this.bookService.currentViewId);
-              h2Button.style.display = isChapterView ? '' : 'none';
+              h2Button.style.display = isChapterView ? 'flex' : 'none';
             }
 
-            return hasFocus && !empty && editor.isEditable;
+            return true;
           },
         }),
         CharacterCount,
@@ -80,6 +111,7 @@ export class Editor {
     });
 
     this.setupToolbarListeners();
+    this.setupFloatingMenuListeners();
     this.scrollPane.addEventListener('scroll', () => this.handleScroll());
   }
 
@@ -97,10 +129,8 @@ export class Editor {
     if (!this.wordCountEl) return;
 
     const { scrollTop, scrollHeight, clientHeight } = this.scrollPane;
-    // Check if the user has scrolled to the very bottom (with a small tolerance)
     const isAtBottom = scrollHeight - scrollTop - clientHeight < 5;
 
-    // Hide the counter if scrolled more than 50px down, UNLESS we are at the bottom
     if (scrollTop > 50 && !isAtBottom) {
       this.wordCountEl.classList.add('is-hidden');
     } else {
@@ -108,44 +138,65 @@ export class Editor {
     }
   }
 
-
   createToolbarElement() {
     const el = document.createElement('div');
     el.className = 'editor-toolbar';
     el.innerHTML = `
-      <!-- Formatting Buttons -->
-      <button class="toolbar-btn" data-action="bold" title="Bold (Ctrl+B)">
-        <svg viewBox="0 0 24 24"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg>
-      </button>
-      <button class="toolbar-btn" data-action="italic" title="Italic (Ctrl+I)">
-        <svg viewBox="0 0 24 24"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg>
-      </button>
-      <button class="toolbar-btn" data-action="h2" title="Heading 2">H2</button>
-      <button class="toolbar-btn" data-action="h3" title="Heading 3">H3</button>
-      
+      <button class="toolbar-btn" data-action="bold" title="Bold (Ctrl+B)"><svg viewBox="0 0 24 24"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg></button>
+      <button class="toolbar-btn" data-action="italic" title="Italic (Ctrl+I)"><svg viewBox="0 0 24 24"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg></button>
+      <button class="toolbar-btn" data-action="link" title="Add Link"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.71"></path></svg></button>
       <div class="toolbar-divider"></div>
-      
-      <!-- AI Action Buttons -->
-      <button class="toolbar-btn" data-action="analyze" title="Analyze Selection">
-        <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.2 0 .5 0 .7-.1-.5-.8-.7-1.7-.7-2.9 0-3.3 2.7-6 6-6 .9 0 1.8.2 2.5.6 1.1-1.9 1.5-4.1 1.5-6.6C22 6.5 17.5 2 12 2zm4.1 12.3c-.3.1-.6.2-.9.2-2.2 0-4-1.8-4-4s1.8-4 4-4c.3 0 .6 0 .9.1.5-2.2-.2-4.6-2-6.1C8.7 5.6 6 8.6 6 12s2.7 6.4 6.1 7.7c1.8-1.5 2.5-3.9 2-6.1zM17 14v-2h-2v-2h2V8l4 4-4 4z"></path></svg>
-      </button>
-      <button class="toolbar-btn" data-action="rewrite" title="Rewrite Selection">
-         <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path><path d="m15 5 3 3"></path></svg>
-      </button>
+      <button class="toolbar-btn" data-action="analyze" title="Analyze Selection"><svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.2 0 .5 0 .7-.1-.5-.8-.7-1.7-.7-2.9 0-3.3 2.7-6 6-6 .9 0 1.8.2 2.5.6 1.1-1.9 1.5-4.1 1.5-6.6C22 6.5 17.5 2 12 2zm4.1 12.3c-.3.1-.6.2-.9.2-2.2 0-4-1.8-4-4s1.8-4 4-4c.3 0 .6 0 .9.1.5-2.2-.2-4.6-2-6.1C8.7 5.6 6 8.6 6 12s2.7 6.4 6.1 7.7c1.8-1.5 2.5-3.9 2-6.1zM17 14v-2h-2v-2h2V8l4 4-4 4z"></path></svg></button>
+      <button class="toolbar-btn" data-action="rewrite" title="Rewrite Selection"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path><path d="m15 5 3 3"></path></svg></button>
     `;
     document.body.appendChild(el);
     return el;
   }
 
-  setupToolbarListeners() {
-    this.toolbar.addEventListener('click', (e) => {
-      const btn = e.target.closest('.toolbar-btn');
+  createFloatingMenuElement() {
+    const el = document.createElement('div');
+    el.className = 'floating-menu';
+    el.innerHTML = `
+        <button class="floating-menu-btn" data-action="h2" title="Heading 2 (New Chapter)"><svg viewBox="0 0 24 24"><path d="M4 12h8m-8 6h16m-8-12v12"/></svg></button>
+        <button class="floating-menu-btn" data-action="h3" title="Heading 3 (New Section)"><svg viewBox="0 0 24 24"><path d="M4 12h8m-8 6h16m-8-12v12"/></svg></button>
+        <button class="floating-menu-btn" data-action="bulletList" title="Bullet List"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></button>
+        <button class="floating-menu-btn" data-action="orderedList" title="Numbered List"><svg viewBox="0 0 24 24"><line x1="9" y1="6" x2="21" y2="6"></line><line x1="9" y1="12" x2="21" y2="12"></line><line x1="9" y1="18" x2="21" y2="18"></line><path d="M4.5 6H6v1"></path><path d="M4 12h2l-1 1 1 1H4"></path><path d="M5 18H4v-1a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1z"></path></svg></button>
+        <button class="floating-menu-btn" data-action="blockquote" title="Blockquote"><svg viewBox="0 0 24 24"><path d="M3 21h18M3 10h12a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H3v-8zM3 8a2 2 0 0 1 2-2h10M17 10a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"></path></svg></button>
+        <button class="floating-menu-btn" data-action="codeBlock" title="Code Block"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></button>
+        <button class="floating-menu-btn" data-action="horizontalRule" title="Divider"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+      `;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  setupFloatingMenuListeners() {
+    this.floatingMenu.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const btn = e.target.closest('.floating-menu-btn');
       if (!btn) return;
 
       const action = btn.dataset.action;
       const chain = this.instance.chain().focus();
 
-      // Get context for AI actions
+      switch (action) {
+        case 'h2': chain.toggleHeading({ level: 2 }).run(); break;
+        case 'h3': chain.toggleHeading({ level: 3 }).run(); break;
+        case 'bulletList': chain.toggleBulletList().run(); break;
+        case 'orderedList': chain.toggleOrderedList().run(); break;
+        case 'blockquote': chain.toggleBlockquote().run(); break;
+        case 'codeBlock': chain.toggleCodeBlock().run(); break;
+        case 'horizontalRule': chain.setHorizontalRule().run(); break;
+      }
+    });
+  }
+
+  setupToolbarListeners() {
+    this.toolbar.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.toolbar-btn');
+      if (!btn) return;
+
+      const action = btn.dataset.action;
+      const chain = this.instance.chain().focus();
       const selection = this.instance.state.selection;
       const selectedText = this.instance.state.doc.textBetween(selection.from, selection.to);
       const payload = {
@@ -159,24 +210,22 @@ export class Editor {
       };
 
       switch (action) {
-        case 'bold':
-          chain.toggleBold().run();
+        case 'bold': chain.toggleBold().run(); break;
+        case 'italic': chain.toggleItalic().run(); break;
+        case 'link': {
+          const previousUrl = this.instance.getAttributes('link').href;
+
+          const url = await this.controller.prompt('Enter URL', 'https://example.com', previousUrl);
+          if (url === null) return;
+          if (url === '') {
+            chain.extendMarkRange('link').unsetLink().run();
+          } else {
+            chain.extendMarkRange('link').setLink({ href: url }).run();
+          }
           break;
-        case 'italic':
-          chain.toggleItalic().run();
-          break;
-        case 'h2':
-          chain.toggleHeading({ level: 2 }).run();
-          break;
-        case 'h3':
-          chain.toggleHeading({ level: 3 }).run();
-          break;
-        case 'analyze':
-          this.handleDirectAnalysis(payload);
-          break;
-        case 'rewrite':
-          this.handleDirectRewrite(payload);
-          break;
+        }
+        case 'analyze': this.handleDirectAnalysis(payload); break;
+        case 'rewrite': this.handleDirectRewrite(payload); break;
       }
     });
   }
@@ -215,8 +264,7 @@ export class Editor {
   updateToolbarState() {
     this.toolbar.querySelector('[data-action="bold"]').classList.toggle('is-active', this.instance.isActive('bold'));
     this.toolbar.querySelector('[data-action="italic"]').classList.toggle('is-active', this.instance.isActive('italic'));
-    this.toolbar.querySelector('[data-action="h2"]').classList.toggle('is-active', this.instance.isActive('heading', { level: 2 }));
-    this.toolbar.querySelector('[data-action="h3"]').classList.toggle('is-active', this.instance.isActive('heading', { level: 3 }));
+    this.toolbar.querySelector('[data-action="link"]').classList.toggle('is-active', this.instance.isActive('link'));
   }
 
   render(content) {
@@ -242,5 +290,4 @@ export class Editor {
       .insertContent(newText)
       .run();
   }
-
 }
