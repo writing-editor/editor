@@ -7,108 +7,47 @@
   --spacing-md: 16px;
   --spacing-lg: 24px;
 
-  /* Light Theme */
-  --color-text: #1a1a1a;
-  --color-text-muted: #666;
-  --color-background: rgb(253, 255, 250);
-  --color-surface-light: #fff;
-  /* For cards, drawers */
-  --color-surface-medium: #f1f3f5;
-  /* For hovers, inputs */
-  --color-primary: #007aff;
-  --color-border: #e0e0e0;
+  /* Light Theme (default) */
+  --color-text: #1a2a00;
+  --color-text-muted: #4a5933;
+  
+  /* CHANGED: Lightened to be closer to a greenish-white for a softer feel. */
+  --color-background: #fbfef6; 
+  
+  /* CHANGED: No longer pure white, now a subtle off-white for less harsh contrast. */
+  --color-surface-light: #fdfefc;
+  
+  --color-surface-medium: #e8f5d0;
+  --color-border: #d2e0b8;
+  --color-primary: oklch(65% 0.2 130);
   --color-success: #2b8a3e;
   --color-danger: #c92a2a;
   --color-danger-bg: #ffe3e3;
-  --color-success-bg: #d3f9d8;
-  --color-shadow: rgba(0, 0, 0, 0.1);
+  --color-success-bg: oklch(98.6% 0.031 120.757);
+  --color-shadow: rgba(50, 80, 0, 0.1);
 }
 
 body.theme-dark {
-  /* Dark Theme with Blue Tint */
-  --color-text: #e3e6eb;
-  /* Softer off-white text */
-  --color-text-muted: #9aa0ac;
-  /* Muted, bluish-gray text */
-  --color-background: #070815;
-  /* Deep blue-black background */
-  --color-surface-light: #141a20;
-  /* Slightly lighter surface */
-  --color-surface-medium: #1e262f;
-  /* Raised surfaces with blue tone */
-  --color-border: #2a3440;
-  /* Borders with subtle blue hue */
+  /* CHANGED: Lightened text for better contrast against the new surface color. */
+  --color-text: #a1b0b6;
 
-  /* Accent colors */
-  --color-primary: #4da3ff;
-  /* Brighter Android-like blue */
-  --color-success: #3ecf8e;
-  /* Green still works */
-  --color-danger: #ff5c5f;
-  /* Adjusted red for contrast */
+  /* CHANGED: Significantly lightened for better contrast and readability. */
+  --color-text-muted: #839496;
 
-  /* Background tints for status feedback */
-  --color-danger-bg: #2a1a1d;
-  /* Dark red with blue mix */
-  --color-success-bg: #122a20;
-  /* Dark green with blue undertone */
-
-  /* Shadows */
-  --color-shadow: rgba(0, 0, 0, 0.65);
-}
-
-body.theme-nord {
-  --color-text: #d8dee9;
-  /* Grayish-white text */
-  --color-text-muted: #8190a5;
-  /* Muted blue-gray */
-  --color-background: #2e3440;
-  /* Dark slate background */
-  --color-surface-light: #3b4252;
-  /* Lighter surface */
-  --color-surface-medium: #434c5e;
-  /* Hover and inputs */
-  --color-border: #4c566a;
-  /* Subtle borders */
-
-  /* Accent colors */
-  --color-primary: #88c0d0;
-  /* Frosty cyan */
-  --color-success: #a3be8c;
-  /* Aurora green */
-  --color-danger: #bf616a;
-  /* Aurora red */
-
-  /* Background tints */
-  --color-danger-bg: #4b2c30;
-  --color-success-bg: #415039;
-
-  /* Shadows */
-  --color-shadow: rgba(0, 0, 0, 0.4);
-}
-
-/* --- NEW THEME: Solarized Dark (High-contrast, low eye-strain) --- */
-body.theme-solarized-dark {
-  --color-text: #93a1a1;
-  /* Main text */
-  --color-text-muted: #657b83;
-  /* Muted comments/placeholders */
   --color-background: #002b36;
-  /* Deep cyan-blue background */
-  --color-surface-light: #073642;
-  /* Lighter content background */
+
+  /* CHANGED: Made slightly lighter to better separate content from the deep background. */
+  --color-surface-light: #08404f;
+
   --color-surface-medium: #586e75;
-  /* Hover and inputs */
-  --color-border: #073642;
-  /* Borders are the same as surface */
+
+  /* CHANGED: Now a distinct, lighter color to make borders visible. */
+  --color-border: #0e4f60;
 
   /* Accent colors */
   --color-primary: #268bd2;
-  /* Vivid blue */
   --color-success: #859900;
-  /* Olive green */
   --color-danger: #dc322f;
-  /* Bright red */
 
   /* Background tints */
   --color-danger-bg: #3c2f2f;
@@ -116,100 +55,6 @@ body.theme-solarized-dark {
 
   /* Shadows */
   --color-shadow: rgba(0, 0, 0, 0.5);
-}
-
-/* --- NEW THEME: Monokai (Classic, vibrant code editor theme) --- */
-body.theme-monokai {
-  --color-text: #f8f8f2;
-  /* Very light text */
-  --color-text-muted: #75715e;
-  /* Muted gray-green */
-  --color-background: #272822;
-  /* Classic Monokai background */
-  --color-surface-light: #3e3d32;
-  /* Lighter surface */
-  --color-surface-medium: #49483e;
-  /* Hover and inputs */
-  --color-border: #75715e;
-  /* Borders match muted text */
-
-  /* Accent colors */
-  --color-primary: #66d9ef;
-  /* Bright cyan */
-  --color-success: #a6e22e;
-  /* Vibrant lime green */
-  --color-danger: #f92672;
-  /* Hot pink */
-
-  /* Background tints */
-  --color-danger-bg: #492a36;
-  --color-success-bg: #3e4d25;
-
-  /* Shadows */
-  --color-shadow: rgba(0, 0, 0, 0.6);
-}
-
-
-body.theme-lime {
-  --color-text: #1a2a00;
-  /* Dark, slightly desaturated green text for readability */
-  --color-text-muted: #4a5933;
-  /* Muted olive text */
-  --color-background: #f7ffe5;
-  /* Very light, almost white lime background */
-  --color-surface-light: #ffffff;
-  /* Pure white for surfaces */
-  --color-surface-medium: #e8f5d0;
-  /* Soft lime for hovers */
-  --color-border: #d2e0b8;
-  /* Desaturated lime border */
-
-  /* Accent colors */
-  --color-primary: oklch(65% 0.2 130);
-  /* A darker, more saturated lime for primary actions */
-  --color-success: #2b8a3e;
-  /* A standard, compatible green */
-  --color-danger: #c92a2a;
-  /* A standard, compatible red */
-
-  /* Background tints (using your base color for success) */
-  --color-danger-bg: #ffe3e3;
-  --color-success-bg: oklch(98.6% 0.031 120.757);
-
-  /* Shadows */
-  --color-shadow: rgba(50, 80, 0, 0.1);
-}
-
-body.theme-cyan-light {
-  /* YOUR color is the foundation for the background */
-  --color-background: oklch(98.4% 0.019 200.873);
-  /* Subtle, cool off-white */
-
-  --color-text: #012a36;
-  /* Very dark, saturated cyan for high contrast text */
-  --color-text-muted: #41616a;
-  /* Muted, soft cyan-gray */
-  --color-surface-light: #ffffff;
-  /* Pure white for raised surfaces and cards */
-  --color-surface-medium: #e6f7fb;
-  /* Very light cyan for hovers */
-  --color-border: #ccecf4;
-  /* Soft, light cyan border */
-
-  /* Accent colors */
-  --color-primary: oklch(65% 0.15 200);
-  /* A vibrant, accessible cyan for buttons and links */
-  --color-success: #2b8a3e;
-  /* Standard green for consistency */
-  --color-danger: #c92a2a;
-  /* Standard red */
-
-  /* Background tints */
-  --color-danger-bg: #ffe3e3;
-  --color-success-bg: #d4fdf0;
-
-  /* Shadows */
-  --color-shadow: rgba(0, 80, 100, 0.1);
 }
 
 /* --- 2. GLOBAL & LAYOUT STYLES --- */
@@ -247,12 +92,18 @@ body.right-drawer-is-open #main-container {
   width: var(--editor-pane-shrunk-width);
 }
 
-#editor-pane {
+#editor-wrapper {
+  display: flex;
+  position: relative;
+  height: 100%;
+  min-height: 0;
   flex-grow: 1;
+}
+
+#editor-pane {
+  flex: 1;
   padding: var(--spacing-lg);
   overflow-y: auto;
-  min-height: 0;
-  height: 100%;
   box-sizing: border-box;
 }
 

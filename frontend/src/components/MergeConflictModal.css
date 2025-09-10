@@ -17,7 +17,7 @@
   width: 80%;
   max-width: 900px;
   border-radius: 12px;
-  box-shadow: 0 8px 20px var(--color-shadow);
+  box-shadow: 0 0 0 1px var(--color-border);
   overflow-y: auto;
   max-height: 90vh;
 }

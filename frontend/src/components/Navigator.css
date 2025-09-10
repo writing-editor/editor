@@ -6,7 +6,7 @@
   width: var(--navigator-width);
   height: 100%;
   background-color: var(--color-background);
-  box-shadow: 2px 0px 15px var(--color-shadow);
+  box-shadow: 0 0 0 1px var(--color-border);
   z-index: 1002;
   box-sizing: border-box;
   overflow-y: auto;

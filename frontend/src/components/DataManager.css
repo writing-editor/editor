@@ -23,7 +23,7 @@
   max-width: 550px;
   background-color: var(--color-background);
   border-radius: 12px;
-  box-shadow: 0 10px 30px var(--color-shadow);
+  box-shadow: 0 0 0 1px var(--color-border);
   display: flex;
   flex-direction: column;
   max-height: 80vh;

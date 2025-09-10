@@ -6,6 +6,7 @@ import { ConfirmationModal } from './components/ConfirmationModal.js';
 import './components/ConfirmationModal.css';
 import { ConnectivityStatus } from './components/ConnectivityStatus.js';
 import './components/ConnectivityStatus.css';
+import './components/ContextualScrollbar.css';
 import { DataManager } from './components/DataManager.js';
 import './components/DataManager.css'
 import { Editor } from './components/Editor.js';

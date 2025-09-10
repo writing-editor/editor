@@ -1,0 +1,109 @@
+/* frontend/src/components/ContextualScrollbar.css */
+
+/* --- Main container: Controls visibility and overall look --- */
+#contextual-scrollbar {
+    width: 20px; /* Slimmer overall */
+    height: 100%;
+    position: absolute;
+    right: 0;
+    top: 0;
+    box-sizing: border-box;
+    user-select: none;
+    opacity: 0; /* Hidden by default */
+    transition: opacity 0.3s ease-in-out;
+    display: flex; 
+    justify-content: center;
+}
+
+/* Make it visible only when the content is scrollable */
+#contextual-scrollbar.is-scrollable {
+    opacity: 0.5; /* Semi-transparent */
+}
+
+#contextual-scrollbar:hover {
+    opacity: 1; /* Fully visible on hover */
+}
+
+/* --- The draggable thumb for LOCAL scrolling --- */
+#scrollbar-thumb {
+    width: 8px; /* Slim capsule */
+    height: 40px; /* FIXED height */
+    background-color: var(--color-text-muted);
+    border-radius: 4px; /* Capsule shape */
+    cursor: grab;
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: background-color 0.2s ease;
+}
+
+#scrollbar-thumb:hover {
+    background-color: var(--color-text);
+}
+
+#scrollbar-thumb:active {
+    cursor: grabbing;
+    background-color: var(--color-primary);
+}
+
+
+/* --- NEW: The Tooltip Index for GLOBAL navigation --- */
+#scrollbar-index {
+    position: absolute;
+    right: 100%; /* Position to the left of the scrollbar */
+    top: 0;
+    transform: translateY(-50%);
+    width: 250px; /* Give it some width */
+    background-color: var(--color-surface-light);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: var(--color-shadow);
+    padding: 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    
+    /* Hide by default, show on hover of parent */
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-50%) translateX(10px);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+    pointer-events: none; /* Can't click it when hidden */
+}
+
+#contextual-scrollbar:hover #scrollbar-index {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(-50%) translateX(0);
+    pointer-events: auto; /* Allow clicks when visible */
+}
+
+.scrollbar-index-item {
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.scrollbar-index-item:hover {
+    background-color: var(--color-surface-medium);
+    color: var(--color-text);
+}
+
+.scrollbar-index-item.active {
+    background-color: var(--color-primary);
+    color: white;
+    font-weight: 500;
+}
+
+/* Indent H3 items for visual hierarchy */
+.scrollbar-index-item.h3-item {
+    padding-left: 20px;
+}

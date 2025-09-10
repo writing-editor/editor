@@ -4,7 +4,7 @@
   background-color: var(--color-surface-light);
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  box-shadow: 0 2px 8px var(--color-shadow);
+  box-shadow: 0 0 0 1px var(--color-border);
 }
 
 .suggestion-diff {

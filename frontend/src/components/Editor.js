@@ -15,6 +15,22 @@ export class Editor {
     this.floatingMenu = this.createFloatingMenuElement();
     this.wordCountEl = document.getElementById('word-count-display');
     this.scrollPane = document.getElementById('editor-pane');
+    this.contextualScrollbar = document.getElementById('contextual-scrollbar');
+
+    // --- NEW: Debounced method for building the section map ---
+    this.debouncedBuildMap = debounce(this.buildSectionMapAndIndex.bind(this), 250);
+
+    this.isMouseInTooltip = false;
+    // --- NEW: Properties for the dual-mode scrollbar ---
+    this.sectionMap = [];
+    this.scrollIndexEl = null; // Will hold the tooltip container
+    this.isDragging = false;
+    this.dragStartY = 0;
+
+    // Create the thumb element
+    this.thumbElement = document.createElement('div');
+    this.thumbElement.id = 'scrollbar-thumb';
+    this.contextualScrollbar.appendChild(this.thumbElement);
 
     this.isReady = false;
 
@@ -98,6 +114,8 @@ export class Editor {
           this.debouncedSave();
         }
         this.updateWordCount();
+        // --- CHANGED: Call the map builder instead of old scrollbar logic ---
+        this.debouncedBuildMap();
       },
       onTransaction: () => {
         this.updateToolbarState();
@@ -111,8 +129,168 @@ export class Editor {
 
     this.setupToolbarListeners();
     this.setupFloatingMenuListeners();
-    this.scrollPane.addEventListener('scroll', () => this.handleScroll());
+    this.scrollPane.addEventListener('scroll', this.handleScroll.bind(this));
+    this.thumbElement.addEventListener('mousedown', this.handleThumbMouseDown.bind(this));
+    this.contextualScrollbar.addEventListener('mousemove', (e) => this.updateTooltipPosition(e));
+    const resizeObserver = new ResizeObserver(() => this.debouncedBuildMap());
+    resizeObserver.observe(this.element);
   }
+
+  // --- START OF NEW/REWRITTEN METHODS ---
+
+  /**
+   * Analyzes the document, builds a map of all sections (headings),
+   * and generates the clickable tooltip index for navigation.
+   */
+  buildSectionMapAndIndex() {
+    if (!this.instance) return;
+
+    // Remove old index if it exists
+    if (this.scrollIndexEl) this.scrollIndexEl.remove();
+
+    const editorContentEl = this.element.querySelector('.ProseMirror');
+    if (!editorContentEl) return;
+
+    const headingElements = Array.from(editorContentEl.querySelectorAll('h2, h3'));
+    const { scrollHeight } = this.scrollPane;
+
+    this.sectionMap = [];
+    headingElements.forEach((el, index) => {
+      const nextEl = headingElements[index + 1];
+      this.sectionMap.push({
+        element: el,
+        title: el.textContent,
+        level: el.tagName.toLowerCase(),
+        startPosition: el.offsetTop,
+        endPosition: nextEl ? nextEl.offsetTop : scrollHeight
+      });
+    });
+
+    // Create the tooltip index container
+    this.scrollIndexEl = document.createElement('div');
+    this.scrollIndexEl.id = 'scrollbar-index';
+
+    this.scrollIndexEl.addEventListener('mouseenter', () => { this.isMouseInTooltip = true; });
+    this.scrollIndexEl.addEventListener('mouseleave', () => { this.isMouseInTooltip = false; });
+
+    // Populate the index with clickable items
+    this.sectionMap.forEach((section, index) => {
+      const item = document.createElement('div');
+      item.className = 'scrollbar-index-item';
+      item.classList.add(section.level === 'h3' ? 'h3-item' : 'h2-item');
+      item.textContent = section.title;
+      item.dataset.index = index;
+      item.addEventListener('click', () => {
+        this.scrollPane.scrollTo({ top: section.startPosition, behavior: 'smooth' });
+      });
+      this.scrollIndexEl.appendChild(item);
+    });
+
+    this.contextualScrollbar.appendChild(this.scrollIndexEl);
+
+    // Trigger an initial scroll handler to set the correct state
+    this.handleScroll();
+  }
+
+  /**
+   * Handles all scroll-related UI updates based on the dual-mode logic.
+   */
+  handleScroll() {
+    const { scrollTop, scrollHeight, clientHeight } = this.scrollPane;
+    const isScrollable = scrollHeight > clientHeight;
+
+    // 1. Toggle overall visibility of the scrollbar
+    this.contextualScrollbar.classList.toggle('is-scrollable', isScrollable);
+    if (!isScrollable) {
+      this.thumbElement.style.display = 'none';
+      return;
+    }
+    this.thumbElement.style.display = '';
+
+    // 2. Find the current active section
+    let currentSection = this.sectionMap.find(section =>
+      scrollTop >= section.startPosition && scrollTop < section.endPosition
+    );
+
+    // Fallback if no section is found (e.g., if content before first heading)
+    if (!currentSection && this.sectionMap.length > 0) {
+      currentSection = { startPosition: 0, endPosition: this.sectionMap[0].startPosition, title: "Introduction" };
+    } else if (!currentSection) {
+      currentSection = { startPosition: 0, endPosition: scrollHeight, title: "Document" };
+    }
+
+    // 3. Calculate LOCAL scroll progress within the current section
+    const sectionLength = currentSection.endPosition - currentSection.startPosition;
+    const progressInSection = (scrollTop - currentSection.startPosition);
+    const localPercentage = sectionLength > 0 ? (progressInSection / sectionLength) : 0;
+
+    // 4. Update the thumb's position
+    const scrollbarHeight = this.contextualScrollbar.clientHeight;
+    const thumbHeight = this.thumbElement.offsetHeight;
+    const thumbPosition = localPercentage * (scrollbarHeight - thumbHeight);
+    this.thumbElement.style.top = `${thumbPosition}px`;
+
+    // 5. Update the active state in the tooltip index
+    if (this.scrollIndexEl) {
+      this.scrollIndexEl.querySelectorAll('.scrollbar-index-item').forEach(item => {
+        const itemSection = this.sectionMap[item.dataset.index];
+        item.classList.toggle('active', itemSection.startPosition === currentSection.startPosition);
+      });
+    }
+
+    // 6. Handle word count visibility (unchanged)
+    if (this.wordCountEl) {
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 5;
+      if (scrollTop > 50 && !isAtBottom) {
+        this.wordCountEl.classList.add('is-hidden');
+      } else {
+        this.wordCountEl.classList.remove('is-hidden');
+      }
+    }
+  }
+
+  handleThumbMouseDown(e) {
+    e.preventDefault();
+    this.isDragging = true;
+    this.dragStartY = e.clientY;
+    document.body.style.cursor = 'grabbing';
+    document.addEventListener('mousemove', this.handleThumbMouseMove.bind(this));
+    document.addEventListener('mouseup', this.handleThumbMouseUp.bind(this));
+  }
+
+  handleThumbMouseMove(e) {
+    if (!this.isDragging) return;
+    e.preventDefault();
+    const deltaY = e.clientY - this.dragStartY;
+    this.dragStartY = e.clientY;
+
+    const { scrollTop } = this.scrollPane;
+
+    let currentSection = this.sectionMap.find(section =>
+      scrollTop >= section.startPosition && scrollTop < section.endPosition
+    );
+    if (!currentSection && this.sectionMap.length > 0) {
+      currentSection = { startPosition: 0, endPosition: this.sectionMap[0].startPosition };
+    } else if (!currentSection) {
+      currentSection = { startPosition: 0, endPosition: this.scrollPane.scrollHeight };
+    }
+
+    const sectionLength = currentSection.endPosition - currentSection.startPosition;
+    const scrollbarHeight = this.contextualScrollbar.clientHeight;
+    const scrollRatio = deltaY / scrollbarHeight;
+
+    this.scrollPane.scrollTop += scrollRatio * sectionLength;
+  }
+
+  handleThumbMouseUp(e) {
+    e.preventDefault();
+    this.isDragging = false;
+    document.body.style.cursor = '';
+    document.removeEventListener('mousemove', this.handleThumbMouseMove.bind(this));
+    document.removeEventListener('mouseup', this.handleThumbMouseUp.bind(this));
+  }
+
+  // --- UNCHANGED METHODS BELOW ---
 
   updateWordCount() {
     if (!this.wordCountEl || !this.instance) return;
@@ -122,19 +300,6 @@ export class Editor {
     const chars = stats.characters();
 
     this.wordCountEl.innerHTML = `${words} | ${chars}`;
-  }
-
-  handleScroll() {
-    if (!this.wordCountEl) return;
-
-    const { scrollTop, scrollHeight, clientHeight } = this.scrollPane;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 5;
-
-    if (scrollTop > 50 && !isAtBottom) {
-      this.wordCountEl.classList.add('is-hidden');
-    } else {
-      this.wordCountEl.classList.remove('is-hidden');
-    }
   }
 
   createToolbarElement() {
@@ -266,11 +431,31 @@ export class Editor {
     this.toolbar.querySelector('[data-action="link"]').classList.toggle('is-active', this.instance.isActive('link'));
   }
 
+  updateTooltipPosition(e) {
+    if (this.isMouseInTooltip) return;
+    
+    if (!this.scrollIndexEl) return;
+
+    const scrollbarRect = this.contextualScrollbar.getBoundingClientRect();
+    // Calculate the mouse's Y position relative to the scrollbar container.
+    let relativeY = e.clientY - scrollbarRect.top;
+
+    // Clamp the position to prevent the tooltip from going off-screen.
+    const tooltipHeight = this.scrollIndexEl.offsetHeight;
+    const halfTooltipHeight = tooltipHeight / 2;
+    relativeY = Math.max(halfTooltipHeight, relativeY);
+    relativeY = Math.min(scrollbarRect.height - halfTooltipHeight, relativeY);
+
+    // Apply the new position.
+    this.scrollIndexEl.style.top = `${relativeY}px`;
+  }
+
   render(content) {
     this.instance.commands.setContent(content, false);
     setTimeout(() => {
       this.updateWordCount();
-      this.handleScroll();
+      // --- CHANGED: Call the map builder on render ---
+      this.buildSectionMapAndIndex();
     }, 0);
   }
 
@@ -278,7 +463,8 @@ export class Editor {
     this.instance.setOptions({ editable: isEditable });
     setTimeout(() => {
       this.updateWordCount();
-      this.handleScroll();
+      // --- CHANGED: Call the map builder on edit state change ---
+      this.buildSectionMapAndIndex();
     }, 0);
   }
 

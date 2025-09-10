@@ -1,12 +1,31 @@
 import { loadHTML } from '../utils/htmlLoader.js';
 
+const SETTINGS_CONFIG = {
+  fonts: [
+    { name: 'Academic Serif (LaTeX)', value: "'Iowan Old Style', 'Palatino Linotype', 'URW Palladio L', Georgia, serif" },
+    { name: 'Modern Sans-Serif', value: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
+    { name: 'Classic Serif (Georgia)', value: 'Georgia, serif' },
+    { name: 'Developer Mono', value: "'SF Mono', 'Consolas', 'Menlo', monospace" }
+  ],
+  aiProviders: [
+    { name: 'Google Gemini', value: 'google' },
+    { name: 'Anthropic Claude', value: 'anthropic' }
+  ],
+  aiModels: [
+    { name: 'Gemini-2.5-flash-lite (Recommended)', value: 'gemini-2.5-flash-lite', provider: 'google' },
+    { name: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro', provider: 'google' },
+    { name: 'Claude 3 Haiku (Fast)', value: 'claude-3-haiku-20240307', provider: 'anthropic' },
+    { name: 'Claude 3 Sonnet', value: 'claude-3-sonnet-20240229', provider: 'anthropic' }
+  ]
+};
+
 const DEFAULT_SETTINGS = {
-  theme: 'lime',
-  fontFamily: 'Georgia, serif',
+  theme: 'light',
+  fontFamily: SETTINGS_CONFIG.fonts[0].value, // Default to the first font in the config
   fontSize: '18',
-  provider: 'google', 
-  apiKey: '', 
-  modelName: 'gemini-2.5-flash-lite', 
+  provider: 'google',
+  apiKey: '',
+  modelName: 'Gemini-2.5-flash-lite',
   autoTag: false,
 };
 
@@ -40,9 +59,9 @@ export class SettingsPalette {
     // --- Query all DOM elements once ---
     this.saveBtn = document.getElementById('settings-save-btn');
     this.tabBar = this.containerEl.querySelector('.settings-tab-bar');
-    
+
     // Appearance
-    this.themeSelect = document.getElementById('setting-theme');
+    this.darkModeToggle = document.getElementById('setting-dark-mode');
     this.fontFamilySelect = document.getElementById('setting-font-family');
     this.fontSizeInput = document.getElementById('setting-font-size');
 
@@ -52,7 +71,7 @@ export class SettingsPalette {
     this.modelNameSelect = document.getElementById('setting-model-name');
     this.autoTagToggle = document.getElementById('setting-autotag');
     this.managePromptsBtn = document.getElementById('settings-manage-prompts-btn');
-    
+
     // Data Management
     this.exportBtn = document.getElementById('settings-export-btn');
     this.importBtn = document.getElementById('settings-import-btn');
@@ -70,7 +89,6 @@ export class SettingsPalette {
   setupEventListeners() {
     this.saveBtn.addEventListener('click', () => this.saveAndApply());
     this.containerEl.addEventListener('click', (e) => { if (e.target === this.containerEl) this.hide(); });
-    this.themeSelect.addEventListener('change', () => this.applyLiveTheme());
 
     this.tabBar.addEventListener('click', (e) => {
       const tabButton = e.target.closest('.settings-tab-btn');
@@ -80,8 +98,8 @@ export class SettingsPalette {
     // AI Settings Listeners
     this.providerSelect.addEventListener('change', () => this._onProviderChange());
     this.managePromptsBtn.addEventListener('click', () => {
-        this.hide();
-        this.controller.openRightDrawer('prompts');
+      this.hide();
+      this.controller.openRightDrawer('prompts');
     });
 
     // Data Management Listeners
@@ -91,8 +109,8 @@ export class SettingsPalette {
     this.exportDocxBtn.addEventListener('click', () => { if (this.exportDocSelect.value) this.controller.exportBookAsDocx(this.exportDocSelect.value); });
     this.manageCloudBtn.addEventListener('click', () => this.controller.showDataManager());
     this.aiStudioBtn.addEventListener('click', () => {
-        this.hide();
-        this.controller.showAiStudio(); // No need to specify a tab anymore
+      this.hide();
+      this.controller.showAiStudio();
     });
     this.disconnectBtn.addEventListener('click', async () => {
       this.hide();
@@ -111,9 +129,9 @@ export class SettingsPalette {
     if (!this.containerEl.hasChildNodes()) await this.renderShell();
     this.renderPanels();
     this.initialize();
-    this.loadSettings(); // This now loads ALL settings
+    this.loadSettings();
     this.populateDocumentExportList();
-    this.setActiveTab('appearance'); // Default to appearance tab
+    this.setActiveTab('appearance');
     this.containerEl.classList.remove('hidden');
   }
 
@@ -146,11 +164,10 @@ export class SettingsPalette {
     }
   }
 
-  // --- UNIFIED SETTINGS LOGIC ---
   loadSettings() {
     const settings = SettingsPalette.getSettings();
     // Appearance
-    this.themeSelect.value = settings.theme;
+    this.darkModeToggle.checked = settings.theme === 'dark';
     this.fontFamilySelect.value = settings.fontFamily;
     this.fontSizeInput.value = settings.fontSize;
     // AI
@@ -159,41 +176,34 @@ export class SettingsPalette {
     this.modelNameSelect.value = settings.modelName;
     this.autoTagToggle.checked = settings.autoTag;
 
-    this._onProviderChange(); // Ensure correct model options are visible
+    this._onProviderChange();
   }
 
   saveAndApply() {
     const newSettings = {
-      // Appearance
-      theme: this.themeSelect.value,
+      theme: this.darkModeToggle.checked ? 'dark' : 'light',
       fontFamily: this.fontFamilySelect.value,
       fontSize: this.fontSizeInput.value,
-      // AI
       provider: this.providerSelect.value,
       apiKey: this.apiKeyInput.value.trim(),
       modelName: this.modelNameSelect.value,
       autoTag: this.autoTagToggle.checked,
     };
     localStorage.setItem('app-settings', JSON.stringify(newSettings));
-    
+
     this.applyAllSettings();
     this.controller.showIndicator('Settings Saved!', { duration: 2000 });
     this.hide();
   }
-  
+
   applyAllSettings() {
     const settings = SettingsPalette.getSettings();
     this.applyTheme(settings.theme);
     this.applyEditorFont(settings.fontFamily, settings.fontSize);
   }
 
-  // --- THEME & FONT HELPERS ---
   applyTheme(theme) {
-    document.body.className = document.body.className.replace(/theme-\S+/g, '');
-    if (theme !== 'light') {
-      document.body.classList.add(`theme-${theme}`);
-    }
-    if (this.themeSelect) this.themeSelect.value = theme;
+    document.body.classList.toggle('theme-dark', theme === 'dark');
   }
 
   applyEditorFont(fontFamily, fontSize) {
@@ -201,11 +211,6 @@ export class SettingsPalette {
     document.documentElement.style.setProperty('--editor-font-size', `${fontSize}px`);
   }
 
-  applyLiveTheme() {
-    this.applyTheme(this.themeSelect.value);
-  }
-
-  // --- AI-SPECIFIC UI HELPER ---
   _onProviderChange() {
     const provider = this.providerSelect.value;
     document.getElementById('setting-api-key-label').textContent = provider === 'google' ? 'Google Gemini API Key' : 'Anthropic API Key';
@@ -219,17 +224,17 @@ export class SettingsPalette {
     }
   }
 
-  // --- RENDER METHODS FOR PANELS ---
   _renderAiPanel() {
-    // REVISED: Includes Manage Prompts button and redesigned auto-tag toggle
+    const providerOptions = SETTINGS_CONFIG.aiProviders.map(p => `<option value="${p.value}">${p.name}</option>`).join('');
+    const modelOptions = SETTINGS_CONFIG.aiModels.map(m => `
+        <option class="provider-option ${m.provider}-option" value="${m.value}">${m.name}</option>
+    `).join('');
+
     return `
       <div class="settings-section">
         <div class="setting-item">
           <label for="setting-provider">AI Provider</label>
-          <select id="setting-provider">
-            <option value="google">Google Gemini</option>
-            <option value="anthropic">Anthropic Claude</option>
-          </select>
+          <select id="setting-provider">${providerOptions}</select>
         </div>
         <div class="setting-item">
           <label id="setting-api-key-label" for="setting-api-key">API Key</label>
@@ -237,12 +242,7 @@ export class SettingsPalette {
         </div>
         <div class="setting-item">
           <label for="setting-model-name">AI Model</label>
-          <select id="setting-model-name">
-            <option class="provider-option google-option" value="gemini-2.5-flash-lite">Gemini-2.5-flash-lite (Recommended)</option>
-            <option class="provider-option google-option" value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-            <option class="provider-option anthropic-option" value="claude-3-haiku-20240307">Claude 3 Haiku (Fast)</option>
-            <option class="provider-option anthropic-option" value="claude-3-sonnet-20240229">Claude 3 Sonnet</option>
-          </select>
+          <select id="setting-model-name">${modelOptions}</select>
         </div>
         <div class="setting-item-full grid-span-all">
             <label class="setting-label">AI Features</label>
@@ -265,27 +265,25 @@ export class SettingsPalette {
   }
 
   _renderAppearancePanel() {
+    const fontOptions = SETTINGS_CONFIG.fonts.map(font => `<option value="${font.value}">${font.name}</option>`).join('');
+
     return `
       <div class="settings-section">
         <div class="setting-item">
-          <label for="setting-theme">Theme</label>
-          <select id="setting-theme">
-            <option value="light">Light</option>
-            <option value="lime">Lime</option>
-            <option value="dark">Dark (Blue Tint)</option>
-            <option value="cyan-light">Cyan Light</option>
-            <option value="nord">Nord</option>
-            <option value="solarized-dark">Solarized Dark</option>
-            <option value="monokai">Monokai</option>
-          </select>
+            <div class="setting-item-label">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                <span>Dark Mode</span>
+            </div>
+            <div class="setting-item-toggle">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="setting-dark-mode">
+                    <span class="slider"></span>
+                </label>
+            </div>
         </div>
         <div class="setting-item">
           <label for="setting-font-family">Editor Font</label>
-          <select id="setting-font-family">
-            <option value="Georgia, serif">Serif (Default)</option>
-            <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">Sans-Serif</option>
-            <option value="monospace">Monospace</option>
-          </select>
+          <select id="setting-font-family">${fontOptions}</select>
         </div>
         <div class="setting-item">
           <label for="setting-font-size">Editor Font Size (px)</label>
@@ -296,7 +294,6 @@ export class SettingsPalette {
   }
 
   _renderDataPanel() {
-    // REVISED: Prompts button has been removed from here
     return `
       <div class="settings-section">
         <div class="setting-item-full">
