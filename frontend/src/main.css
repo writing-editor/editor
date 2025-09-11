@@ -1,4 +1,5 @@
 /* --- 1. THEME & GLOBAL VARIABLES --- */
+
 :root {
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --navigator-width: 320px;
@@ -7,55 +8,78 @@
   --spacing-md: 16px;
   --spacing-lg: 24px;
 
-  /* Light Theme (default) */
-  --color-text: #1a2a00;
-  --color-text-muted: #4a5933;
+  /* Base Surfaces */
+  --color-background: #f7faf6;       /* paper-like gray-white w/ green hint */
+  --color-surface-light: #ffffff;    /* clean surface (cards, toolbar) */
+  --color-surface-medium: #f0f3ef;   /* soft gray block */
 
-  /* CHANGED: Lightened to be closer to a greenish-white for a softer feel. */
-  --color-background: #fbfef6;
+  /* Text */
+  --color-text: #1c1f1a;             /* near-black with olive undertone */
+  --color-text-muted: #5c635b;       /* muted gray */
+  --color-text-disabled: #a0a6a0;    /* desaturated gray-green */
 
-  /* CHANGED: No longer pure white, now a subtle off-white for less harsh contrast. */
-  --color-surface-light: #fdfefc;
+  /* Headings / UI chrome */
+  --color-heading: #111512;          /* slightly darker for hierarchy */
 
-  --color-surface-medium: #e8f5d0;
-  --color-border: #d2e0b8;
-  --color-primary: oklch(65% 0.2 130);
-  --color-success: #2b8a3e;
-  --color-danger: #c92a2a;
-  --color-danger-bg: #ffe3e3;
-  --color-success-bg: oklch(98.6% 0.031 120.757);
-  --color-shadow: rgba(50, 80, 0, 0.1);
+  /* Borders & Dividers */
+  --color-border: #d8ddd7;           /* grayish border */
+  --color-divider: rgba(28, 31, 26, 0.08);
+
+  /* Neutral Accents (replacing color coding with tonal hierarchy) */
+  --color-primary: #444a42;          /* strong gray, anchor accent */
+  --color-primary-hover: #2f332d;    /* deeper neutral */
+  --color-primary-text: #ffffff;     /* for buttons/labels */
+
+  --color-success: #6a7268;          /* mid-gray-green */
+  --color-success-bg: #ecefed;       /* pale neutral gray-green background */
+
+  --color-danger: #5a4d4d;           /* muted warm gray with red tint */
+  --color-danger-bg: #f3eeee;        /* pale gray-red background */
+
+  /* States */
+  --color-selection: #e0e4df;        /* soft gray-green highlight */
+  --color-hover: rgba(28, 31, 26, 0.04);
+  --color-disabled-bg: #f2f4f2;
+  --color-shadow: rgba(20, 30, 15, 0.08);
 }
+
 
 body.theme-dark {
-  /* CHANGED: Lightened text for better contrast against the new surface color. */
-  --color-text: #a1b0b6;
+  /* Base */
+  --color-background: #002b36;       /* deep solarized teal */
+  --color-surface-light: #08404f;    /* lighter surface */
+  --color-surface-medium: #586e75;   /* muted grayish teal */
 
-  /* CHANGED: Significantly lightened for better contrast and readability. */
-  --color-text-muted: #839496;
+  /* Text */
+  --color-text: #a1b0b6;             /* main body text */
+  --color-text-muted: #839496;       /* secondary/muted text */
+  --color-text-disabled: #586e75;    /* disabled text */
 
-  --color-background: #002b36;
+  /* Headings / UI chrome */
+  --color-heading: #cfd8dc;          /* brighter text for hierarchy */
 
-  /* CHANGED: Made slightly lighter to better separate content from the deep background. */
-  --color-surface-light: #08404f;
+  /* Borders & Dividers */
+  --color-border: rgba(255,255,255,0.1);
+  --color-divider: rgba(255,255,255,0.08);
 
-  --color-surface-medium: #586e75;
+  /* Primary Accent */
+  --color-primary: #2175b1;          /* calm blue */
+  --color-primary-hover: #1d6fa6;    /* darker hover */
+  --color-primary-text: #ffffff;
 
-  /* CHANGED: Now a distinct, lighter color to make borders visible. */
-  --color-border: #0e4f60;
-
-  /* Accent colors */
-  --color-primary: #268bd2;
+  /* Success / Danger */
   --color-success: #859900;
-  --color-danger: #dc322f;
-
-  /* Background tints */
-  --color-danger-bg: #3c2f2f;
   --color-success-bg: #3a4623;
+  --color-danger: #dc322f;
+  --color-danger-bg: #3c2f2f;
 
-  /* Shadows */
+  /* States */
+  --color-selection: #1a4b5c;        /* deep cyan highlight */
+  --color-hover: rgba(255,255,255,0.05);
+  --color-disabled-bg: #083642;
   --color-shadow: rgba(0, 0, 0, 0.5);
 }
+
 
 /* --- 2. GLOBAL & LAYOUT STYLES --- */
 body,
