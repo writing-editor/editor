@@ -110,3 +110,32 @@
     stroke-width: 2;
 }
 
+/* --- Slash Command Suggestion List --- */
+.suggestion-list {
+  background-color: var(--color-surface-light);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: var(--color-shadow);
+  min-width: 200px;
+  overflow: hidden;
+}
+
+.suggestion-list {
+  background-color: var(--color-surface-light);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 4px 12px var(--color-shadow);
+  min-width: 250px;
+  max-width: 350px; /* --- FIX: Constrain width --- */
+  overflow: hidden;
+  z-index: 9999; /* --- FIX: Ensure it's on top of everything --- */
+}
+
+/* ... (the rest of the suggestion-list styles are unchanged) */
+
+.suggestion-item.is-selected,
+.suggestion-item:hover {
+  background-color: var(--color-surface-medium);
+}

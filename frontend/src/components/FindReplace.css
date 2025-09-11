@@ -1,0 +1,130 @@
+/* --- NEW FILE: src/components/FindReplace.css --- */
+
+#find-replace-container {
+    position: absolute;
+    top: var(--spacing-md);
+    left: 50%; 
+    transform: translateX(-50%); 
+    z-index: 100;
+    max-width: 500px;
+    width: calc(100% - 32px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+#find-replace-container.hidden {
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+}
+
+#find-replace-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    background-color: var(--color-surface-light);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: var(--color-shadow);
+}
+
+.fr-input-group {
+    position: relative;
+    display: flex;
+    flex-grow: 1;
+}
+
+#fr-find-input, #fr-replace-input {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    background-color: var(--color-background);
+    color: var(--color-text);
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+#fr-find-input:focus, #fr-replace-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.fr-matches-count {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: var(--color-text-muted);
+    background-color: var(--color-background);
+    padding: 0 4px;
+}
+
+.fr-controls {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.fr-controls button, #fr-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: none;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    transition: all 0.2s ease;
+}
+
+.fr-controls button:hover:not(:disabled), #fr-close-btn:hover {
+    background-color: var(--color-surface-medium);
+    color: var(--color-text);
+}
+
+.fr-controls button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.fr-controls button svg, #fr-close-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    stroke-width: 2;
+}
+
+#fr-replace-btn, #fr-replace-all-btn {
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.fr-divider {
+    width: 1px;
+    height: 20px;
+    background-color: var(--color-border);
+    flex-shrink: 0;
+}
+
+/* --- Decoration for search results in the editor --- */
+.search-match {
+    background-color: #ffec99; /* A typical search highlight color */
+    border-radius: 2px;
+}
+
+.search-match.active {
+    background-color: #ffd43b; /* A brighter color for the current match */
+}
+
+body.theme-dark .search-match {
+    background-color: #69570e;
+}
+
+body.theme-dark .search-match.active {
+    background-color: #b59f3b;
+}

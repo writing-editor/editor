@@ -154,13 +154,47 @@ const DEFAULT_USER_MANUAL = {
 };
 
 const DEFAULT_PROMPTS = {
-  'ANALYZE.txt': "You are a developmental editor acting as a critical friend. Your goal is to help the writer improve their text by asking probing, insightful questions. Do not provide answers or summaries. Analyze the following text and respond with a short, bulleted list of 2-4 questions that challenge the writer to think more deeply about their argument, clarity, evidence, or structure.\n---\nText to analyze:\n{text_to_analyze}",
-  'REWRITE.txt': "Return ONLY the corrected text, with no commentary or explanation.\n---\n You are an expert proofreader. Your only task is to correct grammar, spelling, and punctuation in the provided text. You must adhere to these rules:\n1. DO NOT change the original wording, style, or tone.\n2. DO NOT add or remove sentences.\n3. Only fix objective errors (e.g., subject-verb agreement, typos, comma splices).\n4. If the text is already grammatically perfect, return it unchanged.\nCorrect the following text:\n{text_to_analyze}",
-  'DEVELOP.txt': `You are an expert writing assistant and development editor. Your task is to help the user develop their ideas based on their request, using the provided context.\n\nCONTEXT:\n{context_summary}\n\nUSER REQUEST:\n"{user_request}"\n\nBased on the user's request and the provided context, generate a helpful and detailed response. Structure your response in Markdown. For example, if they ask for an outline, provide a bulleted list. If they ask for content, write the content directly. Be insightful and thorough.`,
-  'FINDNOTES.txt': `You are a semantic search engine for a user's personal notebook.\nYour task is to find the most relevant notes based on the user's query.\n\nUser's search query: "{query}"\nFull library of notes: {notes_json_string}\n\nAnalyze the query and the notes. Return a single, valid JSON object with one key: "relevant_note_ids".\nThis key should be a list of the string IDs of the notes that are most conceptually relevant.\nReturn up to 5 of the most relevant IDs. If no notes are relevant, return an empty list.\nMUST: Do not include any other text or markdown formatting in your response.`,
-  'AUTOTAG.txt': `You are an AI assistant that analyzes notes and generates relevant conceptual tags.\nAnalyze the following notes provided as a JSON string. Your task is to return a single, valid JSON object with one key: "notes_with_tags".\nThe value of this key should be an array of objects. Each object must have two keys: "id" (the original note ID) and "tags" (an array of 2-4 relevant string tags).\nExample: { "notes_with_tags": [{ "id": "note_123", "tags": ["philosophy", "ethics", "stoicism"] }] }\nPrioritize conceptual tags over simple keywords. Only return the JSON object.\nNotes to analyze:\n{notes_json_string}`
+  "ANALYZE": {
+    "system": "You are a developmental editor acting as a critical friend. Your goal is to help the writer improve their text by asking probing, insightful questions. Do not provide answers or summaries.",
+    "user": "Analyze the following text and respond with a short, bulleted list of 2-4 questions that challenge the writer to think more deeply about their argument, clarity, evidence, or structure.\n---\nText to analyze:\n{text_to_analyze}"
+  },
+  "REWRITE": {
+    "system": "You are an expert proofreader. Your only task is to correct grammar, spelling, and punctuation. You must not change the original wording, style, or tone. Return ONLY the corrected text, with no commentary.",
+    "user": "Correct the following text:\n{text_to_analyze}"
+  },
+  "DEVELOP": {
+    "system": "You are an expert writing assistant and development editor. Your task is to help the user develop their ideas based on their request, using the provided context.",
+    "user": "CONTEXT:\n{context_summary}\n\nUSER REQUEST:\n\"{user_request}\"\n\nBased on the user's request and the provided context, generate a helpful and detailed response in Markdown."
+  },
+  "FINDNOTES": {
+    "system": "You are a semantic search engine for a user's personal notebook. Return a single, valid JSON object with one key: \"relevant_note_ids\". This key should be a list of the string IDs of the notes that are most conceptually relevant (up to 5). If no notes are relevant, return an empty list. MUST: Do not include any other text or markdown formatting in your response.",
+    "user": "User's search query: \"{query}\"\nFull library of notes: {notes_json_string}"
+  },
+  "AUTOTAG": {
+    "system": "You are an AI assistant that analyzes notes and generates relevant conceptual tags. Return a single, valid JSON object with one key: \"notes_with_tags\". The value should be an array of objects, each with two keys: \"id\" and \"tags\" (an array of 2-4 relevant string tags). Prioritize conceptual tags over simple keywords. Only return the JSON object.",
+    "user": "Notes to analyze:\n{notes_json_string}"
+  },
+  "COMMAND_FIND_NOTES": {
+    "system": "You are a research assistant. Your task is to find notes from the user's notebook that are conceptually related to the provided context text. Return a list of the most relevant notes in Markdown format, including their titles and a brief explanation of why they are relevant.",
+    "user": "Based on the following text, find the most relevant notes from my notebook.\n\nContext Text:\n---\n{context_text}\n---\n\nMy Notebook:\n{notes_json_string}"
+  },
+  "COMMAND_SUMMARIZE": {
+    "system": "You are an expert summarization engine. Your job is to return a concise, accurate summary of the provided text.",
+    "user": "Please summarize the following text:\n\n---\n{context_text}\n---"
+  },
+  "COMMAND_CHANGE_TONE": {
+    "system": "You are a master of prose and style. You will rewrite text according to a specific tone or style requested by the user.",
+    "user": "Rewrite the following text in a {user_request} tone:\n\n---\n{context_text}\n---"
+  },
+  "COMMAND_TITLES": {
+    "system": "You are a creative assistant for writers. Your task is to generate compelling, alternative titles.",
+    "user": "Generate a list of 5 alternative titles for a piece with the following content:\n\n---\n{context_text}\n---"
+  },
+  "COMMAND_OUTLINE": {
+    "system": "You are a structural editor. Your task is to analyze a piece of text and generate a clear, hierarchical outline of its main points and arguments. Use Markdown for the outline.",
+    "user": "Generate a hierarchical outline for the following text:\n\n---\n{context_text}\n---"
+  }
 };
-
 
 /**
  * Manages all book-related data using a hierarchical chapter/section model.
@@ -213,20 +247,21 @@ export class BookService {
 
   async checkForFirstRun() {
     const hasRunFlagRecord = await this.storageService.getFile('initial_setup_complete');
-    const hasRunFlag = hasRunFlagRecord ? hasRunFlagRecord.content : null;
-    if (hasRunFlag) {
+    if (hasRunFlagRecord) {
       return;
     }
 
     console.log("Performing first-time setup: Seeding database with default content...");
+
     // 1. Save the user manual
     await this.storageService.saveFile('user-manual.book', DEFAULT_USER_MANUAL);
-    // 2. Save the default prompts
-    for (const [filename, content] of Object.entries(DEFAULT_PROMPTS)) {
-      await this.storageService.saveFile(filename, content);
-    }
+
+    // 2. Save the single prompts.json file instead of looping ---
+    await this.storageService.saveFile('prompts.json', DEFAULT_PROMPTS);
+
     // 3. Pin the user manual as the default book to show
     await this.storageService.saveFile('pinned.txt', 'user-manual');
+
     // 4. Set the flag so this doesn't run again
     await this.storageService.saveFile('initial_setup_complete', true);
     console.log("First-time setup complete.");
@@ -236,7 +271,7 @@ export class BookService {
     this.navigatorView = 'library';
     const pinnedBookRecord = await this.storageService.getFile('pinned.txt');
     this.pinnedBook = pinnedBookRecord ? pinnedBookRecord.content : null;
-    
+
     const bookFiles = await this.storageService.getAllFilesBySuffix('.book');
     this.availableBooks = bookFiles
       .map(file => {
@@ -382,27 +417,71 @@ export class BookService {
 
   // --- SAVE ENGINE ---
 
-  /**
-   * Saves the content from the editor for a given view (chapter or section).
-   * This method acts as a safe entry point to the complex deconstruction logic.
-   *
-   * @param {string} viewId The ID of the chapter or section being edited.
-   * @param {object} editorContent The full TipTap JSON content from the editor.
-   */
+
   async saveView(viewId, editorContent) {
     if (!this.currentBook || !viewId || viewId === 'full_book' || viewId === this.currentBook.id) {
-      console.log("Save prevented: View is not editable or book is not loaded.");
       return;
     }
 
     const indicatorId = this.appController.showIndicator('Saving...');
     try {
       const bookCopy = JSON.parse(JSON.stringify(this.currentBook));
-      const nodes = editorContent.content || [];
+      const allNodesFromEditor = editorContent.content || [];
+
+      let incomingFootnotesNode = null;
+      const contentNodes = [];
+      allNodesFromEditor.forEach(node => {
+        if (node.type === 'footnotes') {
+          incomingFootnotesNode = node;
+        } else {
+          contentNodes.push(node);
+        }
+      });
 
       const oldStructureJSON = JSON.stringify(this._getBookStructure(bookCopy));
+      const navigateToId = this._deconstructAndSaveView(viewId, contentNodes, bookCopy);
 
-      const navigateToId = this._deconstructAndSaveView(viewId, nodes, bookCopy);
+      // --- THE DEFINITIVE FIX: MERGE INCOMING FOOTNOTES, DON'T REPLACE ---
+
+      // 1. Get all existing footnotes from the book and put them in a Map for easy access.
+      const existingFootnotesMap = new Map(
+        (bookCopy.footnotes?.content || []).map(fn => [fn.attrs['data-id'], fn])
+      );
+
+      // 2. Get the new/updated footnotes from the current editor view.
+      const incomingFootnotes = incomingFootnotesNode?.content || [];
+
+      // 3. Merge the incoming footnotes into the map.
+      // If a footnote with the same ID already exists, it will be updated.
+      // If it's a new footnote, it will be added.
+      for (const incomingNote of incomingFootnotes) {
+        existingFootnotesMap.set(incomingNote.attrs['data-id'], incomingNote);
+      }
+
+      // 4. Reconstruct the final, complete footnotes block from the merged map.
+      // This now contains both the preserved old notes and the updated new ones.
+      const finalFootnotesNode = {
+        type: 'footnotes',
+        attrs: { class: 'footnotes' },
+        content: Array.from(existingFootnotesMap.values())
+      };
+
+      // 5. Save the complete, merged list back to the top-level property.
+      bookCopy.footnotes = finalFootnotesNode;
+
+      // --- END OF THE MERGE FIX ---
+
+      // Clean up any stray footnote blocks from inside chapter content (this is still good practice)
+      for (const chapter of bookCopy.chapters) {
+        if (chapter.content_json && chapter.content_json.content) {
+          chapter.content_json.content = chapter.content_json.content.filter(n => n.type !== 'footnotes');
+        }
+        for (const section of chapter.sections) {
+          if (section.content_json && section.content_json.content) {
+            section.content_json.content = section.content_json.content.filter(n => n.type !== 'footnotes');
+          }
+        }
+      }
 
       if (this.metadata.margin_blocks && navigateToId !== viewId) {
         const validIds = new Set();
@@ -410,7 +489,6 @@ export class BookService {
           validIds.add(chapter.id);
           (chapter.sections || []).forEach(section => validIds.add(section.id));
         });
-
         for (const metadataId in this.metadata.margin_blocks) {
           if (!validIds.has(metadataId)) {
             delete this.metadata.margin_blocks[metadataId];
@@ -727,43 +805,79 @@ export class BookService {
   _getViewData(viewId) {
     if (!this.currentBook) return { editor_content: { type: 'doc', content: [] } };
 
-    // --- NEW: Full Book View Logic ---
-    if (viewId === this.currentBook.id || viewId === 'full_book') { // Handle full book view
-      let allNodes = [];
-      allNodes.push({ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: this.currentBook.title }] });
-      for (const chapter of this.currentBook.chapters) {
-        allNodes.push({ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: chapter.title }] });
-        allNodes.push(...(chapter.content_json?.content || []));
+    let viewNodes = [];
+    const bookData = this.currentBook;
+
+    // Step 1: Assemble the content for the specific view (this logic is unchanged)
+    if (viewId === bookData.id || viewId === 'full_book') {
+      viewNodes.push({ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: bookData.title }] });
+      for (const chapter of bookData.chapters) {
+        viewNodes.push({ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: chapter.title }] });
+        viewNodes.push(...(chapter.content_json?.content || []));
         for (const section of chapter.sections || []) {
-          allNodes.push({ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: section.title }] });
-          allNodes.push(...(section.content_json?.content || []));
+          viewNodes.push({ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: section.title }] });
+          viewNodes.push(...(section.content_json?.content || []));
         }
       }
-      return { editor_content: { type: 'doc', content: this._sanitizeTiptapContent(allNodes) } };
+    } else {
+      for (const chapter of bookData.chapters) {
+        if (chapter.id === viewId) {
+          viewNodes.push({ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: chapter.title }] });
+          viewNodes.push(...(chapter.content_json?.content || []));
+          for (const section of chapter.sections || []) {
+            viewNodes.push({ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: section.title }] });
+            viewNodes.push(...(section.content_json?.content || []));
+          }
+          break;
+        }
+        for (const section of chapter.sections || []) {
+          if (section.id === viewId) {
+            viewNodes.push({ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: section.title }] });
+            viewNodes.push(...(section.content_json?.content || []));
+            break;
+          }
+        }
+      }
     }
 
-    // --- Chapter and Section View Logic ---
-    for (const chapter of this.currentBook.chapters) {
-      if (chapter.id === viewId) { // Chapter View
-        let content = [];
-        content.push({ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: chapter.title }] });
-        content.push(...(chapter.content_json?.content || []));
-        for (const section of chapter.sections || []) {
-          content.push({ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: section.title }] });
-          content.push(...(section.content_json?.content || []));
-        }
-        return { editor_content: { type: 'doc', content: this._sanitizeTiptapContent(content) } };
+    // Step 2: Find which footnotes are ACTUALLY referenced in this view.
+    const referencedIds = this.collectFootnoteIds(viewNodes);
+
+    // Step 3: If references exist, build a NEW footnotes block containing ONLY those notes.
+    if (referencedIds.size > 0 && bookData.footnotes?.content) {
+      const relevantFootnotes = bookData.footnotes.content.filter(fn => 
+        referencedIds.has(fn.attrs['data-id'])
+      );
+
+      if (relevantFootnotes.length > 0) {
+        viewNodes.push({
+          type: 'footnotes',
+          attrs: { class: 'footnotes' },
+          content: relevantFootnotes
+        });
       }
-      for (const section of chapter.sections || []) {
-        if (section.id === viewId) { // Section View
-          let content = [];
-          content.push({ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: section.title }] });
-          content.push(...(section.content_json?.content || []));
-          return { editor_content: { type: 'doc', content: this._sanitizeTiptapContent(content) } };
+    }
+
+    return { editor_content: { type: 'doc', content: this._sanitizeTiptapContent(viewNodes) } };
+  }
+
+  collectFootnoteIds(nodes) {
+    const ids = new Set();
+    
+    function traverse(nodeList) {
+      if (!nodeList) return;
+      for (const node of nodeList) {
+        if (node.type === 'footnoteReference') {
+          ids.add(node.attrs['data-id']);
+        }
+        if (node.content) {
+          traverse(node.content);
         }
       }
     }
-    return { editor_content: { type: 'doc', content: [] } }; // Fallback
+
+    traverse(nodes);
+    return ids;
   }
 
   _updateBookState(updatedBookData, navigateToId) {
@@ -782,10 +896,7 @@ export class BookService {
     }
     return false;
   }
-  /**
-   * Recursively removes empty text nodes from TipTap content.
-   * Replicates backend logic.
-   */
+  
   _sanitizeTiptapContent(nodes) {
     if (!Array.isArray(nodes)) return [];
     const sanitizedNodes = [];
@@ -836,6 +947,7 @@ export class BookService {
     await this.storageService.saveFile(`${this.currentBook.filename}.book`, {
       metadata: this.currentBook.metadata,
       chapters: this.currentBook.chapters,
+      footnotes: this.currentBook.footnotes,
     });
   }
 

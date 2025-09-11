@@ -61,3 +61,39 @@
   margin-top: 0;
   margin-bottom: 1rem;
 }
+
+/* Style for the superscript reference in the text */
+footnote-reference {
+  display: inline-block;
+  vertical-align: super;
+  font-size: 0.8em;
+  cursor: pointer;
+  padding: 0 0.2em;
+}
+
+/* The main container for the list of footnotes at the bottom */
+.footnotes {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+}
+
+/* Hide the list if it's empty */
+.footnotes:empty {
+  display: none;
+}
+
+/* Style for the footnote content itself when editing */
+.ProseMirror .footnote-definition {
+  display: inline-block;
+  background: var(--color-surface-medium);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin: 0 4px;
+}
+
+.ProseMirror .footnote-definition p {
+  margin: 0;
+}

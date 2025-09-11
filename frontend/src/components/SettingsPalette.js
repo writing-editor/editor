@@ -75,6 +75,7 @@ export class SettingsPalette {
     // Data Management
     this.exportBtn = document.getElementById('settings-export-btn');
     this.importBtn = document.getElementById('settings-import-btn');
+    this.exportPdfBtn = document.getElementById('settings-export-pdf-btn');
     this.exportDocSelect = document.getElementById('settings-export-doc-select');
     this.exportLatexBtn = document.getElementById('settings-export-latex-btn');
     this.exportDocxBtn = document.getElementById('settings-export-docx-btn');
@@ -106,6 +107,12 @@ export class SettingsPalette {
     this.exportBtn.addEventListener('click', () => this.controller.exportLocal());
     this.importBtn.addEventListener('click', () => { this.hide(); this.controller.importLocal(); });
     this.exportLatexBtn.addEventListener('click', () => { if (this.exportDocSelect.value) this.controller.exportBookAsLatex(this.exportDocSelect.value); });
+    this.exportPdfBtn.addEventListener('click', () => {
+      if (this.exportDocSelect.value) {
+        this.controller.showIndicator('Preparing for print...', { duration: 2000 });
+        this.printView(this.exportDocSelect.value);
+      }
+    });
     this.exportDocxBtn.addEventListener('click', () => { if (this.exportDocSelect.value) this.controller.exportBookAsDocx(this.exportDocSelect.value); });
     this.manageCloudBtn.addEventListener('click', () => this.controller.showDataManager());
     this.aiStudioBtn.addEventListener('click', () => {
@@ -211,6 +218,33 @@ export class SettingsPalette {
     document.documentElement.style.setProperty('--editor-font-size', `${fontSize}px`);
   }
 
+async printView(filename) {
+    const originalViewId = this.controller.bookService.currentViewId;
+
+    await this.controller.navigateTo(filename, 'full_book');
+
+    // Wait until the editor DOM actually exists
+    const checkReady = () => new Promise(resolve => {
+        const interval = setInterval(() => {
+            const editorContent = document.querySelector('#editor-pane .ProseMirror');
+            if (editorContent && editorContent.textContent.trim().length > 0) {
+                clearInterval(interval);
+                resolve();
+            }
+        }, 5000);
+    });
+
+    await checkReady();
+
+    window.onafterprint = () => {
+        this.controller.navigateTo(filename, originalViewId);
+        window.onafterprint = null;
+    };
+
+    window.print();
+}
+
+
   _onProviderChange() {
     const provider = this.providerSelect.value;
     document.getElementById('setting-api-key-label').textContent = provider === 'google' ? 'Google Gemini API Key' : 'Anthropic API Key';
@@ -309,9 +343,11 @@ export class SettingsPalette {
           <p class="setting-description">Export a single document to a specific format like LaTeX or DOCX.</p>
           <div class="data-actions-export">
             <select id="settings-export-doc-select"></select>
-            <button id="settings-export-latex-btn" class="settings-action-btn" title="Export as LaTeX"><span class="export-format-tag">TEX</span></button>
             <button id="settings-export-docx-btn" class="settings-action-btn" title="Export as .docx"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></button>
-          </div>
+            <button id="settings-export-pdf-btn" class="settings-action-btn" title="Export as PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></button>
+            <button id="settings-export-latex-btn" class="settings-action-btn" title="Export as LaTeX"><span class="export-format-tag">TEX</span></button>
+            
+            </div>
         </div>
         <div class="setting-item-full">
           <label class="setting-label">Account & Data</label>

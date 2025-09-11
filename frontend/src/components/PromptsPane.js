@@ -1,16 +1,21 @@
-
 import { promptBlockWrapper } from '../utils/promptBlockWrapper.js';
 import { Editor as TipTapEditor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 
-const PROMPT_CONFIG = {
-    'DEVELOP': { title: 'Custom Request Prompt (Workbench)' },
-    'REWRITE': { title: 'Proofread Prompt (Rewrite)' },
-    'ANALYZE': { title: 'Critique Prompt (Analyze)' },
-    'AUTOTAG': { title: 'Automatic Tagging Prompt' },
-    'FINDNOTES': { title: 'AI Note Search Prompt' }
+// A map to provide user-friendly titles for each prompt key.
+const PROMPT_TITLES = {
+    'DEVELOP': 'Custom Request Prompt (Workbench)',
+    'REWRITE': 'Proofread Prompt (Rewrite)',
+    'ANALYZE': 'Critique Prompt (Analyze)',
+    'AUTOTAG': 'Automatic Tagging Prompt',
+    'FINDNOTES': 'AI Note Search Prompt',
+    'COMMAND_SUMMARIZE': 'Command: Summarize',
+    'COMMAND_CHANGE_TONE': 'Command: Change Tone',
+    'COMMAND_TITLES': 'Command: Suggest Titles',
+    'COMMAND_OUTLINE': 'Command: Generate Outline'
 };
+
 
 export class PromptsPane {
     constructor(controller, storageService) {
@@ -18,7 +23,7 @@ export class PromptsPane {
         this.storageService = storageService;
         this.element = document.getElementById('prompts-drawer');
 
-        this.promptTemplates = {};
+        this.promptTemplates = {}; // This will hold the entire prompts.json object
         this.isEditorVisible = false;
         this.editingPromptId = null;
         this.mainEditorInstance = null;
@@ -28,10 +33,8 @@ export class PromptsPane {
     }
 
     async initialize() {
-        for (const key of Object.keys(PROMPT_CONFIG)) {
-            const fileRecord = await this.storageService.getFile(`${key}.txt`);
-            this.promptTemplates[key] = fileRecord ? fileRecord.content : null; 
-        }
+        const fileRecord = await this.storageService.getFile('prompts.json');
+        this.promptTemplates = fileRecord ? fileRecord.content : {};
         this.renderUI();
     }
 
@@ -41,7 +44,6 @@ export class PromptsPane {
             this.mainEditorInstance = null;
         }
 
-        // --- Use class names from NotebookPane.css for consistency ---
         this.element.innerHTML = `
             <div class="prompts-header">
                 <h3>Manage Prompts</h3>
@@ -55,9 +57,13 @@ export class PromptsPane {
                         <div class="prompt-tiptap-editor-host"></div>
                     </div>` : ''}
                 <div id="note-blocks-container">
-                    ${Object.keys(PROMPT_CONFIG).map(key => {
-            const config = PROMPT_CONFIG[key];
-            return promptBlockWrapper({ ...config, id: key, content: this.promptTemplates[key] });
+                    ${Object.keys(this.promptTemplates).map(key => {
+            const config = {
+                id: key,
+                title: PROMPT_TITLES[key] || key,
+                content: this.promptTemplates[key] // Pass the whole {system, user} object
+            };
+            return promptBlockWrapper(config);
         }).join('')}
                 </div>
             </div>
@@ -72,7 +78,7 @@ export class PromptsPane {
 
     initializeMainEditor() {
         const editorHost = this.element.querySelector('.prompt-tiptap-editor-host');
-        if (!editorHost) return; // Guard against missing element
+        if (!editorHost) return;
 
         this.mainEditorInstance = new TipTapEditor({
             element: editorHost,
@@ -94,6 +100,14 @@ export class PromptsPane {
         if (!button) return;
 
         const action = button.dataset.action || button.id;
+        
+        if (action === 'insert-variable') {
+        if (this.mainEditorInstance) {
+            this.mainEditorInstance.chain().focus().insertContent(button.dataset.variable).run();
+        }
+        return; 
+    }
+        
         const promptBlock = button.closest('.prompt-block');
         const newPromptId = promptBlock?.dataset.promptId;
 
@@ -102,12 +116,10 @@ export class PromptsPane {
                 this.controller.closeRightDrawer();
                 break;
             case 'edit-prompt':
-                // If the user clicks the same edit button, toggle the editor off
                 if (this.isEditorVisible && this.editingPromptId === newPromptId) {
                     this.isEditorVisible = false;
                     this.editingPromptId = null;
                 } else {
-                    // Otherwise, show the editor for the new prompt
                     this.isEditorVisible = true;
                     this.editingPromptId = newPromptId;
                 }
@@ -128,29 +140,34 @@ export class PromptsPane {
     }
 
     loadPromptIntoEditor(promptId) {
-        if (!this.mainEditorInstance) return;
+        if (!this.mainEditorInstance || !promptId) return;
 
-        const [system, user] = this.getPromptParts(promptId);
+        const promptConfig = this.promptTemplates[promptId];
+        if (!promptConfig) return;
+
         const systemHost = this.element.querySelector('.prompt-system-instruction-host');
-        systemHost.textContent = system || '';
-        systemHost.style.display = system ? 'block' : 'none';
+        systemHost.textContent = promptConfig.system || 'No system prompt defined.';
 
-        this.mainEditorInstance.commands.setContent(user, false);
+        this.mainEditorInstance.commands.setContent(promptConfig.user || '', false);
+        this.renderVariableHints(promptId); 
     }
 
-
-
     async handleSave() {
-        if (!this.mainEditorInstance || !this.mainEditorInstance.state.doc.textContent.trim() || !this.editingPromptId) return;
+        if (!this.mainEditorInstance || !this.editingPromptId) return;
+
+        const userContent = this.mainEditorInstance.getText({ blockSeparator: "\n\n" });
+        if (!userContent.trim()) {
+            this.controller.showIndicator("Prompt content cannot be empty.", { isError: true });
+            return;
+        }
 
         const indicatorId = this.controller.showIndicator('Saving Prompt...');
         try {
-            const userContent = this.mainEditorInstance.getText({ blockSeparator: "\n\n" });
-            const [system, _] = this.getPromptParts(this.editingPromptId);
-            const newContent = system ? `${system.trim()}\n---\n${userContent}` : userContent;
+            // Update the in-memory object
+            this.promptTemplates[this.editingPromptId].user = userContent;
 
-            await this.storageService.saveFile(`${this.editingPromptId}.txt`, newContent);
-            this.promptTemplates[this.editingPromptId] = newContent;
+            // Save the entire updated object back to the database
+            await this.storageService.saveFile('prompts.json', this.promptTemplates);
 
             this.controller.showIndicator('Prompt Saved!', { duration: 2000 });
 
@@ -162,14 +179,40 @@ export class PromptsPane {
         }
     }
 
-    getPromptParts(promptId) {
-        const content = this.promptTemplates[promptId] || '';
-        if (['REWRITE', 'FINDNOTES', 'AUTOTAG'].includes(promptId)) {
-            const parts = content.split('---');
-            if (parts.length > 1) {
-                return [parts[0].trim(), parts.slice(1).join('---').trim()];
-            }
-        }
-        return [null, content];
+    renderVariableHints(promptId) {
+        const promptConfig = this.promptTemplates[promptId];
+        if (!promptConfig) return;
+
+        // Combine both parts of the prompt to find all possible variables
+        const fullPromptText = `${promptConfig.system} ${promptConfig.user}`;
+
+        // Use a regular expression to find all instances of {variable_name}
+        const variables = new Set(fullPromptText.match(/{[a-zA-Z_]+}/g));
+
+        const editorContainer = this.element.querySelector('#main-prompt-editor-container');
+        if (!editorContainer) return;
+
+        // Remove any existing hints container
+        const existingHints = editorContainer.querySelector('.prompt-variable-hints');
+        if (existingHints) existingHints.remove();
+
+        if (variables.size === 0) return; // Don't render anything if no variables are found
+
+        const hintsContainer = document.createElement('div');
+        hintsContainer.className = 'prompt-variable-hints';
+
+        const pillsHtml = Array.from(variables).map(variable =>
+            `<button class="prompt-variable-pill" data-action="insert-variable" data-variable="${variable}">
+        ${variable}
+      </button>`
+        ).join('');
+
+        hintsContainer.innerHTML = `
+      <label>Available Variables</label>
+      <div class="prompt-variable-pills-container">${pillsHtml}</div>
+    `;
+
+        // Append the hints below the editor
+        editorContainer.appendChild(hintsContainer);
     }
 }

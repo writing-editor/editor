@@ -13,6 +13,7 @@
     "vite-plugin-pwa": "^1.0.3"
   },
   "dependencies": {
+    "@ditojs/tiptap-footnotes": "^3.0.0",
     "@tiptap/core": "^3.1.0",
     "@tiptap/extension-bubble-menu": "^3.1.0",
     "@tiptap/extension-character-count": "^3.1.0",
@@ -22,10 +23,12 @@
     "@tiptap/extension-placeholder": "^3.1.0",
     "@tiptap/html": "^3.1.0",
     "@tiptap/starter-kit": "^3.1.0",
+    "@tiptap/suggestion": "^3.4.2",
     "diff-match-patch": "^1.0.5",
     "docx": "^8.5.0",
     "file-saver": "^2.0.5",
     "flexsearch": "^0.8.205",
-    "marked": "^16.1.2"
+    "marked": "^16.1.2",
+    "tippy.js": "^6.3.7"
   }
 }

@@ -22,13 +22,11 @@
   pointer-events: none;
 }
 
-
 /* --- 2. The Main AI Studio Panel --- */
 #ai-studio {
-  width: 70%;
-  height: 80%;
-  max-width: 1100px;
-  min-height: 600px;
+  width: 450px; 
+  height: 70vh;
+  max-height: 600px;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -36,75 +34,11 @@
   border: 1px solid var(--color-border);
   box-shadow: 0 0 0 1px var(--color-border);
   overflow: hidden;
-  position: relative;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-#cp-form {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
-
-/* --- 3. Content Area & Workbench Styles --- */
-#cp-content-area {
-  flex-grow: 1;
-  overflow: hidden; 
-  min-height: 0; 
-  display: flex; /* Make the content area a flex container */
-}
-
-.cp-tab-panel {
-  flex-grow: 1; /* Make the panel fill the content area */
-  display: flex;
-  padding: var(--spacing-lg);
-}
-
-.workbench-container {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-#workbench-input {
-    flex-grow: 1; /* Take up all available vertical space */
-    width: 100%;
-    border-radius: 8px;
-    border: 1px solid var(--color-border);
-    padding: 12px 15px;
-    font-size: 16px;
-    font-family: var(--font-sans);
-    resize: none;
-    background-color: var(--color-background);
-    color: var(--color-text);
-    box-sizing: border-box;
-    transition: all 0.2s ease;
-}
-
-#workbench-input:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
-}
-
-.workbench-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-shrink: 0;
-}
-
-#workbench-context-display {
-    font-size: 13px;
-    color: var(--color-text-muted);
-    padding: 8px 12px;
-    border-radius: 6px;
-    background-color: var(--color-surface-medium);
-}
-
-.hidden {
-  display: none !important;
+#ai-studio.is-detail-view {
+  width: 1000px;
 }
 
 #ai-studio-header {
@@ -112,6 +46,7 @@
   border-bottom: 1px solid var(--color-border);
   background-color: var(--color-background);
   flex-shrink: 0;
+  text-align: center;
 }
 
 #ai-studio-header h4 {
@@ -121,11 +56,211 @@
   font-weight: 600;
 }
 
+#cp-main-content {
+  flex-grow: 1;
+  display: flex;
+  min-height: 0;
+}
 
-#cp-form {
-    display: flex;
-    flex-direction: column;
-    /* This needs to grow to fill the space left by the header */
-    flex-grow: 1; 
-    min-height: 0;
+/* --- 3. Left Panel (Search + List) --- */
+#cp-left-panel {
+  width: 450px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column; /* Stack search bar on top of list */
+}
+
+/* --- NEW: Search Bar styles --- */
+#cp-search-bar {
+  padding: 8px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+#cp-search-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  box-sizing: border-box;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+#cp-search-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+/* --- END of new search styles --- */
+
+
+/* --- CHANGED: Command list now scrolls within the left panel --- */
+#cp-command-list {
+  flex-grow: 1; /* Take up remaining space */
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.cp-command-btn {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cp-command-btn:hover {
+  background-color: var(--color-surface-medium);
+}
+
+.cp-command-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.cp-command-desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.cp-no-results {
+    padding: var(--spacing-lg);
+    text-align: center;
+    color: var(--color-text-muted);
+}
+
+
+/* --- 4. Detail Panel (Right Panel) --- */
+#cp-detail-panel {
+  width: 450px;
+  flex-shrink: 0;
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.cp-detail-header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.cp-detail-header h5 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: var(--color-text);
+}
+
+.cp-detail-header p {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.cp-detail-body {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.cp-input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.cp-input-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+
+.cp-context-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.cp-context-btn {
+  flex-grow: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-light);
+  color: var(--color-text);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cp-context-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.cp-context-btn.active {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.cp-context-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--color-surface-medium);
+}
+
+
+#cp-user-input {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  resize: none;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+#cp-user-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+
+.cp-detail-footer {
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+#cp-run-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--color-primary);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+
+#cp-run-btn:hover {
+  filter: brightness(1.1);
 }

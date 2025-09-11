@@ -119,3 +119,42 @@
   word-wrap: break-word;      /* Breaks long words if necessary */
   line-height: 1.6;
 }
+
+/* --- 4. Variable Hints Styles --- */
+.prompt-variable-hints {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.prompt-variable-hints label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.prompt-variable-pills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.prompt-variable-pill {
+  padding: 4px 10px;
+  font-family: monospace;
+  font-size: 13px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-light);
+  color: var(--color-text);
+  border-radius: 12px; /* Pill shape */
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.prompt-variable-pill:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}

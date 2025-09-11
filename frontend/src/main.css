@@ -149,6 +149,10 @@ body.right-drawer-is-open #main-container {
   flex-shrink: 0;
 }
 
+.hidden {
+  display: none !important;
+}
+
 /* --- 3. GLOBAL CONTROL BUTTONS & ICONS (ENHANCED ANIMATIONS VERSION) --- */
 
 /* --- A) Base Button Styles --- */

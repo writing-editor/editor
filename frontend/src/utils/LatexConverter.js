@@ -8,52 +8,45 @@ export class LatexConverter {
       'bold': text => `\\textbf{${text}}`,
       'italic': text => `\\textit{${text}}`,
     };
+    this.footnoteContentMap = new Map();
   }
 
-escapeLatex(text) {
-  if (typeof text !== 'string') return '';
-
-  // Escape LaTeX special characters first
-  let escaped = text
-    .replace(/\\/g, '\\textbackslash{}')
-    .replace(/&/g, '\\&')
-    .replace(/%/g, '\\%')
-    .replace(/\$/g, '\\$')
-    .replace(/#/g, '\\#')
-    .replace(/_/g, '\\_')
-    .replace(/{/g, '\\{')
-    .replace(/}/g, '\\}')
-    .replace(/~/g, '\\textasciitilde{}')
-    .replace(/\^/g, '\\textasciicircum{}');
-
-  // Handle quotes
-  let result = '';
-  let doubleOpen = true;
-  let singleOpen = true;
-
-  for (const ch of escaped) {
-    if (ch === '"' || ch === '“' || ch === '”') {
-      result += doubleOpen ? '``' : "''";
-      doubleOpen = !doubleOpen;
-    } else if (ch === "'" || ch === '‘' || ch === '’') {
-      result += singleOpen ? '`' : "'";
-      singleOpen = !singleOpen;
-    } else {
-      result += ch;
+  escapeLatex(text) {
+    if (typeof text !== 'string') return '';
+    let escaped = text.replace(/\\/g, '\\textbackslash{}').replace(/[&%$#_{}]/g, '\\$&').replace(/~/g, '\\textasciitilde{}').replace(/\^/g, '\\textasciicircum{}');
+    let result = '';
+    let doubleOpen = true;
+    for (const ch of escaped) {
+      if (ch === '"') {
+        result += doubleOpen ? '``' : "''";
+        doubleOpen = !doubleOpen;
+      } else {
+        result += ch;
+      }
     }
+    return result;
   }
-
-  return result;
-}
-
 
   convert() {
+    this.preProcessFootnotes();
     this.writePreamble();
     for (const chapter of this.json.chapters || []) {
       this.writeChapter(chapter);
     }
     this.writeDocumentEnd();
     return this.latexString;
+  }
+
+  preProcessFootnotes() {
+    const footnotesNode = this.json.footnotes;
+    if (footnotesNode && footnotesNode.content) {
+      footnotesNode.content.forEach(footnoteItem => {
+        // --- FIX: Use the correct 'data-id' attribute ---
+        const id = footnoteItem.attrs['data-id'];
+        const contentLatex = this.renderTextContent(footnoteItem.content[0]?.content || []);
+        this.footnoteContentMap.set(id, contentLatex);
+      });
+    }
   }
 
   writePreamble() {
@@ -72,20 +65,19 @@ escapeLatex(text) {
     if (!this.isArticle) {
       this.latexString += `\\chapter{${chapterTitle}}\n\n`;
     }
-    const content = chapterJson.content_json?.content || [];
-    this.nodesToLatex(content);
+    this.nodesToLatex(chapterJson.content_json?.content || []);
     (chapterJson.sections || []).forEach(section => {
       const sectionTitle = this.escapeLatex(section.title || 'Untitled Section');
-      const sectionContent = section.content_json?.content || [];
       this.latexString += `\\section{${sectionTitle}}\n\n`;
-      this.nodesToLatex(sectionContent);
+      this.nodesToLatex(section.content_json?.content || []);
     });
   }
 
   nodesToLatex(nodes) {
     for (const node of nodes) {
-      const nodeType = node.type;
-      switch (nodeType) {
+      if (node.type === 'footnotes') continue;
+
+      switch (node.type) {
         case 'heading': {
           const level = node.attrs?.level || 2;
           const cmd = { 2: 'section', 3: 'subsection' }[level] || 'subsubsection';
@@ -109,9 +101,7 @@ escapeLatex(text) {
           this.latexString += '\\end{enumerate}\n\n';
           break;
         case 'listItem': {
-          const itemContent = (node.content || []).map(childNode => {
-            return this.renderTextContent(childNode.content || []);
-          }).join('').trim();
+          const itemContent = (node.content || []).map(childNode => this.renderTextContent(childNode.content || [])).join('').trim();
           this.latexString += `  \\item ${itemContent}\n`;
           break;
         }
@@ -135,6 +125,11 @@ escapeLatex(text) {
   renderTextContent(contentNodes) {
     if (!contentNodes) return "";
     return contentNodes.map(node => {
+      if (node.type === 'footnoteReference') {
+        const footnoteContent = this.footnoteContentMap.get(node.attrs['data-id']) || '';
+        return `\\footnote{${footnoteContent}}`;
+      }
+
       let text = this.escapeLatex(node.text || "");
       if (node.marks) {
         for (const mark of node.marks) {

@@ -26,6 +26,10 @@ import './components/RightDrawer.css';
 import { SearchPane } from './components/SearchPane.js';
 import { SettingsPalette } from './components/SettingsPalette.js';
 import './components/SettingsPalette.css';
+import { FindReplace } from './components/FindReplace.js';
+import './components/FindReplace.css';
+import './ui/print.css'
+import './components/SuggestionList.css';
 import { LlmOrchestrator } from './services/LlmOrchestrator.js';
 import { BookService } from './services/BookService.js';
 import { StorageService } from './services/StorageService.js';
@@ -57,13 +61,6 @@ export class App {
     this.searchService = new SearchService();
     this.storageService = new StorageService();
 
-    // STEP 2: CREATE THE CONTROLLER AND DEPENDENT SERVICES
-    const controller = this.createController();
-    this.exportService = new ExportService(controller);
-    this.storageService.setController(controller);
-    this.googleSyncService = new GoogleSyncService(controller);
-    this.syncService = new SyncService(this.storageService, controller, this.googleSyncService);
-    this.llmOrchestrator = new LlmOrchestrator(controller);
 
     // This is the controller for BookService -> UI communication
     const bookServiceController = {
@@ -82,6 +79,14 @@ export class App {
     };
     this.bookService = new BookService(bookServiceController, this.storageService);
 
+    // STEP 2: CREATE THE CONTROLLER AND DEPENDENT SERVICES
+    const controller = this.createController();
+    this.exportService = new ExportService(controller);
+    this.storageService.setController(controller);
+    this.googleSyncService = new GoogleSyncService(controller);
+    this.syncService = new SyncService(this.storageService, controller, this.googleSyncService);
+    this.llmOrchestrator = new LlmOrchestrator(controller);
+
     // Agents now receive the main controller for UI interactions
     this.analystAgent = new AnalystAgent(this.llmOrchestrator, controller);
     this.rewriteAgent = new RewriteAgent(this.llmOrchestrator, controller);
@@ -95,7 +100,8 @@ export class App {
     // ====================================================================
     this.navigator = new Navigator(controller, this.bookService);
     this.editor = new Editor(controller, this.bookService);
-    this.palette = new AiStudio(controller, this.bookService, this.storageService);
+    this.findReplace = new FindReplace(controller, this.editor.instance);
+    this.palette = new AiStudio(controller, this.storageService);
     this.modalInput = new ModalInput();
     this.assistantPane = new AssistantPane(controller, this.bookService);
     this.notebookPane = new NotebookPane(controller, this.storageService);
@@ -248,7 +254,7 @@ export class App {
       getCurrentBookFilename: () => this.bookService.currentBook?.filename,
       storageService: this.storageService,
       searchService: this.searchService,
-
+      bookService: this.bookService,
       signIn: async () => {
         try {
           const user = await this.googleSyncService.signIn();
@@ -290,6 +296,28 @@ export class App {
       // Event Bus
       publish: (eventName, data) => this.eventBus.publish(eventName, data),
       subscribe: (eventName, callback) => this.eventBus.subscribe(eventName, callback),
+
+      runSummarizeOnText: (text) => {
+        const payload = this.getContextPayload();
+        payload.promptKey = 'COMMAND_SUMMARIZE';
+        payload.context.type = 'selection'; // Treat it like a selection
+        payload.context.selected_text = text;
+
+        this.runDeveloperAndShowResult(payload);
+      },
+
+      runFindNotesOnText: (text) => {
+        const payload = this.getContextPayload();
+        payload.promptKey = 'COMMAND_FIND_NOTES';
+        payload.context.type = 'selection';
+        payload.context.selected_text = text;
+
+        this.runDeveloperAndShowResult(payload);
+      },
+
+      showAiStudio: (commandId, query) => {
+        this.palette.show(commandId, query);
+      }
     };
   }
 
@@ -326,6 +354,18 @@ export class App {
     });
 
     document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        this.searchPane.show();
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        this.findReplace.show();
+        return;
+      }
+
       if (e.ctrlKey || e.metaKey) {
         switch (e.key) {
           case 's':
@@ -341,15 +381,16 @@ export class App {
             e.preventDefault();
             this.palette.show('settings');
             break;
-          case 'f':
-            e.preventDefault();
-            this.searchPane.show();
-            break;
           case 'b':
             e.preventDefault();
             this.navigator.toggle();
             document.body.classList.toggle('drawer-is-open', this.navigator.isOpen());
             break;
+        }
+      }
+      if (e.key === 'Escape') {
+        if (!this.findReplace.container.classList.contains('hidden')) {
+          this.findReplace.hide();
         }
       }
     });
@@ -389,6 +430,21 @@ export class App {
     this.activeRightDrawer = null;
     document.getElementById('assistant-toggle-btn').classList.remove('is-active');
     document.getElementById('notebook-toggle-btn').classList.remove('is-active');
+  }
+
+  async runDeveloperAndShowResult(payload) {
+    const ai_response = await this.developmentAgent.run(payload);
+    if (ai_response) {
+      const blockData = {
+        type: 'development',
+        title: "Slash Command Result",
+        id: `dev_${Date.now()}`,
+        content: { type: 'markdown', text: ai_response },
+        is_open_by_default: true,
+      };
+      this.bookService.addMarginBlock(payload.current_view_id, blockData);
+      this.openRightDrawer('assistant');
+    }
   }
 
   getContextPayload() {

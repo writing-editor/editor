@@ -41,7 +41,6 @@
             </button>
         </div>
         <div id="bottom-right-controls">
-
             <button id="settings-toggle-btn" class="app-control-btn" title="Settings">
                 <svg class="settings-icon" viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="3"></circle>
@@ -50,27 +49,9 @@
                     </path>
                 </svg>
             </button>
-
-
         </div>
     </div>
-    <!-- RENAMED: from command-palette-container to ai-studio-container -->
-    <div id="ai-studio-container" class="hidden">
-        <div id="ai-studio">
-            <!-- NEW: A simple, clean header -->
-            <div id="ai-studio-header">
-                <h4>AI Workbench</h4>
-            </div>
-            <!-- The form now correctly wraps only the content area -->
-            <form id="cp-form">
-                <div id="cp-content-area">
-                    <div class="cp-tab-panel active" data-panel="workbench"></div>
-                </div>
-                <!-- This hidden submit button is good practice for form accessibility -->
-                <button type="submit" style="display: none;"></button>
-            </form>
-        </div>
-    </div>
+
     <div id="settings-palette-container" class="hidden"></div>
     <div id="modal-input-container" class="hidden">
         <div id="modal-input-box">
@@ -88,7 +69,6 @@
             </div>
         </div>
     </div>
-    <div id="confirmation-modal-container" class="hidden">...</div>
     <div id="data-manager-modal-container" class="hidden"></div>
     <div id="merge-conflict-modal-container" class="hidden">
         <div id="merge-conflict-box">
@@ -97,7 +77,6 @@
             <div id="merge-conflict-content">
                 <div class="conflict-pane">
                     <h4>Your Local Version</h4>
-                    <!-- REVISED: Changed from <pre> to <div> to support HTML diff -->
                     <div class="conflict-text-display" id="conflict-local-text"></div>
                 </div>
                 <div class="conflict-pane">
@@ -108,9 +87,54 @@
             </div>
             <div id="merge-conflict-actions">
                 <!-- REVISED: Button order is swapped for better UX -->
-                 <button id="conflict-btn-keep-local">Keep My Version</button>
+                <button id="conflict-btn-keep-local">Keep My Version</button>
                 <button id="conflict-btn-use-remote">Use Cloud Version</button>
             </div>
+        </div>
+    </div>
+    <div id="ai-studio-container" class="hidden">
+        <div id="ai-studio">
+            <div id="ai-studio-header">
+                <h4>AI Command Palette</h4>
+            </div>
+            <div id="cp-main-content">
+                <div id="cp-command-list"></div>
+                <div id="cp-detail-panel"></div>
+            </div>
+        </div>
+    </div>
+    <!-- ADD THIS ENTIRE BLOCK to main-layout.html -->
+    <div id="find-replace-container" class="hidden">
+        <div id="find-replace-bar">
+            <div class="fr-input-group">
+                <input type="text" id="fr-find-input" placeholder="Find in document...">
+                <div class="fr-matches-count" id="fr-matches-count">0/0</div>
+            </div>
+            <div class="fr-controls">
+                <button id="fr-prev-btn" title="Previous match (Shift+Enter)">
+                    <svg viewBox="0 0 24 24">
+                        <path d="m15 18-6-6 6-6" />
+                    </svg>
+                </button>
+                <button id="fr-next-btn" title="Next match (Enter)">
+                    <svg viewBox="0 0 24 24">
+                        <path d="m9 18 6-6-6-6" />
+                    </svg>
+                </button>
+            </div>
+            <div class="fr-divider"></div>
+            <div class="fr-input-group">
+                <input type="text" id="fr-replace-input" placeholder="Replace with...">
+            </div>
+            <div class="fr-controls">
+                <button id="fr-replace-btn" title="Replace current match">Replace</button>
+                <button id="fr-replace-all-btn" title="Replace all matches">All</button>
+            </div>
+            <button id="fr-close-btn" title="Close (Escape)">
+                <svg viewBox="0 0 24 24">
+                    <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+            </button>
         </div>
     </div>
     <div id="status-indicator-container"></div>
