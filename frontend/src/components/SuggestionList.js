@@ -12,7 +12,6 @@ export class SuggestionList {
   }
 
   render() {
-    // --- FIX: Check if items exist before trying to map ---
     if (!this.items || this.items.length === 0) {
       this.element.innerHTML = ''; // Keep it empty but don't destroy
       return;
@@ -65,8 +64,6 @@ export class SuggestionList {
   }
 
   destroy() {
-    if (this.element.parentNode) {
-      this.element.parentNode.removeChild(this.element);
-    }
+    this.element = null;
   }
 }

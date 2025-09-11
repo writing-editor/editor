@@ -10,13 +10,13 @@
   /* Light Theme (default) */
   --color-text: #1a2a00;
   --color-text-muted: #4a5933;
-  
+
   /* CHANGED: Lightened to be closer to a greenish-white for a softer feel. */
-  --color-background: #fbfef6; 
-  
+  --color-background: #fbfef6;
+
   /* CHANGED: No longer pure white, now a subtle off-white for less harsh contrast. */
   --color-surface-light: #fdfefc;
-  
+
   --color-surface-medium: #e8f5d0;
   --color-border: #d2e0b8;
   --color-primary: oklch(65% 0.2 130);
@@ -65,6 +65,7 @@ html {
   font-family: var(--font-sans);
   color: var(--color-text);
   background-color: var(--color-background);
+  overflow: hidden;
 }
 
 #root {
