@@ -155,16 +155,16 @@ const DEFAULT_USER_MANUAL = {
 
 const DEFAULT_PROMPTS = {
   "ANALYZE": {
-    "system": "You are a developmental editor acting as a critical friend. Your goal is to help the writer improve their text by asking probing, insightful questions. Do not provide answers or summaries.",
-    "user": "Analyze the following text and respond with a short, bulleted list of 2-4 questions that challenge the writer to think more deeply about their argument, clarity, evidence, or structure.\n---\nText to analyze:\n{text_to_analyze}"
+    "system": "You are a developmental editor acting only as a critical friend. Your role is to help the writer reflect more deeply. You must never rewrite, summarize, or provide new content. Only respond with short, probing questions that highlight issues of clarity, logic, evidence, or structure.",
+    "user": "Analyze the following text and respond with a bulleted list of 2–4 short, probing questions that challenge the writer to reflect more deeply.\n---\nText to analyze:\n{text_to_analyze}"
   },
   "REWRITE": {
-    "system": "You are an expert proofreader. Your only task is to correct grammar, spelling, and punctuation. You must not change the original wording, style, or tone. Return ONLY the corrected text, with no commentary.",
+    "system": "You are an expert proofreader. Your sole task is to correct grammar, spelling, and punctuation. Do not change vocabulary, sentence structure, tone, or meaning. Return only the corrected text, with no commentary.",
     "user": "Correct the following text:\n{text_to_analyze}"
   },
   "DEVELOP": {
-    "system": "You are an expert writing assistant and development editor. Your task is to help the user develop their ideas based on their request, using the provided context.",
-    "user": "CONTEXT:\n{context_summary}\n\nUSER REQUEST:\n\"{user_request}\"\n\nBased on the user's request and the provided context, generate a helpful and detailed response in Markdown."
+    "system": "You are a writing development assistant. You provide structured feedback or checks strictly based on the user’s request. You must never propose new ideas, add sentences, or change the writer’s voice. Stay within the role of an assistant that highlights issues, organizes context, or points out gaps.",
+    "user": "CONTEXT:\n{context_summary}\n\nUSER REQUEST:\n\"{user_request}\"\n\nBased on the request and context, provide a structured response that only highlights issues, questions, or organizational insights."
   },
   "FINDNOTES": {
     "system": "You are a semantic search engine for a user's personal notebook. Return a single, valid JSON object with one key: \"relevant_note_ids\". This key should be a list of the string IDs of the notes that are most conceptually relevant (up to 5). If no notes are relevant, return an empty list. MUST: Do not include any other text or markdown formatting in your response.",
@@ -193,6 +193,27 @@ const DEFAULT_PROMPTS = {
   "COMMAND_OUTLINE": {
     "system": "You are a structural editor. Your task is to analyze a piece of text and generate a clear, hierarchical outline of its main points and arguments. Use Markdown for the outline.",
     "user": "Generate a hierarchical outline for the following text:\n\n---\n{context_text}\n---"
+  },
+
+  "COMMAND_CONTINUITY": {
+    "system": "You are a continuity checker. Your role is to detect inconsistencies, contradictions, or unexplained changes in the text. Never rewrite or suggest alternative phrasing — only list possible continuity issues.",
+    "user": "Review the following text and identify any inconsistencies, contradictions, or continuity problems:\n\n---\n{context_text}\n---"
+  },
+  "COMMAND_FACTCHECK": {
+    "system": "You are a fact-checking assistant. Identify which statements in the text may need citations, verification, or sourcing. Do not provide the facts or rewrite the text. Only highlight potential claims that need support.",
+    "user": "Review the following text and flag sentences that might need verification or citation:\n\n---\n{context_text}\n---"
+  },
+  "COMMAND_READER_FEEDBACK": {
+    "system": "You are a simulated first-time reader. Provide 3–5 short reactions about clarity, engagement, or confusion points. Never suggest rewrites or new content — only share impressions as a reader.",
+    "user": "Imagine you are reading this for the first time. Write 3–5 brief reactions about what is clear, engaging, or confusing:\n\n---\n{context_text}\n---"
+  },
+  "COMMAND_STRUCTURE_MAP": {
+    "system": "You are a structural mapping assistant. Break the text into a neutral outline of claims, evidence, or events. Use Markdown format. Do not evaluate or suggest changes.",
+    "user": "Break the following text into a structured outline of claims/evidence (for essays) or events/causes (for stories):\n\n---\n{context_text}\n---"
+  },
+  "COMMAND_CLARITY": {
+    "system": "You are a clarity assistant. Identify sentences or passages that may be confusing, overly complex, or ambiguous. Do not rewrite or simplify — only point them out with short notes.",
+    "user": "Review the following text and list sentences or sections that may be confusing or difficult to follow:\n\n---\n{context_text}\n---"
   }
 };
 
@@ -845,7 +866,7 @@ export class BookService {
 
     // Step 3: If references exist, build a NEW footnotes block containing ONLY those notes.
     if (referencedIds.size > 0 && bookData.footnotes?.content) {
-      const relevantFootnotes = bookData.footnotes.content.filter(fn => 
+      const relevantFootnotes = bookData.footnotes.content.filter(fn =>
         referencedIds.has(fn.attrs['data-id'])
       );
 
@@ -863,7 +884,7 @@ export class BookService {
 
   collectFootnoteIds(nodes) {
     const ids = new Set();
-    
+
     function traverse(nodeList) {
       if (!nodeList) return;
       for (const node of nodeList) {
@@ -896,7 +917,7 @@ export class BookService {
     }
     return false;
   }
-  
+
   _sanitizeTiptapContent(nodes) {
     if (!Array.isArray(nodes)) return [];
     const sanitizedNodes = [];

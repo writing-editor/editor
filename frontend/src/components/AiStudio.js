@@ -48,6 +48,46 @@ const COMMANDS_CONFIG = [
     promptKey: 'COMMAND_OUTLINE',
     requiresInput: false,
     defaultContext: 'view'
+  },
+  {
+    id: 'continuity_check',
+    name: 'Continuity Check',
+    description: 'Identify inconsistencies or contradictions in the text.',
+    promptKey: 'COMMAND_CONTINUITY',
+    requiresInput: false,
+    defaultContext: 'selection'
+  },
+  {
+    id: 'fact_check',
+    name: 'Fact-Check Reminders',
+    description: 'Flag statements that may need citations or verification.',
+    promptKey: 'COMMAND_FACTCHECK',
+    requiresInput: false,
+    defaultContext: 'selection'
+  },
+  {
+    id: 'reader_feedback',
+    name: 'Reader Feedback',
+    description: 'Get impressions from a simulated first-time reader.',
+    promptKey: 'COMMAND_READER_FEEDBACK',
+    requiresInput: false,
+    defaultContext: 'selection'
+  },
+  {
+    id: 'structure_map',
+    name: 'Structure Map',
+    description: 'Generate a neutral outline of arguments or events.',
+    promptKey: 'COMMAND_STRUCTURE_MAP',
+    requiresInput: false,
+    defaultContext: 'view'
+  },
+  {
+    id: 'clarity_check',
+    name: 'Clarity Check',
+    description: 'Highlight sentences that may be confusing or overly complex.',
+    promptKey: 'COMMAND_CLARITY',
+    requiresInput: false,
+    defaultContext: 'selection'
   }
 ];
 
