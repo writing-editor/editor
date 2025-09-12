@@ -97,3 +97,7 @@ footnote-reference {
 .ProseMirror .footnote-definition p {
   margin: 0;
 }
+
+.ProseMirror p + p {
+  text-indent: 1.5em; 
+}
