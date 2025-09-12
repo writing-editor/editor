@@ -9,35 +9,51 @@
   --spacing-lg: 24px;
 
   /* Base Surfaces */
-  --color-background: #f7faf6;       /* paper-like gray-white w/ green hint */
-  --color-surface-light: #ffffff;    /* clean surface (cards, toolbar) */
-  --color-surface-medium: #f0f3ef;   /* soft gray block */
+  --color-background: #f7faf6;
+  /* paper-like gray-white w/ green hint */
+  --color-surface-light: #ffffff;
+  /* clean surface (cards, toolbar) */
+  --color-surface-medium: #f0f3ef;
+  /* soft gray block */
 
   /* Text */
-  --color-text: #1c1f1a;             /* near-black with olive undertone */
-  --color-text-muted: #5c635b;       /* muted gray */
-  --color-text-disabled: #a0a6a0;    /* desaturated gray-green */
+  --color-text: #1c1f1a;
+  /* near-black with olive undertone */
+  --color-text-muted: #5c635b;
+  /* muted gray */
+  --color-text-disabled: #a0a6a0;
+  /* desaturated gray-green */
 
   /* Headings / UI chrome */
-  --color-heading: #111512;          /* slightly darker for hierarchy */
+  --color-heading: #111512;
+  /* slightly darker for hierarchy */
 
   /* Borders & Dividers */
-  --color-border: #d8ddd7;           /* grayish border */
+  --color-border: #d8ddd7;
+  /* grayish border */
   --color-divider: rgba(28, 31, 26, 0.08);
 
   /* Neutral Accents (replacing color coding with tonal hierarchy) */
-  --color-primary: #444a42;          /* strong gray, anchor accent */
-  --color-primary-hover: #2f332d;    /* deeper neutral */
-  --color-primary-text: #ffffff;     /* for buttons/labels */
+  --color-primary: #444a42;
+  /* strong gray, anchor accent */
+  --color-primary-hover: #2f332d;
+  /* deeper neutral */
+  --color-primary-text: #ffffff;
+  /* for buttons/labels */
 
-  --color-success: #6a7268;          /* mid-gray-green */
-  --color-success-bg: #ecefed;       /* pale neutral gray-green background */
+  --color-success: #6a7268;
+  /* mid-gray-green */
+  --color-success-bg: #ecefed;
+  /* pale neutral gray-green background */
 
-  --color-danger: #5a4d4d;           /* muted warm gray with red tint */
-  --color-danger-bg: #f3eeee;        /* pale gray-red background */
+  --color-danger: #5a4d4d;
+  /* muted warm gray with red tint */
+  --color-danger-bg: #f3eeee;
+  /* pale gray-red background */
 
   /* States */
-  --color-selection: #e0e4df;        /* soft gray-green highlight */
+  --color-selection: #e0e4df;
+  /* soft gray-green highlight */
   --color-hover: rgba(28, 31, 26, 0.04);
   --color-disabled-bg: #f2f4f2;
   --color-shadow: rgba(20, 30, 15, 0.08);
@@ -46,25 +62,34 @@
 
 body.theme-dark {
   /* Base */
-  --color-background: #002b36;       /* deep solarized teal */
-  --color-surface-light: #08404f;    /* lighter surface */
-  --color-surface-medium: #586e75;   /* muted grayish teal */
+  --color-background: #002b36;
+  /* deep solarized teal */
+  --color-surface-light: #08404f;
+  /* lighter surface */
+  --color-surface-medium: #586e75;
+  /* muted grayish teal */
 
   /* Text */
-  --color-text: #a1b0b6;             /* main body text */
-  --color-text-muted: #839496;       /* secondary/muted text */
-  --color-text-disabled: #586e75;    /* disabled text */
+  --color-text: #a1b0b6;
+  /* main body text */
+  --color-text-muted: #839496;
+  /* secondary/muted text */
+  --color-text-disabled: #586e75;
+  /* disabled text */
 
   /* Headings / UI chrome */
-  --color-heading: #cfd8dc;          /* brighter text for hierarchy */
+  --color-heading: #cfd8dc;
+  /* brighter text for hierarchy */
 
   /* Borders & Dividers */
-  --color-border: rgba(255,255,255,0.1);
-  --color-divider: rgba(255,255,255,0.08);
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-divider: rgba(255, 255, 255, 0.08);
 
   /* Primary Accent */
-  --color-primary: #2175b1;          /* calm blue */
-  --color-primary-hover: #1d6fa6;    /* darker hover */
+  --color-primary: #2175b1;
+  /* calm blue */
+  --color-primary-hover: #1d6fa6;
+  /* darker hover */
   --color-primary-text: #ffffff;
 
   /* Success / Danger */
@@ -74,8 +99,9 @@ body.theme-dark {
   --color-danger-bg: #3c2f2f;
 
   /* States */
-  --color-selection: #1a4b5c;        /* deep cyan highlight */
-  --color-hover: rgba(255,255,255,0.05);
+  --color-selection: #1a4b5c;
+  /* deep cyan highlight */
+  --color-hover: rgba(255, 255, 255, 0.05);
   --color-disabled-bg: #083642;
   --color-shadow: rgba(0, 0, 0, 0.5);
 }
@@ -127,7 +153,7 @@ body.right-drawer-is-open #main-container {
 
 #editor-pane {
   flex: 1;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-lg) var(--spacing-lg) 50vh;
   overflow-y: auto;
   box-sizing: border-box;
 }
