@@ -44,7 +44,7 @@ export class Editor {
           this.instance.getJSON()
         );
       }
-    }, 20000);
+    }, 300000);
 
     this.instance = new TipTapEditor({
       element: this.element,
@@ -302,8 +302,6 @@ export class Editor {
     document.removeEventListener('mousemove', this.handleThumbMouseMove.bind(this));
     document.removeEventListener('mouseup', this.handleThumbMouseUp.bind(this));
   }
-
-  // --- UNCHANGED METHODS BELOW ---
 
   updateWordCount() {
     if (!this.wordCountEl || !this.instance) return;
