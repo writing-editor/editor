@@ -10,7 +10,8 @@ export class AnthropicClient extends BaseLlm {
     this.API_URL = "https://api.anthropic.com/v1/messages"; 
   }
 
-  async execute(prompt, apiKey, modelName) {
+  async execute(prompt, settings, isJson = false) {
+    const { apiKey, modelName } = settings;
     if (!apiKey) {
       throw new Error('API Key is missing for AnthropicClient.');
     }

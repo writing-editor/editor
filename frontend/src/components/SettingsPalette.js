@@ -9,7 +9,8 @@ const SETTINGS_CONFIG = {
   ],
   aiProviders: [
     { name: 'Google Gemini', value: 'google' },
-    { name: 'Anthropic Claude', value: 'anthropic' }
+    { name: 'Anthropic Claude', value: 'anthropic' },
+    { name: 'Local LLM (OpenAI compatible)', value: 'local' }
   ],
   aiModels: [
     { name: 'Gemini-2.5-flash-lite (Recommended)', value: 'gemini-2.5-flash-lite', provider: 'google' },
@@ -21,11 +22,13 @@ const SETTINGS_CONFIG = {
 
 const DEFAULT_SETTINGS = {
   theme: 'light',
-  fontFamily: SETTINGS_CONFIG.fonts[0].value, // Default to the first font in the config
+  fontFamily: SETTINGS_CONFIG.fonts[0].value,
   fontSize: '18',
   provider: 'google',
   apiKey: '',
-  modelName: 'Gemini-2.5-flash-lite',
+  modelName: 'gemini-2.5-flash-lite',
+  llmUrl: '',
+  localModelName: '',
   autoTag: false,
 };
 
@@ -69,6 +72,8 @@ export class SettingsPalette {
     this.providerSelect = document.getElementById('setting-provider');
     this.apiKeyInput = document.getElementById('setting-api-key');
     this.modelNameSelect = document.getElementById('setting-model-name');
+    this.llmUrlInput = document.getElementById('setting-llm-url');
+    this.localModelNameInput = document.getElementById('setting-local-model-name');
     this.autoTagToggle = document.getElementById('setting-autotag');
     this.managePromptsBtn = document.getElementById('settings-manage-prompts-btn');
 
@@ -181,6 +186,8 @@ export class SettingsPalette {
     this.providerSelect.value = settings.provider;
     this.apiKeyInput.value = settings.apiKey;
     this.modelNameSelect.value = settings.modelName;
+    this.llmUrlInput.value = settings.llmUrl;
+    this.localModelNameInput.value = settings.localModelName;
     this.autoTagToggle.checked = settings.autoTag;
 
     this._onProviderChange();
@@ -193,7 +200,11 @@ export class SettingsPalette {
       fontSize: this.fontSizeInput.value,
       provider: this.providerSelect.value,
       apiKey: this.apiKeyInput.value.trim(),
-      modelName: this.modelNameSelect.value,
+      modelName: this.providerSelect.value === 'local'
+        ? this.localModelNameInput.value.trim()
+        : this.modelNameSelect.value,
+      localModelName: this.localModelNameInput.value.trim(),
+      llmUrl: this.llmUrlInput.value.trim(),
       autoTag: this.autoTagToggle.checked,
     };
     localStorage.setItem('app-settings', JSON.stringify(newSettings));
@@ -218,58 +229,69 @@ export class SettingsPalette {
     document.documentElement.style.setProperty('--editor-font-size', `${fontSize}px`);
   }
 
-async printView(filename) {
+  async printView(filename) {
     const originalViewId = this.controller.bookService.currentViewId;
 
     await this.controller.navigateTo(filename, 'full_book');
 
     // Wait until the editor DOM actually exists
     const checkReady = () => new Promise(resolve => {
-        const interval = setInterval(() => {
-            const editorContent = document.querySelector('#editor-pane .ProseMirror');
-            if (editorContent && editorContent.textContent.trim().length > 0) {
-                clearInterval(interval);
-                resolve();
-            }
-        }, 5000);
+      const interval = setInterval(() => {
+        const editorContent = document.querySelector('#editor-pane .ProseMirror');
+        if (editorContent && editorContent.textContent.trim().length > 0) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 5000);
     });
 
     await checkReady();
 
     window.onafterprint = () => {
-        this.controller.navigateTo(filename, originalViewId);
-        window.onafterprint = null;
+      this.controller.navigateTo(filename, originalViewId);
+      window.onafterprint = null;
     };
 
     window.print();
-}
+  }
 
 
   _onProviderChange() {
     const provider = this.providerSelect.value;
-    document.getElementById('setting-api-key-label').textContent = provider === 'google' ? 'Google Gemini API Key' : 'Anthropic API Key';
-    this.containerEl.querySelectorAll('.provider-option').forEach(option => {
-      option.hidden = !option.classList.contains(`${provider}-option`);
-    });
-    const currentModelIsVisible = !this.modelNameSelect.querySelector(`option[value="${this.modelNameSelect.value}"]`)?.hidden;
-    if (!currentModelIsVisible) {
-      const firstVisibleModel = this.modelNameSelect.querySelector(`.${provider}-option:not([hidden])`);
-      if (firstVisibleModel) this.modelNameSelect.value = firstVisibleModel.value;
+    const cloudOptions = document.getElementById('settings-cloud-provider-options');
+    const localOptions = document.getElementById('settings-local-provider-options');
+
+    if (provider === 'local') {
+      cloudOptions.classList.add('hidden');
+      localOptions.classList.remove('hidden');
+    } else {
+      localOptions.classList.add('hidden');
+      cloudOptions.classList.remove('hidden');
+      document.getElementById('setting-api-key-label').textContent = provider === 'google' ? 'Google Gemini API Key' : 'Anthropic API Key';
+      this.containerEl.querySelectorAll('.provider-option').forEach(option => {
+        option.hidden = !option.classList.contains(`${provider}-option`);
+      });
+      const currentModelIsVisible = !this.modelNameSelect.querySelector(`option[value="${this.modelNameSelect.value}"]`)?.hidden;
+      if (!currentModelIsVisible) {
+        const firstVisibleModel = this.modelNameSelect.querySelector(`.${provider}-option:not([hidden])`);
+        if (firstVisibleModel) this.modelNameSelect.value = firstVisibleModel.value;
+      }
     }
   }
 
   _renderAiPanel() {
     const providerOptions = SETTINGS_CONFIG.aiProviders.map(p => `<option value="${p.value}">${p.name}</option>`).join('');
     const modelOptions = SETTINGS_CONFIG.aiModels.map(m => `
-        <option class="provider-option ${m.provider}-option" value="${m.value}">${m.name}</option>
-    `).join('');
+      <option class="provider-option ${m.provider}-option" value="${m.value}">${m.name}</option>
+  `).join('');
 
     return `
-      <div class="settings-section">
-        <div class="setting-item">
-          <label for="setting-provider">AI Provider</label>
-          <select id="setting-provider">${providerOptions}</select>
-        </div>
+    <div class="settings-section">
+      <div class="setting-item">
+        <label for="setting-provider">AI Provider</label>
+        <select id="setting-provider">${providerOptions}</select>
+      </div>
+      <div id="settings-cloud-provider-options">
         <div class="setting-item">
           <label id="setting-api-key-label" for="setting-api-key">API Key</label>
           <input type="password" id="setting-api-key" placeholder="Enter your API key here">
@@ -278,24 +300,35 @@ async printView(filename) {
           <label for="setting-model-name">AI Model</label>
           <select id="setting-model-name">${modelOptions}</select>
         </div>
-        <div class="setting-item-full grid-span-all">
-            <label class="setting-label">AI Features</label>
-            <div class="data-actions">
-                <button id="settings-manage-prompts-btn" class="settings-action-btn-pill" title="Manage Prompts">
-                    <div class="icon-spark"><span></span><span></span><span></span></div>
-                    <span>Manage Prompts</span>
-                </button>
-                <div class="setting-item-toggle">
-                    <label for="setting-autotag">Auto-Tagging</label>
-                    <div class="toggle-switch">
-                        <input type="checkbox" id="setting-autotag">
-                        <label class="slider" for="setting-autotag"></label>
-                    </div>
-                </div>
-            </div>
+      </div>
+      <div id="settings-local-provider-options" class="hidden">
+        <div class="setting-item">
+          <label for="setting-llm-url">LLM URL (OpenAI-compatible)</label>
+          <input type="text" id="setting-llm-url" placeholder="e.g., http://localhost:1234/v1">
+        </div>
+        <div class="setting-item">
+          <label for="setting-local-model-name">Model Name</label>
+          <input type="text" id="setting-local-model-name" placeholder="e.g., llama3-instruct">
         </div>
       </div>
-    `;
+      <div class="setting-item-full grid-span-all">
+          <label class="setting-label">AI Features</label>
+          <div class="data-actions">
+              <button id="settings-manage-prompts-btn" class="settings-action-btn-pill" title="Manage Prompts">
+                  <div class="icon-spark"><span></span><span></span><span></span></div>
+                  <span>Manage Prompts</span>
+              </button>
+              <div class="setting-item-toggle">
+                  <label for="setting-autotag">Auto-Tagging</label>
+                  <div class="toggle-switch">
+                      <input type="checkbox" id="setting-autotag">
+                      <label class="slider" for="setting-autotag"></label>
+                  </div>
+              </div>
+          </div>
+      </div>
+    </div>
+  `;
   }
 
   _renderAppearancePanel() {

@@ -6,7 +6,8 @@ export class GeminiClient extends BaseLlm {
     this.BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
   }
 
-  async execute(prompt, apiKey, modelName, isJson = false) {
+  async execute(prompt, settings, isJson = false) {
+    const { apiKey, modelName } = settings;
     if (!apiKey) {
       throw new Error('API Key is missing for GeminiClient.');
     }

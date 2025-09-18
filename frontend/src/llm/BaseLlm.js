@@ -1,6 +1,6 @@
 
 export class BaseLlm {
-  async execute(prompt, apiKey, modelName) {
+  async execute(prompt, settings, isJson = false) {
     throw new Error("LLM clients must implement an 'execute' method.");
   }
 }
