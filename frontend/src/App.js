@@ -89,8 +89,8 @@ export class App {
     // STEP 3: INITIALIZE UI COMPONENTS
     this.navigator = new Navigator(controller, this.bookService);
     this.editor = new Editor(controller, this.bookService);
-    this.findReplace = new FindReplace(controller, this.editor.instance);
-    this.palette = new AiStudio(controller); // No longer needs storage service directly
+    this.findReplace = new FindReplace(controller, this.editor);
+    this.palette = new AiStudio(controller);
     this.modalInput = new ModalInput();
     this.assistantPane = new AssistantPane(controller, this.bookService);
     this.notebookPane = new NotebookPane(controller, this.storageService);
@@ -475,19 +475,22 @@ export class App {
   }
 
   getContextPayload() {
-    const selection = this.instance.state.selection;
+    const selection = this.editor.instance.state.selection;
     let context = {};
-    const viewContent = this.instance.getText();
+    const viewContent = this.editor.instance.getText();
 
     if (!selection.empty) {
       context = {
         type: 'selection',
-        selected_text: this.instance.state.doc.textBetween(selection.from, selection.to),
+        selected_text: this.editor.instance.state.doc.textBetween(selection.from, selection.to),
         range: { from: selection.from, to: selection.to },
         view_content: viewContent,
       };
     } else {
-      context = { type: 'global', view_content: viewContent };
+      context = {
+        type: 'global',
+        view_content: viewContent
+      };
     }
 
     let fullBookContent = 'No book loaded.';

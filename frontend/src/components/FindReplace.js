@@ -5,9 +5,9 @@ import { Plugin, PluginKey } from 'prosemirror-state';
 const findPluginKey = new PluginKey('find');
 
 export class FindReplace {
-    constructor(controller, editorInstance) {
+    constructor(controller, editorWrapper) {
         this.controller = controller;
-        this.editor = editorInstance;
+        this.editorWrapper = editorWrapper;
         this.container = document.getElementById('find-replace-container');
         this.findInput = document.getElementById('fr-find-input');
         this.replaceInput = document.getElementById('fr-replace-input');
@@ -15,9 +15,8 @@ export class FindReplace {
 
         this.matches = [];
         this.currentIndex = -1;
-
+        setTimeout(() => this.addPlugin(), 0);
         this.setupEventListeners();
-        this.addPlugin();
     }
 
     setupEventListeners() {
@@ -62,12 +61,11 @@ export class FindReplace {
             },
         });
 
-        // This is a bit of a hack, but necessary to append a new plugin to the editor's state
-        // after it has already been initialized.
-        const currentPlugins = this.editor.state.plugins;
+        const editorInstance = this.editorWrapper.instance;
+        const currentPlugins = editorInstance.state.plugins;
         const newPlugins = [...currentPlugins, plugin];
-        const newState = this.editor.state.reconfigure({ plugins: newPlugins });
-        this.editor.view.updateState(newState);
+        const newState = editorInstance.state.reconfigure({ plugins: newPlugins });
+        editorInstance.view.updateState(newState);
     }
 
     show() {
@@ -93,22 +91,16 @@ export class FindReplace {
             return;
         }
 
-        const doc = this.editor.state.doc;
-        const regex = new RegExp(query, 'gi');
+        const doc = this.editorWrapper.instance.state.doc;
         doc.descendants((node, pos) => {
-            // Only search within text nodes
-            if (!node.isText) {
-                return true; // Continue descending
-            }
-
-            // Find all matches of the regex within this text node's content
+            if (!node.isText) return true;
+            const regex = new RegExp(query, 'gi');
             let match;
             while ((match = regex.exec(node.text)) !== null) {
                 const from = pos + match.index;
                 const to = from + match[0].length;
                 this.matches.push({ from, to });
             }
-            return true;
         });
 
         if (this.matches.length > 0) {
@@ -142,28 +134,26 @@ export class FindReplace {
         const { from, to } = this.matches[this.currentIndex];
         const replacement = this.replaceInput.value;
 
-        this.editor.chain().focus()
+        this.editorWrapper.instance.chain().focus()
             .setTextSelection({ from, to })
             .insertContent(replacement)
             .run();
 
-        // After replacing, re-run the find to update matches
         this.find();
     }
 
     replaceAll() {
         if (this.matches.length === 0) return;
         const replacement = this.replaceInput.value;
-        const tr = this.editor.state.tr;
+        const tr = this.editorWrapper.instance.state.tr;
 
-        // Iterate backwards to avoid position shifts
         for (let i = this.matches.length - 1; i >= 0; i--) {
             const { from, to } = this.matches[i];
             tr.replaceWith(from, to, replacement);
         }
 
-        this.editor.view.dispatch(tr);
-        this.find(); // Clear decorations
+        this.editorWrapper.instance.view.dispatch(tr);
+        this.find();
     }
 
     updateDecorations() {
@@ -172,21 +162,21 @@ export class FindReplace {
             return Decoration.inline(match.from, match.to, { class: className });
         });
 
-        const decorationSet = DecorationSet.create(this.editor.state.doc, decorations);
-
-        const tr = this.editor.state.tr.setMeta(findPluginKey, { decorations: decorationSet });
-        this.editor.view.dispatch(tr);
+        const editorInstance = this.editorWrapper.instance;
+        const decorationSet = DecorationSet.create(editorInstance.state.doc, decorations);
+        const tr = editorInstance.state.tr.setMeta(findPluginKey, { decorations: decorationSet });
+        editorInstance.view.dispatch(tr);
     }
 
     clearDecorations() {
-        const tr = this.editor.state.tr.setMeta(findPluginKey, { decorations: DecorationSet.empty });
-        this.editor.view.dispatch(tr);
+        const editorInstance = this.editorWrapper.instance;
+        const tr = editorInstance.state.tr.setMeta(findPluginKey, { decorations: DecorationSet.empty });
+        editorInstance.view.dispatch(tr);
     }
 
     scrollToCurrentMatch() {
         if (this.currentIndex !== -1 && this.matches.length > 0) {
-            const { from } = this.matches[this.currentIndex];
-            this.editor.commands.scrollIntoView();
+            this.editorWrapper.instance.commands.scrollIntoView();
         }
     }
 
