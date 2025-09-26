@@ -1,14 +1,27 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "2.0.0",
   "type": "module",
+  "main": "electron.cjs",
+  "description": "A simple and powerful editor for writers and researchers.",
+  "author": {
+    "name": "Majeed Baloch",
+    "email": "abdulmajeedkhurasani@gmail.com"
+  },
+  "homepage": "https://github.com/writing-editor/editor",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "build:electron": "vite build --mode electron",
+    "preview": "vite preview",
+    "electron:dev": "concurrently \"vite\" \"electron .\"",
+    "electron:build": "npm run build:electron && electron-builder"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
+    "electron": "^38.1.2",
+    "electron-builder": "^26.0.12",
     "vite": "^7.1.2",
     "vite-plugin-pwa": "^1.0.3"
   },
@@ -30,5 +43,26 @@
     "flexsearch": "^0.8.205",
     "marked": "^16.1.2",
     "tippy.js": "^6.3.7"
+  },
+  "build": {
+    "appId": "com.majeedbaloch.editorapp",
+    "productName": "Editor App",
+    "files": [
+      "dist/**/*",
+      "electron.cjs",
+      "preload.cjs"
+    ],
+    "icon": "build/icon.png",
+    "directories": {
+      "buildResources": "build",
+      "output": "release"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "maintainer": "Majeed Baloch <abdulmajeedkhurasani@gmail.com>"
+    }
   }
 }

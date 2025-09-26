@@ -3,17 +3,19 @@ import { BaseLlm } from './BaseLlm.js';
 export class GeminiClient extends BaseLlm {
   constructor() {
     super();
-    this.BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
   }
 
   async execute(prompt, settings, isJson = false) {
-    const { apiKey, modelName } = settings;
+    const { apiKey, modelName, apiUrl } = settings;
     if (!apiKey) {
       throw new Error('API Key is missing for GeminiClient.');
     }
+    if (!apiUrl) {
+      throw new Error('API URL is missing from configuration for GeminiClient.');
+    }
 
-    const url = `${this.BASE_URL}${modelName}:generateContent?key=${apiKey}`;
-    
+    const url = `${apiUrl}${modelName}:generateContent?key=${apiKey}`;
+
     const body = {
       contents: [{ parts: [{ text: prompt }] }],
       ...(isJson && {
@@ -44,7 +46,6 @@ export class GeminiClient extends BaseLlm {
 
     } catch (error) {
       console.error("Failed to execute Gemini call:", error);
-      // Return a user-friendly error message
       return `Error: ${error.message}`;
     }
   }

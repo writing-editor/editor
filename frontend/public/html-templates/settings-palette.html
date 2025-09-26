@@ -1,17 +1,31 @@
+<!-- REVISED: Remove the outer container with the duplicate ID -->
+
+<!-- The file should now start directly with this element -->
 <div id="settings-palette">
+    <!-- 1. The new shared header -->
     <div id="settings-header">
-        <!-- REVISED: Removed the "AI Settings" tab button -->
-        <div class="settings-tab-bar">
-            <button class="settings-tab-btn active" data-tab="appearance" title="Appearance">Appearance</button>
-            <button class="settings-tab-btn" data-tab="ai-settings" title="AI Settings">AI Settings</button>
-            <button class="settings-tab-btn" data-tab="data-management" title="Data Management">Data Management</button>
-        </div>
-        <button id="settings-save-btn" title="Save & Close">
-            <i class="icon-save"></i>
-            <span>Save & Close</span>
+        <button class="app-back-btn" id="settings-back-btn" title="Back to Editor">
+            <svg viewBox="0 0 24 24">
+                <path d="M19 12H5m7 7-7-7 7-7" />
+            </svg>
         </button>
+        <h4>Settings</h4>
     </div>
-    <div id="settings-content">
-        <!-- Panels will be rendered here by JS -->
+
+    <!-- 2. A new body to hold the two columns -->
+    <div id="settings-body">
+        <div id="settings-nav">
+            <!-- The nav header is no longer needed here -->
+            <div class="settings-nav-group">
+                <button class="settings-nav-item" data-view="appearance">Appearance</button>
+                <button class="settings-nav-item" data-view="ai-provider">AI Provider</button>
+                <button class="settings-nav-item" data-view="export">Export Document</button>
+                <button class="settings-nav-item" data-view="data">Data & Sync</button>
+                <button class="settings-nav-item is-active" data-view="agents">Agent Manager</button>
+            </div>
+        </div>
+        <div id="settings-content">
+            <!-- Content will be rendered here by JavaScript -->
+        </div>
     </div>
 </div>

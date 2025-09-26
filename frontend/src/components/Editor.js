@@ -34,6 +34,7 @@ export class Editor {
     this.thumbElement = document.createElement('div');
     this.thumbElement.id = 'scrollbar-thumb';
     this.contextualScrollbar.appendChild(this.thumbElement);
+    this.bubbleMenuAgents = [];
 
     this.isReady = false;
 
@@ -50,6 +51,8 @@ export class Editor {
       element: this.element,
       extensions: [
         StarterKit.configure({
+          document: false,
+          link: false,
           heading: { levels: [2, 3] },
           bulletList: { keepMarks: true, keepAttributes: true },
           orderedList: { keepMarks: true, keepAttributes: true },
@@ -140,6 +143,10 @@ export class Editor {
       },
     });
 
+    this.controller.subscribe('config:updated', () => this.updateAndRenderBubbleMenu());
+
+    this.scrollPane.addEventListener('scroll', this.handleScroll.bind(this));
+
     this.setupToolbarListeners();
     this.setupFloatingMenuListeners();
     this.scrollPane.addEventListener('scroll', this.handleScroll.bind(this));
@@ -149,6 +156,51 @@ export class Editor {
     resizeObserver.observe(this.element);
   }
 
+
+  updateAndRenderBubbleMenu() {
+    const allAgents = this.controller.agentService.getAgents();
+    this.bubbleMenuAgents = allAgents.filter(agent => agent.triggers && agent.triggers.tiptap_bubble_menu);
+    this.renderBubbleMenu();
+  }
+
+  renderBubbleMenu() {
+    // Start with the original, hardcoded buttons to preserve their functionality
+    const standardButtons = `
+      <button class="toolbar-btn" data-action="bold" title="Bold (Ctrl+B)"><svg viewBox="0 0 24 24"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg></button>
+      <button class="toolbar-btn" data-action="italic" title="Italic (Ctrl+I)"><svg viewBox="0 0 24 24"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg></button>
+      <button class="toolbar-btn" data-action="link" title="Add Link"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.71"></path></svg></button>
+      <button class="toolbar-btn" data-action="footnote" title="Add Footnote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10M7 11h10M7 15h4m5.18-11.82a1.5 1.5 0 0 0-2.12 0l-5.5 5.5a1.5 1.5 0 0 0 0 2.12l5.5 5.5a1.5 1.5 0 0 0 2.12 0l5.5-5.5a1.5 1.5 0 0 0 0-2.12z"/></svg></button>
+    `;
+
+    // Dynamically create buttons for the agents from config.json
+    const agentButtons = this.bubbleMenuAgents.map(agent => `
+        <button class="toolbar-btn" data-agent-id="${agent.id}" title="${agent.name}">
+            ${agent.triggers.tiptap_bubble_menu.icon}
+        </button>
+    `).join('');
+
+    // Combine them, placing agents after a divider if any exist
+    const divider = agentButtons.length > 0 ? '<div class="toolbar-divider"></div>' : '';
+    this.toolbar.innerHTML = standardButtons + divider + agentButtons;
+  }
+
+  async runGenericAgent(agentId, payload) {
+    const agent = this.controller.agentService.getAgentById(agentId);
+    if (!agent) return;
+
+    const result = await this.controller.runAgent(agentId, payload);
+    if (result) {
+      const blockData = {
+        type: 'development', // Use a generic block type
+        title: agent.name,
+        id: `agent_${Date.now()}`,
+        content: { type: 'markdown', text: result },
+        is_open_by_default: true,
+      };
+      this.controller.addMarginBlock(payload.current_view_id, blockData);
+      this.controller.openRightDrawer('assistant');
+    }
+  }
   // --- START OF NEW/REWRITTEN METHODS ---
 
   /**
@@ -372,70 +424,38 @@ export class Editor {
       if (!btn) return;
 
       const action = btn.dataset.action;
+      const agentId = btn.dataset.agentId; // Check for agent ID
       const chain = this.instance.chain().focus();
-      const selection = this.instance.state.selection;
-      const selectedText = this.instance.state.doc.textBetween(selection.from, selection.to);
-      const payload = {
-        context: {
-          type: 'selection',
-          selected_text: selectedText,
-          range: { from: selection.from, to: selection.to }
-        },
-        current_book_filename: this.bookService.currentBook?.filename,
-        current_view_id: this.bookService.currentViewId,
-      };
 
-      switch (action) {
-        case 'bold': chain.toggleBold().run(); break;
-        case 'italic': chain.toggleItalic().run(); break;
-        case 'link': {
-          const previousUrl = this.instance.getAttributes('link').href;
-
-          const url = await this.controller.prompt('Enter URL', 'https://example.com', previousUrl);
-          if (url === null) return;
-          if (url === '') {
-            chain.extendMarkRange('link').unsetLink().run();
-          } else {
-            chain.extendMarkRange('link').setLink({ href: url }).run();
+      // --- Handle Standard Actions ---
+      if (action) {
+        switch (action) {
+          case 'bold': chain.toggleBold().run(); break;
+          case 'italic': chain.toggleItalic().run(); break;
+          case 'link': {
+            const previousUrl = this.instance.getAttributes('link').href;
+            const url = await this.controller.prompt('Enter URL', 'https://example.com', previousUrl);
+            if (url === null) return;
+            if (url === '') {
+              chain.extendMarkRange('link').unsetLink().run();
+            } else {
+              chain.extendMarkRange('link').setLink({ href: url }).run();
+            }
+            break;
           }
-          break;
+          case 'footnote': chain.setTextSelection(this.instance.state.selection.to).addFootnote().run(); break;
         }
-        case 'footnote':  chain.setTextSelection(this.instance.state.selection.to).addFootnote().run(); break;
-        case 'analyze': this.handleDirectAnalysis(payload); break;
-        case 'rewrite': this.handleDirectRewrite(payload); break;
+      }
+      // --- Handle Agent Actions ---
+      else if (agentId) {
+        const payload = this.controller.getContext();
+        if (agentId === 'core.rewrite') {
+          this.controller.runRewrite(payload);
+        } else {
+          this.runGenericAgent(agentId, payload);
+        }
       }
     });
-  }
-
-  async handleDirectAnalysis(payload) {
-    const ai_response = await this.controller.runAnalyst(payload);
-    if (ai_response) {
-      const blockData = {
-        type: 'analysis',
-        title: "AI Critique",
-        id: `analysis_${Date.now()}`,
-        content: { type: 'markdown', text: ai_response }
-      };
-      this.controller.addMarginBlock(payload.current_view_id, blockData);
-      this.controller.openRightDrawer('assistant');
-    }
-  }
-
-  async handleDirectRewrite(payload) {
-    try {
-      const rewritten_text = await this.controller.runRewrite(payload);
-      if (rewritten_text) {
-        const suggestionPayload = {
-          original_text: payload.context.selected_text,
-          suggested_text: rewritten_text,
-          range: payload.context.range
-        };
-        this.controller.renderRewriteSuggestion(suggestionPayload);
-        this.controller.openRightDrawer('assistant');
-      }
-    } catch (error) {
-      this.controller.showIndicator(error.message, { isError: true, duration: 3000 });
-    }
   }
 
   updateToolbarState() {

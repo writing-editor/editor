@@ -1,4 +1,3 @@
-// frontend/vite.config.js
 import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -8,7 +7,8 @@ export default defineConfig(({ mode }) => {
 
   return {
     // This MUST match your GitHub repository name
-    base: '/editor/',
+    base: mode === 'electron' ? './' : '/editor/',
+
     build: {
       outDir: 'dist',
     },

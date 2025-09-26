@@ -153,77 +153,24 @@ const DEFAULT_USER_MANUAL = {
   ]
 };
 
-const DEFAULT_PROMPTS = {
-  "ANALYZE": {
-    "system": "You are a developmental editor acting only as a critical friend. Your role is to help the writer reflect more deeply. You must never rewrite, summarize, or provide new content. Only respond with short, probing questions that highlight issues of clarity, logic, evidence, or structure.",
-    "user": "Analyze the following text and respond with a bulleted list of 2–4 short, probing questions that challenge the writer to reflect more deeply.\n---\nText to analyze:\n{text_to_analyze}"
-  },
-  "REWRITE": {
-    "system": "You are an expert proofreader. Your sole task is to correct grammar, spelling, and punctuation. Do not change vocabulary, sentence structure, tone, or meaning. Return only the corrected text, with no commentary.",
-    "user": "Correct the following text:\n{text_to_analyze}"
-  },
-  "DEVELOP": {
-    "system": "You are a writing development assistant. You provide structured feedback or checks strictly based on the user’s request. You must never propose new ideas, add sentences, or change the writer’s voice. Stay within the role of an assistant that highlights issues, organizes context, or points out gaps.",
-    "user": "CONTEXT:\n{context_summary}\n\nUSER REQUEST:\n\"{user_request}\"\n\nBased on the request and context, provide a structured response that only highlights issues, questions, or organizational insights."
-  },
-  "FINDNOTES": {
-    "system": "You are a semantic search engine for a user's personal notebook. Return a single, valid JSON object with one key: \"relevant_note_ids\". This key should be a list of the string IDs of the notes that are most conceptually relevant (up to 5). If no notes are relevant, return an empty list. MUST: Do not include any other text or markdown formatting in your response.",
-    "user": "User's search query: \"{query}\"\nFull library of notes: {notes_json_string}"
-  },
-  "AUTOTAG": {
-    "system": "You are an AI assistant that analyzes notes and generates relevant conceptual tags. Return a single, valid JSON object with one key: \"notes_with_tags\". The value should be an array of objects, each with two keys: \"id\" and \"tags\" (an array of 2-4 relevant string tags). Prioritize conceptual tags over simple keywords. Only return the JSON object.",
-    "user": "Notes to analyze:\n{notes_json_string}"
-  },
-  "COMMAND_FIND_NOTES": {
-    "system": "You are a research assistant. Your task is to find notes from the user's notebook that are conceptually related to the provided context text. Return a list of the most relevant notes in Markdown format, including their titles and a brief explanation of why they are relevant.",
-    "user": "Based on the following text, find the most relevant notes from my notebook.\n\nContext Text:\n---\n{context_text}\n---\n\nMy Notebook:\n{notes_json_string}"
-  },
-  "COMMAND_SUMMARIZE": {
-    "system": "You are an expert summarization engine. Your job is to return a concise, accurate summary of the provided text.",
-    "user": "Please summarize the following text:\n\n---\n{context_text}\n---"
-  },
-  "COMMAND_CHANGE_TONE": {
-    "system": "You are a master of prose and style. You will rewrite text according to a specific tone or style requested by the user.",
-    "user": "Rewrite the following text in a {user_request} tone:\n\n---\n{context_text}\n---"
-  },
-  "COMMAND_TITLES": {
-    "system": "You are a creative assistant for writers. Your task is to generate compelling, alternative titles.",
-    "user": "Generate a list of 5 alternative titles for a piece with the following content:\n\n---\n{context_text}\n---"
-  },
-  "COMMAND_OUTLINE": {
-    "system": "You are a structural editor. Your task is to analyze a piece of text and generate a clear, hierarchical outline of its main points and arguments. Use Markdown for the outline.",
-    "user": "Generate a hierarchical outline for the following text:\n\n---\n{context_text}\n---"
-  },
-
-  "COMMAND_CONTINUITY": {
-    "system": "You are a continuity checker. Your role is to detect inconsistencies, contradictions, or unexplained changes in the text. Never rewrite or suggest alternative phrasing — only list possible continuity issues.",
-    "user": "Review the following text and identify any inconsistencies, contradictions, or continuity problems:\n\n---\n{context_text}\n---"
-  },
-  "COMMAND_FACTCHECK": {
-    "system": "You are a fact-checking assistant. Identify which statements in the text may need citations, verification, or sourcing. Do not provide the facts or rewrite the text. Only highlight potential claims that need support.",
-    "user": "Review the following text and flag sentences that might need verification or citation:\n\n---\n{context_text}\n---"
-  },
-  "COMMAND_READER_FEEDBACK": {
-    "system": "You are a simulated first-time reader. Provide 3–5 short reactions about clarity, engagement, or confusion points. Never suggest rewrites or new content — only share impressions as a reader.",
-    "user": "Imagine you are reading this for the first time. Write 3–5 brief reactions about what is clear, engaging, or confusing:\n\n---\n{context_text}\n---"
-  },
-  "COMMAND_STRUCTURE_MAP": {
-    "system": "You are a structural mapping assistant. Break the text into a neutral outline of claims, evidence, or events. Use Markdown format. Do not evaluate or suggest changes.",
-    "user": "Break the following text into a structured outline of claims/evidence (for essays) or events/causes (for stories):\n\n---\n{context_text}\n---"
-  },
-  "COMMAND_CLARITY": {
-    "system": "You are a clarity assistant. Identify sentences or passages that may be confusing, overly complex, or ambiguous. Do not rewrite or simplify — only point them out with short notes.",
-    "user": "Review the following text and list sentences or sections that may be confusing or difficult to follow:\n\n---\n{context_text}\n---"
+function tiptapToText(nodes) {
+  let text = '';
+  if (!Array.isArray(nodes)) return '';
+  for (const node of nodes) {
+    if (node.type === 'text' && node.text) {
+      text += node.text + ' ';
+    }
+    if (node.content) {
+      text += tiptapToText(node.content);
+    }
   }
-};
-
-/**
- * Manages all book-related data using a hierarchical chapter/section model.
- */
+  return text;
+}
 export class BookService {
-  constructor(appController, storageService) {
+  constructor(appController, storageService, configService) {
     this.appController = appController;
     this.storageService = storageService;
+    this.configService = configService;
 
     this.currentBook = null;
     this.currentViewId = null;
@@ -244,22 +191,20 @@ export class BookService {
       pinnedBook: this.pinnedBook
     };
   }
+
   // --- Data Loading and Initialization ---
   async loadInitialBook() {
-    await this.checkForFirstRun(); // Check if we need to seed the database
+    await this.checkForFirstRun();
     await this.refreshLibrary();
 
-    const pinnedBookRecord = await this.storageService.getFile('pinned.txt');
-    const pinnedBookFilename = pinnedBookRecord ? pinnedBookRecord.content : null;
+    const pinnedBookFilename = this.configService.get('user.pinned_book', null);
     if (pinnedBookFilename) {
-      // Check if the pinned book actually exists in the DB
       const bookExists = this.availableBooks.some(book => book.filename === pinnedBookFilename);
       if (bookExists) {
         await this.switchBook(pinnedBookFilename);
       } else {
-        // Pinned book is invalid, clear it
-        await this.storageService.deleteFile('pinned.txt');
-        console.warn("Cleared invalid pinned book reference.");
+        await this.configService.setConfig('user.pinned_book', null);
+        console.warn("Cleared invalid pinned book reference from config.");
       }
     } else {
       console.log("No pinned book found. Displaying library.");
@@ -271,27 +216,15 @@ export class BookService {
     if (hasRunFlagRecord) {
       return;
     }
-
     console.log("Performing first-time setup: Seeding database with default content...");
-
-    // 1. Save the user manual
     await this.storageService.saveFile('user-manual.book', DEFAULT_USER_MANUAL);
-
-    // 2. Save the single prompts.json file instead of looping ---
-    await this.storageService.saveFile('prompts.json', DEFAULT_PROMPTS);
-
-    // 3. Pin the user manual as the default book to show
-    await this.storageService.saveFile('pinned.txt', 'user-manual');
-
-    // 4. Set the flag so this doesn't run again
     await this.storageService.saveFile('initial_setup_complete', true);
     console.log("First-time setup complete.");
   }
 
   async refreshLibrary() {
     this.navigatorView = 'library';
-    const pinnedBookRecord = await this.storageService.getFile('pinned.txt');
-    this.pinnedBook = pinnedBookRecord ? pinnedBookRecord.content : null;
+    this.pinnedBook = this.configService.get('user.pinned_book', null);
 
     const bookFiles = await this.storageService.getAllFilesBySuffix('.book');
     this.availableBooks = bookFiles
@@ -409,15 +342,14 @@ export class BookService {
   async deleteBook(filename) {
     await this.storageService.deleteFile(`${filename}.book`);
     await this.storageService.deleteFile(`${filename}.metadata.json`);
-    const pinnedRecord = await this.storageService.getFile('pinned.txt');
-    const pinned = pinnedRecord ? pinnedRecord.content : null;
+    const pinned = this.configService.get('user.pinned_book');
     if (pinned === filename) {
-      await this.storageService.deleteFile('pinned.txt');
+      await this.configService.setConfig('user.pinned_book', null);
     }
   }
 
   async pinBook(filename) {
-    await this.storageService.saveFile('pinned.txt', filename);
+    await this.configService.setConfig('user.pinned_book', filename);
   }
 
   async createNewSection(chapterId, title) {
@@ -437,8 +369,6 @@ export class BookService {
   }
 
   // --- SAVE ENGINE ---
-
-
   async saveView(viewId, editorContent) {
     if (!this.currentBook || !viewId || viewId === 'full_book' || viewId === this.currentBook.id) {
       return;
@@ -530,14 +460,6 @@ export class BookService {
     }
   }
 
-  /**
-   * Finds the precise location (chapter, section, and their indices) of an item
-   * within the book's hierarchical structure. This is critical for targeted updates.
-   *
-   * @param {string} id The ID of the chapter or section to find.
-   * @param {object} book The book data structure to search within.
-   * @returns {object} An object containing location details.
-   */
   _findLocation(id, book) {
     for (let i = 0; i < book.chapters.length; i++) {
       const chapter = book.chapters[i];
@@ -566,14 +488,6 @@ export class BookService {
     return { chapter: null }; // Return a predictable "not found" state
   }
 
-  /**
-   * The core "disassembly" engine. It intelligently parses the flat list of editor
-   * nodes back into a hierarchical structure and updates the book data.
-   *
-   * @param {string} viewId The ID of the view being saved.
-   * @param {Array} nodes The array of TipTap nodes from the editor.
-   * @param {object} book The deep copy of the book data to modify.
-   */
   _deconstructAndSaveView(viewId, nodes, book) {
     let navigateToId = viewId;
     const location = this._findLocation(viewId, book);
@@ -699,13 +613,6 @@ export class BookService {
     return navigateToId;
   }
 
-  /**
-   * Handles the logic for when a chapter's main H2 title is deleted by the user.
-   *
-   * @param {object} location The location object for the chapter being deleted.
-   * @param {Array} orphanedNodes The raw editor nodes that are now "headless".
-   * @param {object} book The deep copy of the book data to modify.
-   */
   _handleOrphanedChapter(location, orphanedNodes, book) {
     const { chapter: chapterToDelete, chapterIndex } = location;
 
@@ -784,12 +691,7 @@ export class BookService {
       return chapterToDelete.id;
     }
   }
-  /**
-   * Recursively checks if an array of TipTap nodes contains any meaningful text content.
-   * This is more robust than a simple length check, as it ignores empty paragraphs.
-   * @param {Array} nodes An array of TipTap nodes.
-   * @returns {boolean} True if any node contains non-whitespace text.
-   */
+
   _hasMeaningfulContent(nodes) {
     if (!nodes || nodes.length === 0) {
       return false;
@@ -809,7 +711,6 @@ export class BookService {
   }
 
   // --- HELPER METHODS REWRITTEN FOR NEW STRUCTURE ---
-
   _getBookStructure(bookData) {
     const structure = { chapters: [] };
     for (const ch of bookData.chapters || []) {
@@ -1013,8 +914,34 @@ export class BookService {
     this.appController.renderAssistantPane(marginBlocks);
   }
 
-  // --- Metadata Management ---
+  getBookStructureAsText() {
+    if (!this.currentBook || !this.currentBook.structure) return 'No book loaded.';
+    let text = `Book: ${this.currentBook.title}\n`;
+    this.currentBook.structure.chapters.forEach(ch => {
+      text += `- ${ch.title}\n`;
+      ch.sections.forEach(s => {
+        text += `  - ${s.title}\n`;
+      });
+    });
+    return text;
+  }
 
+  getFullBookText() {
+    if (!this.currentBook) return '';
+    // This is a simplified text extraction. We can make it more robust if needed.
+    let fullText = '';
+    this.currentBook.chapters.forEach(ch => {
+      fullText += `${ch.title}\n\n`;
+      if (ch.content_json) fullText += tiptapToText(ch.content_json.content) + '\n\n';
+      ch.sections.forEach(s => {
+        fullText += `${s.title}\n\n`;
+        if (s.content_json) fullText += tiptapToText(s.content_json.content) + '\n\n';
+      });
+    });
+    return fullText;
+  }
+
+  // --- Metadata Management ---
   async loadMetadata(filename) {
     const metadataRecord = await this.storageService.getFile(`${filename}.metadata.json`);
     this.metadata = metadataRecord ? metadataRecord.content : {};

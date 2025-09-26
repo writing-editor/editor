@@ -1,23 +1,21 @@
-// frontend/src/llm/AnthropicClient.js
 import { BaseLlm } from './BaseLlm.js';
 
-// NOTE: This is a placeholder implementation.
-// The actual Anthropic API might have slightly different request/response formats.
 export class AnthropicClient extends BaseLlm {
   constructor() {
     super();
-    // Anthropic's API endpoint is different.
-    this.API_URL = "https://api.anthropic.com/v1/messages"; 
   }
 
   async execute(prompt, settings, isJson = false) {
-    const { apiKey, modelName } = settings;
+    const { apiKey, modelName, apiUrl } = settings;
     if (!apiKey) {
       throw new Error('API Key is missing for AnthropicClient.');
     }
+    if (!apiUrl) {
+      throw new Error('API URL is missing from configuration for AnthropicClient.');
+    }
 
     try {
-      const response = await fetch(this.API_URL, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'x-api-key': apiKey,
@@ -26,7 +24,7 @@ export class AnthropicClient extends BaseLlm {
         },
         body: JSON.stringify({
           model: modelName,
-          max_tokens: 4096, // Anthropic requires max_tokens
+          max_tokens: 4096,
           messages: [{ role: 'user', content: prompt }]
         })
       });

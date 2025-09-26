@@ -1,66 +1,78 @@
-import { SettingsPalette } from '../components/SettingsPalette.js';
-
 export class TagSyncService {
     constructor(controller, storageService) {
         this.controller = controller;
         this.storageService = storageService;
-        this.isSyncing = false;
+        this.isRunning = false;
+        this.DEBOUNCE_DELAY = 10000; // 10 seconds
+        this.run = this.debounce(this.run.bind(this), this.DEBOUNCE_DELAY);
     }
 
     async run() {
-        if (this.isSyncing) {
-            console.log("Auto-tagging already in progress.");
+        if (this.isRunning) {
+            console.log("Auto-tagging is already in progress. Skipping.");
             return;
         }
 
-        const settings = SettingsPalette.getSettings();
-        if (!settings.autoTag) {
-            console.log("Auto-tagging is disabled in settings.");
+        const agent = this.controller.agentService.getAgentById('core.autotag');
+        if (!agent || !agent.enabled) {
+            console.log("Auto-tagging agent is disabled. Skipping.");
             return;
         }
-        this.isSyncing = true;
-        console.log("Starting auto-tagging process...");
+
+        this.isRunning = true;
+        console.log("Starting automatic note tagging process...");
 
         try {
-            const noteFiles = await this.storageService.getAllFilesBySuffix('.note') || [];
-            const allNotes = noteFiles.map(file => file.content);
-            const untaggedNotes = allNotes.filter(note => !note.tags || note.tags.length === 0);
+            const noteFiles = await this.storageService.getAllFilesBySuffix('.note');
+            const notes = noteFiles.map(file => file.content);
+            const untaggedNotes = notes.filter(note => !note.tags || note.tags.length === 0);
 
             if (untaggedNotes.length === 0) {
                 console.log("No untagged notes to process.");
                 return;
             }
 
-            console.log(`Found ${untaggedNotes.length} untagged notes. Processing...`);
-            const untaggedNotesPayload = untaggedNotes.map(n => ({ id: n.id, content: n.plain_text }));
-
             const payload = {
-                notes: untaggedNotesPayload,
+                // Pass the notes in the format the executor expects
+                all_notes: untaggedNotes.map(n => ({ id: n.id, plain_text: n.plain_text })),
+                // Context is not needed for this agent, but we provide an empty object
+                context: {}
             };
 
-            const results = await this.controller.runTagger(payload);
+            // Execute the agent via the central controller method
+            const result = await this.controller.runAgent('core.autotag', payload);
 
-            if (results && results.length > 0) {
-                const tagsMap = new Map(results.map(item => [item.id, item.tags]));
-                const savePromises = [];
-
-                allNotes.forEach(note => {
-                    if (tagsMap.has(note.id)) {
-                        note.tags = tagsMap.get(note.id);
-                        savePromises.push(this.storageService.saveFile(`${note.id}.note`, note));
+            if (result && result.notes_with_tags) {
+                let updatedCount = 0;
+                for (const noteWithTags of result.notes_with_tags) {
+                    const originalNote = notes.find(n => n.id === noteWithTags.id);
+                    if (originalNote) {
+                        originalNote.tags = noteWithTags.tags;
+                        await this.storageService.saveFile(`${originalNote.id}.note`, originalNote);
+                        updatedCount++;
                     }
-                });
-
-                if (savePromises.length > 0) {
-                    await Promise.all(savePromises);
-                    this.controller.publish('tags:updated', {});
-                    console.log(`Successfully applied new tags to ${savePromises.length} notes.`);
                 }
+                console.log(`Successfully tagged ${updatedCount} notes.`);
+                if (updatedCount > 0) {
+                    this.controller.publish('notes:updated');
+                }
+            } else {
+                console.log("Auto-tagging agent returned no valid tags.");
             }
         } catch (error) {
-            console.error("Error during auto-tagging sync:", error);
+            console.error("An error occurred during the auto-tagging process:", error);
         } finally {
-            this.isSyncing = false;
+            this.isRunning = false;
         }
+    }
+
+    // Simple debounce implementation
+    debounce(func, delay) {
+        let timeout;
+        return function (...args) {
+            const context = this;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(context, args), delay);
+        };
     }
 }

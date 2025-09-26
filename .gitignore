@@ -17,6 +17,7 @@ viteConfigforLocalUse.md
 
 # Production build output
 /frontend/dist
+/frontend/release
 
 # Node dependencies
 /frontend/node_modules

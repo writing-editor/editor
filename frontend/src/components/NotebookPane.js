@@ -2,7 +2,7 @@ import { noteBlockWrapper } from '../utils/noteBlockWrapper.js';
 import { Editor as TipTapEditor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import FlexSearch from 'flexsearch'; 
+import FlexSearch from 'flexsearch';
 
 function tiptapJsonToText(tiptapJson) {
     let text = "";
@@ -27,7 +27,7 @@ export class NotebookPane {
         this.allNotes = [];
         this.searchQuery = '';
         this.noteSearchResults = null;
-        this.isAiSearchComplete = false; 
+        this.isAiSearchComplete = false;
         this.isEditorVisible = false;
         this.editingNoteId = null;
         this.mainEditorInstance = null;
@@ -49,8 +49,8 @@ export class NotebookPane {
             }
         });
         this.controller.subscribe('notebook:needs-refresh', () => {
-             console.log("NotebookPane received a refresh request from sync service.");
-             this.fetchAllNotes();
+            console.log("NotebookPane received a refresh request from sync service.");
+            this.fetchAllNotes();
         });
     }
 
@@ -59,7 +59,7 @@ export class NotebookPane {
         this.controller.runAutoTagging();
     }
 
-   async fetchAllNotes() {
+    async fetchAllNotes() {
         const noteFiles = await this.storageService.getAllFilesBySuffix('.note');
         this.allNotes = noteFiles.map(file => file.content);
         this.buildNoteIndex();
@@ -252,7 +252,6 @@ export class NotebookPane {
         }
     }
 
-
     async handleSave() {
         const contentJson = this.mainEditorInstance.getJSON();
         if (!this.mainEditorInstance.state.doc.textContent.trim()) return;
@@ -271,17 +270,17 @@ export class NotebookPane {
             let noteTitle = plainText.split(/\s+/).slice(0, 5).join(" ");
             if (plainText.split(/\s+/).length > 5) noteTitle += "...";
             const manualTags = [...new Set((plainText.match(/#(\w+)/g) || []).map(tag => tag.substring(1).toLowerCase()))];
-            
+
             noteToSave.content_json = contentJson;
             noteToSave.plain_text = plainText;
             noteToSave.title = noteTitle;
             if (manualTags.length > 0 || !this.editingNoteId) {
-                noteToSave.tags = manualTags; 
+                noteToSave.tags = manualTags;
             }
 
             // Save the single file
             await this.storageService.saveFile(`${noteToSave.id}.note`, noteToSave);
-            
+
             this.controller.showIndicator('Note Saved!', { duration: 2000 });
 
             this.editingNoteId = null;
@@ -329,7 +328,7 @@ export class NotebookPane {
         results.forEach(fieldResult => {
             fieldResult.result.forEach(doc => {
                 if (!uniqueDocs.has(doc.id)) {
-                    uniqueDocs.set(doc.id, doc.doc.doc); 
+                    uniqueDocs.set(doc.id, doc.doc.doc);
                 }
             });
         });
@@ -339,15 +338,67 @@ export class NotebookPane {
         this.renderUI();
     }
 
+
     async performAiSearch() {
         const trimmedQuery = this.searchQuery.trim();
         if (!trimmedQuery) return;
 
-        const payload = { query: trimmedQuery, all_notes: this.allNotes };
-        const filtered_notes = await this.controller.runFindNotes(payload);
+        // The agent expects 'user_request' and 'all_notes' in the payload.
+        const payload = {
+            user_request: trimmedQuery,
+            all_notes: this.allNotes,
+            context: {} // Add empty context to prevent errors in the executor
+        };
+
+        const result = await this.controller.runAgent('core.find_notes', payload);
+
+        let filtered_notes = [];
+        // NEW: Process the JSON response from the agent.
+        if (result && result.relevant_note_ids) {
+            const relevantIds = new Set(result.relevant_note_ids);
+            filtered_notes = this.allNotes.filter(note => relevantIds.has(note.id));
+        } else {
+            console.warn("AI note search returned no valid IDs.");
+            this.controller.showIndicator("AI search didn't find any relevant notes.", { duration: 3000 });
+        }
 
         this.noteSearchResults = filtered_notes;
         this.isAiSearchComplete = true; // Mark that AI search is done
         this.renderUI();
     }
+
+    async createNoteFromText(markdownContent, agentName = 'AI Agent') {
+        const contentJson = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: markdownContent }] }] };
+        const plainText = markdownContent;
+
+        let noteTitle = `${agentName}: ${plainText.split(/\s+/).slice(0, 5).join(" ")}`;
+        if (plainText.split(/\s+/).length > 5) noteTitle += "...";
+
+        const newNote = {
+            id: `note_${Date.now()}`,
+            type: "note",
+            pinned: false,
+            content_json: contentJson,
+            plain_text: plainText,
+            title: noteTitle,
+            tags: ['ai-generated', agentName.toLowerCase().replace(/\s+/g, '-')]
+        };
+
+        await this.storageService.saveFile(`${newNote.id}.note`, newNote);
+        await this.fetchAllNotes(); // Refresh the notebook view
+    }
+
+    filterNotesById(noteIds) {
+      if (!noteIds || noteIds.length === 0) {
+          this.noteSearchResults = [];
+      } else {
+          const idSet = new Set(noteIds);
+          this.noteSearchResults = this.allNotes.filter(note => idSet.has(note.id));
+      }
+      
+      this.searchQuery = "AI Search Results"; // Give a visual cue
+      this.isAiSearchComplete = true; // Mark it as an AI search
+      this.activeFilterTags.clear(); // Clear other filters
+      this.renderUI();
+  }
 }

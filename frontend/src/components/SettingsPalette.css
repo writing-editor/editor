@@ -1,409 +1,250 @@
-/* --- 1. Main Palette & Overlay --- */
+/* frontend/src/components/SettingsPalette.css */
 #settings-palette-container {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 7000;
-  backdrop-filter: blur(4px);
-  opacity: 1;
-  transition: opacity 0.2s ease;
+  z-index: 5000;
+  background-color: var(--color-background);
+  /* Animation for sliding in from the right */
 }
 
-#settings-palette-container.hidden {
-  opacity: 0;
-  pointer-events: none;
+#settings-palette-container:not(.hidden) {
+  transform: translateX(0);
 }
 
 #settings-palette {
-  width: 90%;
-  max-width: 1000px;
-  min-height: 500px;
-  max-height: 85vh;
-  border-radius: 12px;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: var(--color-surface-light);
-  border: 1px solid var(--color-border);
-  box-shadow: 0 0 0 1px var(--color-border);
-  overflow: hidden;
 }
 
-
-/* --- 2. THE NEW HEADER: Thin, with Tabs and Save Button --- */
+/* Shared Header styles */
 #settings-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 8px 8px 8px 16px;
-  border-bottom: 1px solid var(--color-border);
-  background-color: var(--color-background);
+  gap: 16px;
+  padding: 12px 24px;
   flex-shrink: 0;
 }
 
-.settings-tab-bar {
+#settings-header h4 {
+  margin: 0;
+  font-size: 18px;
+}
+
+#settings-body {
   display: flex;
-  gap: 8px;
   flex-grow: 1;
+  min-height: 0;
+  /* Important for flexbox scrolling */
 }
 
-.settings-tab-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  cursor: pointer;
-  background: none;
-  border: none;
-  border-radius: 6px;
-  color: var(--color-text-muted);
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease-in-out;
-}
-
-.settings-tab-btn:hover {
-  background-color: var(--color-surface-medium);
-  color: var(--color-text);
-}
-
-.settings-tab-btn.active {
+#settings-nav {
+  width: 240px;
+  flex-shrink: 0;
   background-color: var(--color-surface-light);
-  color: var(--color-primary);
-  box-shadow: 0 0 0 1px var(--color-border);
-}
-
-.settings-tab-btn span {
-  white-space: nowrap;
-}
-
-#settings-save-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  background-color: var(--color-primary);
-  color: #fff;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-}
-
-#settings-save-btn:hover {
-  filter: brightness(1.1);
-}
-
-.icon-save::before {
-  content: '';
-  display: block;
-  width: 12px;
-  height: 12px;
-  border: 2px solid currentColor;
-  border-top: none;
-  border-left: none;
-  transform: rotate(45deg) translateY(-2px) translateX(-2px);
-}
-
-
-/* --- 3. THE NEW CONTENT AREA (CORRECTED) --- */
-#settings-content {
   padding: var(--spacing-lg);
   overflow-y: auto;
-  flex-grow: 1;
 }
 
-.settings-tab-panel {
-  display: none;
-}
 
-.settings-tab-panel.active {
-  display: block;
-}
-
-/* The section is the grid container. This is correct. */
-.settings-section {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--spacing-lg) var(--spacing-lg);
-  /* Add vertical gap */
-}
-
-/* A helper class to make an item span all columns */
-.grid-span-all {
-  grid-column: 1 / -1;
-}
-
-/* This is the primary grid item. It has NO background or border. */
-.setting-item,
-.setting-item-full {
+.settings-nav-group {
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 
-/* Labels for all items */
-.setting-item label,
-.setting-item-full .setting-label {
-  font-weight: 600;
-  margin-bottom: 8px;
-  font-size: 14px;
-  color: var(--color-text);
-}
-
-/* Description for Data Management items */
-.setting-item-full .setting-description {
-  font-size: 13px;
-  color: var(--color-text-muted);
-  margin: 0 0 12px 0;
-  line-height: 1.5;
-  flex-grow: 1;
-}
-
-
-/* --- 4. FORM ELEMENTS (UNIFIED AND THEME-AWARE) --- */
-
-/* Text Inputs, Number Inputs, and Selects */
-.setting-item input,
-.setting-item select,
-.data-actions-export select {
+.settings-nav-item {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background-color: var(--color-background);
-  color: var(--color-text);
+  border: none;
+  background: none;
+  text-align: left;
   font-size: 14px;
-  font-family: var(--font-sans);
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-/* Select-specific styling (for the dropdown arrow) */
-.setting-item select,
-.data-actions-export select {
+  font-weight: 500;
+  border-radius: 6px;
   cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 1em;
+  color: var(--color-text-muted);
+  transition: background-color 0.2s, color 0.2s;
 }
 
-/* Consistent Focus Ring */
-.setting-item input:focus,
-.setting-item select:focus,
-.data-actions-export select:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+.settings-nav-item:hover {
+  background-color: var(--color-hover);
+  color: var(--color-text);
 }
 
+.settings-nav-item.is-active {
+  background-color: var(--color-primary);
+  color: var(--color-primary-text);
+}
 
-/* --- 5. DATA MANAGEMENT BUTTONS (WITH ICON FIXES) --- */
-.data-actions,
-.data-actions-export {
+#settings-content {
+  flex-grow: 1;
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+}
+
+.settings-view-header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.settings-view-header h2 {
+  margin: 0 0 8px 0;
+}
+
+.settings-view-header p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.settings-section {
+  margin-top: var(--spacing-lg);
+}
+
+.settings-section h4 {
+  margin: 0 0 4px 0;
+}
+
+.settings-section-desc {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+.settings-button-group {
   display: flex;
-  align-items: center;
   gap: 12px;
 }
 
-.settings-action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
+.settings-button {
+  padding: 10px 16px;
   border-radius: 6px;
   border: 1px solid var(--color-border);
-  background-color: var(--color-surface-light);
-  color: var(--color-text-muted);
+  background-color: var(--color-surface-medium);
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: background-color 0.2s, border-color 0.2s;
+  color: var(--color-text);
+}
+
+/* ... */
+
+.settings-button:hover {
+  border-color: var(--color-text-muted);
+}
+
+.danger-zone {
+  margin-top: calc(var(--spacing-lg) * 2);
+  padding-top: var(--spacing-lg);
+  border-top: 1px dashed var(--color-danger);
+}
+
+.danger-zone h4 {
+  color: var(--color-danger);
+}
+
+.settings-button.danger {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.settings-button.danger:hover {
+  background-color: var(--color-danger);
+  color: var(--color-primary-text);
+}
+
+
+/* Agent Manager Styles */
+#agent-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-info strong {
+  display: block;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.agent-info p {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.agent-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* NEW styles for Edit/Delete buttons */
+.settings-action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 .settings-action-btn:hover {
   background-color: var(--color-surface-medium);
-  border-color: var(--color-text-muted);
   color: var(--color-text);
 }
 
-.settings-action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.settings-action-btn.delete-btn:hover {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
-/* --- THIS IS THE KEY ICON FIX --- */
-
-/* Generic styles for SVG icons inside buttons */
 .settings-action-btn svg {
-  width: 18px;
-  height: 18px;
-  stroke-width: 2;
+  width: 16px;
+  height: 16px;
   stroke: currentColor;
+  stroke-width: 2;
   fill: none;
 }
 
-/* Styles for the text-based .tex tag */
-#settings-export-latex-btn {
-  width: auto;
-  /* Allow this button to be wider */
-  padding: 0 12px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text);
+/* Form Styles */
+.settings-form-group {
+  margin-bottom: var(--spacing-lg);
 }
 
-.export-format-tag {
-  font-size: 12px;
-  font-weight: bold;
-  color: var(--color-text-muted);
-}
-
-
-
-/* --- Style for the new Disconnect button --- */
-.settings-action-btn-danger {
-  width: 100%;
-  /* Make it full-width to be prominent */
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 6px;
-  border: 1px solid var(--color-danger);
-  background-color: var(--color-danger-bg);
-  color: var(--color-danger);
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-}
-
-.settings-action-btn-danger:hover {
-  background-color: var(--color-danger);
-  color: #fff;
-}
-
-#settings-disconnect-btn:hover {
-  background-color: var(--color-danger-bg);
-  color: var(--color-danger);
-  border-color: var(--color-danger);
-}
-
-#settings-disconnect-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border-radius: 6px;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-surface-light);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-}
-
-#settings-disconnect-btn:hover {
-  background-color: var(--color-danger-bg);
-  color: var(--color-danger);
-  border-color: var(--color-danger);
-}
-
-#settings-disconnect-btn svg {
-  width: 16px;
-  height: 16px;
-}
-/* --- AI Features & Pill Buttons --- */
-
-.settings-action-btn-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 20px; /* Pill shape */
-  border: 1px solid var(--color-border);
-  background-color: var(--color-surface-light);
-  color: var(--color-text);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-  transition: all 0.2s ease-in-out;
-}
-
-.settings-action-btn-pill:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
-}
-
-/* Custom icon for the Manage Prompts button */
-.settings-action-btn-pill .icon-spark {
-  width: 16px;
-  height: 16px;
-  position: relative;
-}
-.settings-action-btn-pill .icon-spark span {
+.settings-form-group label {
   display: block;
-  position: absolute;
-  height: 2px;
-  width: 100%;
-  background: currentColor;
-  border-radius: 2px;
-  left: 0;
-  top: 7px;
-  transition: all 0.3s ease;
-}
-.settings-action-btn-pill .icon-spark span:nth-child(1) { transform: rotate(90deg); }
-.settings-action-btn-pill .icon-spark span:nth-child(2) { transform: rotate(45deg); }
-.settings-action-btn-pill .icon-spark span:nth-child(3) { transform: rotate(-45deg); }
-
-
-/* ---  Auto-Tagging Toggle --- */
-
-.setting-item-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 40px;
-  padding: 0 8px 0 16px; /* Less padding on the right */
-  border-radius: 20px; /* Pill shape */
-  border: 1px solid var(--color-border);
-  background-color: var(--color-surface-light);
-  font-size: 14px;
   font-weight: 500;
-  color: var(--color-text);
+  margin-bottom: 8px;
+  color: var(--color-text-muted);
+  font-size: 14px;
 }
 
-.setting-item-toggle label {
-  cursor: pointer; /* Allow clicking the label to toggle */
-  margin: 0;
-}
 
-.toggle-switch {
+
+/* Toggle Switch CSS */
+.switch {
   position: relative;
   display: inline-block;
   width: 44px;
   height: 24px;
-  flex-shrink: 0;
 }
 
-.toggle-switch input {
+.switch input {
   opacity: 0;
   width: 0;
   height: 0;
 }
 
-.toggle-switch .slider {
+.slider {
   position: absolute;
   cursor: pointer;
   top: 0;
@@ -412,26 +253,349 @@
   bottom: 0;
   background-color: var(--color-surface-medium);
   transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
+}
+
+input:checked+.slider {
+  background-color: var(--color-success);
+}
+
+input:focus+.slider {
+  box-shadow: 0 0 1px var(--color-success);
+}
+
+input:checked+.slider:before {
+  transform: translateX(20px);
+}
+
+.slider.round {
   border-radius: 24px;
 }
 
-.toggle-switch .slider:before {
-  position: absolute;
-  content: "";
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: .4s;
+.slider.round:before {
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-input:checked + .slider {
-  background-color: var(--color-primary);
+#font-size-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  background: var(--color-surface-medium);
+  border-radius: 4px;
+  outline: none;
+  transition: opacity .2s;
 }
 
-input:checked + .slider:before {
-  transform: translateX(20px);
+#font-size-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--color-text);
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+#font-size-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--color-text);
+  cursor: pointer;
+  border-radius: 50%;
+  border: none;
+}
+
+#font-size-preview {
+  font-weight: normal;
+  color: var(--color-text-muted);
+}
+
+/*  Agent/Model Editor Modal Styles */
+#agent-editor-modal-container,
+#model-editor-modal-container {
+  position: fixed;
+  inset: 0;
+  z-index: 6000;
+  background-color: var(--color-overlay-bg);
+  backdrop-filter: var(--blur-backdrop);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+#agent-editor-box {
+  width: 100%;
+  max-width: 1100px;
+  background-color: var(--color-background);
+  border-radius: 12px;
+  box-shadow: var(--color-shadow);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  position: relative;
+}
+
+.agent-editor-header-actions {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+#agent-editor-save-btn:hover {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+#agent-editor-cancel-btn:hover {
+  background-color: var(--color-surface-medium);
+  color: var(--color-text);
+}
+
+#agent-editor-title {
+  margin: 0;
+  padding: 16px 24px;
+}
+
+#agent-editor-grid {
+  flex-grow: 1;
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 24px;
+  overflow-y: auto;
+  padding: 0 24px 24px 24px;
+}
+
+.agent-editor-form-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 12px;
+  border-radius: 6px;
+  border: none;
+  background-color: var(--color-surface-light);
+  font-family: inherit;
+  font-size: 14px;
+  box-sizing: border-box;
+  color: var(--color-text);
+  transition: box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.form-group textarea {
+  resize: vertical;
+  font-family: monospace;
+}
+
+
+.agent-editor-help-pane {
+  background-color: var(--color-surface-light);
+  border-radius: 8px;
+  padding: 20px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  position: relative;
+  /* For positioning the new buttons */
+}
+
+.agent-editor-help-pane h4 {
+  margin: 0 0 12px 0;
+  color: var(--color-text);
+}
+
+
+.agent-editor-help-pane ul {
+  padding-left: 20px;
+  margin: 0;
+}
+
+.agent-editor-help-pane code {
+  background-color: var(--color-surface-medium);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+#agent-triggers-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.trigger-option {
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+  margin-bottom: 4px;
+}
+
+.trigger-option label {
+  margin-bottom: 0;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.trigger-option input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+
+  width: 15px;
+  height: 15px;
+
+  border-radius: 4px;
+  background-color: var(--color-surface-medium);
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.trigger-option input[type="checkbox"]:checked {
+  background-color: var(--color-success);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='20 6 9 17 4 12'%3e%3c/polyline%3e%3c/svg%3e");
+  background-size: 70%;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+
+#bubble-menu-options {
+  margin-top: 16px;
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#bubble-menu-options.hidden {
+  display: none;
+}
+
+/* REVISED: Unified styles for all interactive list items and form elements */
+.agent-list-item,
+.settings-select,
+.settings-input {
+  border: none;
+  /* <-- REMOVE BORDER */
+  background-color: var(--color-surface-light);
+  /* <-- UNIFIED BACKGROUND */
+}
+
+.agent-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+/* Ensure consistent padding and appearance for form fields */
+.settings-select,
+.settings-input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+/* Add a clean focus style to inputs/selects */
+.settings-select:focus,
+.settings-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+/* NEW: Styles for the Model Editor Modal */
+#model-editor-box {
+  width: 100%;
+  max-width: 600px;
+  /* A good width for this form */
+  background-color: var(--color-background);
+  border-radius: 12px;
+  box-shadow: var(--color-shadow);
+  /* No flex-direction needed anymore */
+}
+
+#model-editor-form {
+  padding: var(--spacing-lg);
+  display: flex;
+  align-items: flex-end;
+  /* Aligns the button to the bottom */
+  gap: 16px;
+}
+
+#model-editor-form .form-group {
+  flex-grow: 1;
+}
+
+/*  Style for the interactive save icon button */
+.model-save-icon-btn {
+  flex-shrink: 0;
+  /* Prevent the button from shrinking */
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: var(--color-surface-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.model-save-icon-btn:hover {
+  background-color: var(--color-success);
+  color: #fff;
+}
+
+.model-save-icon-btn svg {
+  width: 24px;
+  height: 24px;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }

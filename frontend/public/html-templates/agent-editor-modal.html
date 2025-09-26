@@ -1,0 +1,99 @@
+<!-- public/html-templates/agent-editor-modal.html -->
+<div id="agent-editor-modal-container">
+    <div id="agent-editor-box">
+        <h3 id="agent-editor-title">Create New Agent</h3>
+        <div class="agent-editor-header-actions">
+            <button id="agent-editor-save-btn" class="settings-action-btn" title="Save Agent">
+                <svg viewBox="0 0 24 24">
+                    <path d="M20 6 9 17l-5-5" />
+                </svg>
+            </button>
+            <button id="agent-editor-cancel-btn" class="settings-action-btn" title="Cancel">
+                <svg viewBox="0 0 24 24">
+                    <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="agent-editor-grid">
+            <!-- Left Pane: The Form -->
+            <div class="agent-editor-form-pane">
+                <div class="form-group">
+                    <label for="agent-name">Agent Name</label>
+                    <input type="text" id="agent-name" placeholder="e.g., Creative Brainstormer">
+                </div>
+                <div class="form-group">
+                    <label for="agent-desc">Description</label>
+                    <input type="text" id="agent-desc" placeholder="A short description of what this agent does.">
+                </div>
+                <div class="form-group">
+                    <label for="agent-system-prompt">System Prompt (The Agent's Role)</label>
+                    <textarea id="agent-system-prompt" rows="8"
+                        placeholder="Define the agent's personality, expertise, and constraints. Example: You are a helpful editor who corrects grammar..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="agent-user-prompt">User Prompt (The Agent's Task)</label>
+                    <textarea id="agent-user-prompt" rows="6"
+                        placeholder="Define the task, using variables from the 'Help & Variables' section. Example: Rewrite the following text: {selected_text}"></textarea>
+                </div>
+                <!-- Triggers Section -->
+                <div class="form-group" id="agent-triggers-section">
+                    <label>Triggers (How to activate this agent)</label>
+                    <div class="trigger-option">
+                        <input type="checkbox" id="trigger-ai-studio">
+                        <label for="trigger-ai-studio">Show in AI Command Palette (Ctrl+K)</label>
+                    </div>
+                    <div class="trigger-option">
+                        <input type="checkbox" id="trigger-bubble-menu">
+                        <label for="trigger-bubble-menu">Show in text selection Bubble Menu</label>
+                    </div>
+                    <div id="bubble-menu-options" class="hidden">
+                        <div class="form-group">
+                            <label for="agent-bubble-label">Bubble Menu Label</label>
+                            <input type="text" id="agent-bubble-label" placeholder="e.g., Brainstorm">
+                        </div>
+                        <div class="form-group">
+                            <label for="agent-bubble-icon">Bubble Menu Icon (SVG)</label>
+                            <textarea id="agent-bubble-icon" rows="3"
+                                placeholder="Paste a 24x24 SVG tag here..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Right Pane: Help & Guidance -->
+            <div class="agent-editor-help-pane">
+
+                <h4>How to Build an Agent</h4>
+                <p>An agent is a reusable AI instruction. It has two main parts:</p>
+                <ul>
+                    <li><strong>System Prompt:</strong> This defines the AI's permanent role. It's the "who" — a
+                        meticulous editor, a creative poet, a logical analyst. This part doesn't change.</li>
+                    <li><strong>User Prompt:</strong> This defines the specific task you're giving the agent. It uses
+                        variables to inject text from your document.</li>
+                </ul>
+                <h4>Available Variables</h4>
+                <p>Use these placeholders in your User Prompt to give the agent context:</p>
+                <ul>
+                    <li><code>{selected_text}</code><br>The text currently highlighted by the user.</li>
+                    <li><code>{view_content}</code><br>The entire text content of the current chapter or section.</li>
+                    <li><code>{user_request}</code><br>Additional text from the AI Studio popup.</li>
+                    <li><code>{book_structure}</code><br>A text outline of the current book's chapters and sections.
+                    </li>
+                    <li><code>{all_notes}</code><br>The complete content of every note in your notebook. (High token
+                        cost)</li>
+                    <li><code>{full_book_content}</code><br>The entire text of the current book. (Very high token cost)
+                    </li>
+                    <li><code>{note_content}</code><br>The content of the note that triggered this agent.</li>
+                </ul>
+            </div>
+            <div class="form-group" style="padding: 0 24px 24px 24px;">
+                <label for="agent-output-handler">Output Handler</label>
+                <select id="agent-output-handler" class="settings-select">
+                    <option value="assistantPane">Show in Assistant Pane</option>
+                    <option value="replaceSelection">Replace Selection (Show Diff)</option>
+                    <option value="newNote">Create New Note</option>
+                    <option value="filterNotes">Filter Notes in Notebook</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>

@@ -32,23 +32,15 @@ export class ConnectivityStatus {
     if (!navigator.onLine) {
       this.setState('offline');
     } else {
-      // When we come back online, we need to re-evaluate the full auth state.
-
-      // First, trigger the online reconciliation process if we were previously offline.
       if (this.state === 'offline') {
         console.log("Application is back online. Triggering reconciliation.");
         this.controller.publish('app:online', {});
       }
 
-      // Next, check the sign-in status and update the UI accordingly.
       const isSignedIn = this.controller.checkSignInStatus();
       if (isSignedIn) {
-        // This was the missing step: If the user is signed in, restore the 'signed-in' state.
-        // We reuse this.userName, which was set during the last successful sign-in.
         this.setState('signed-in', this.userName);
       } else {
-        // This part was correct: If the user is not signed in, show the 'signed-out' state.
-        // But we only do this if they haven't started the sign-in process before.
         const userHasInitiatedSignIn = localStorage.getItem('userHasInitiatedSignIn');
         if (!userHasInitiatedSignIn) {
           this.setState('signed-out');

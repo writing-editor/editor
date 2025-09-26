@@ -10,23 +10,19 @@ export class LocalLlmClient extends BaseLlm {
       throw new Error('Local LLM Model Name is missing from settings.');
     }
 
-    // Assuming an OpenAI-compatible API endpoint
-    const endpoint = llmUrl.endsWith('/v1') ? `${llmUrl}/chat/completions` : llmUrl.endsWith('/') ? `${llmUrl}v1/chat/completions` : `${llmUrl}/v1/chat/completions`;
-
+    // A more robust way to construct the final URL
+    const endpoint = new URL('/v1/chat/completions', llmUrl).href;
 
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Most local LLMs don't require an API key, but an OpenAI-compatible server might.
-          // Add a dummy one if your server is strict.
-          // 'Authorization': `Bearer not-needed`
         },
         body: JSON.stringify({
           model: modelName,
           messages: [{ role: 'user', content: prompt }],
-          ...(isJson && { response_format: { type: "json_object" } }), // OpenAI compatible JSON mode
+          ...(isJson && { response_format: { type: "json_object" } }),
           temperature: 0.7,
         })
       });
@@ -48,7 +44,7 @@ export class LocalLlmClient extends BaseLlm {
     } catch (error) {
       console.error("Failed to execute Local LLM call:", error);
       if (error instanceof TypeError) { // Network error
-          return `Error: Could not connect to the local LLM at ${endpoint}. Please ensure the server is running and the URL is correct.`;
+        return `Error: Could not connect to the local LLM at ${endpoint}. Please ensure the server is running and the URL is correct.`;
       }
       return `Error: ${error.message}`;
     }

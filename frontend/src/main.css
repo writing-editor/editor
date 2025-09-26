@@ -1,76 +1,67 @@
 /* --- 1. THEME & GLOBAL VARIABLES --- */
-/* === Theme 1: Modern Slate === */
 
 :root {
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --navigator-width: 320px;
   --right-drawer-width: 40%;
   --editor-pane-shrunk-width: 60%;
   --spacing-md: 16px;
   --spacing-lg: 24px;
+  --blur-backdrop: blur(5px);
 
-  /* Light Mode */
-  --color-background: #f8f9fa;       /* Very light gray, almost white */
-  --color-surface-light: #ffffff;      /* Pure white for cards/popups */
-  --color-surface-medium: #f1f3f5;     /* Slightly darker gray for UI elements */
+  --color-background: rgb(255,255,245);
+  --color-surface-light:  var(--color-background);
+  --color-surface-medium: rgb(248, 248, 225);
 
-  --color-text: #212529;             /* Very dark gray, near black */
-  --color-text-muted: #5c6770;        /* Softer mid-gray */
-  --color-text-disabled: #adb5bd;     /* Lighter gray for disabled states */
+  --color-text: #1a1a1a;
+  --color-text-muted: #7a7a70;
+  --color-text-disabled: #adb5bd;
+  --color-heading: var(--color-text);
+  --color-border: rgb(245, 245, 225); 
 
-  --color-heading: #181b1e;           /* Strongest dark gray for headings */
+  --color-primary: rgb(244, 244, 220);
+  --color-primary-hover: var(--color-primary);
+  --color-primary-text: #1a1a1a;
 
-  --color-border: #dee2e6;            /* Standard light border */
-  --color-divider: #e9ecef;           /* Lighter divider */
+  --color-success: #52b788;
+  --color-success-bg: #edf7f2;
+  --color-danger: #e57373;
+  --color-danger-bg: #f9e5e5;
 
-  --color-primary: #3366ff;           /* A strong, modern blue */
-  --color-primary-hover: #2952cc;     /* Darker blue for hover */
-  --color-primary-text: #ffffff;       /* White text on primary buttons */
-
-  --color-success: #0a7d3f;           /* A clear, accessible green */
-  --color-success-bg: #e7f2ec;
-
-  --color-danger: #b02121;            /* A clear, accessible red */
-  --color-danger-bg: #f8e9e9;
-
-  --color-selection: #dbe4ff;         /* Light blue selection */
-  --color-hover: #f1f3f5;             /* Subtle gray hover */
-  --color-disabled-bg: #f8f9fa;
-  --color-shadow: rgba(0, 0, 0, 0.07);
+  --color-selection: var(--color-primary);
+  --color-hover: var(--color-surface-medium);
+  --color-disabled-bg: rgb(244, 244, 225); 
+  --color-shadow: rgba(0, 0, 0, 0.05);
+  --color-overlay-bg: rgba(248, 249, 250, 0.5);
 }
 
 
 body.theme-dark {
-  /* Dark Mode */
-  --color-background: #181b1e;       /* Dark slate background */
-  --color-surface-light: #212529;      /* Slightly lighter surface */
-  --color-surface-medium: #343a40;     /* UI elements, toolbars */
+  --color-background: #121212;
+  --color-surface-light: #131313;
+  --color-surface-medium: #2c2c2c;
 
-  --color-text: #e9ecef;             /* High contrast light gray text */
-  --color-text-muted: #adb5bd;        /* Softer gray for muted text */
-  --color-text-disabled: #495057;     /* Darker gray for disabled states */
+  --color-text: #e0e0e0;
+  --color-text-muted: #888888;
+  --color-text-disabled: #444444;
+  --color-heading: #f8f9fa;
+  --color-border: #333333;
 
-  --color-heading: #f8f9fa;           /* Brightest white for headings */
+  --color-primary: #3a3a3a;
+  --color-primary-hover: var(--color-primary);
+  --color-primary-text: #f5f5f5;
 
-  --color-border: #343a40;            /* Subtle dark border */
-  --color-divider: #212529;           /* Even more subtle divider */
+  --color-success: #2d6a4f;
+  --color-success-bg: #1c2b22;
+  --color-danger: #ae2012;
+  --color-danger-bg: #3c1b1f;
 
-  --color-primary: #5c85ff;           /* Brighter blue for dark mode accessibility */
-  --color-primary-hover: #759bff;     /* Lighter blue for hover */
-  --color-primary-text: #0b0c0e;       /* Dark text on primary buttons for contrast */
-
-  --color-success: #33a168;           /* Brighter green */
-  --color-success-bg: #213529;
-
-  --color-danger: #d94848;            /* Brighter red */
-  --color-danger-bg: #402424;
-
-  --color-selection: #00387a;         /* Dark blue selection */
-  --color-hover: rgba(255, 255, 255, 0.08); /* White hover effect */
-  --color-disabled-bg: #212529;
-  --color-shadow: rgba(0, 0, 0, 0.5);
+  --color-selection: var(--color-primary);
+  --color-hover: var(--color-surface-medium);
+  --color-disabled-bg: #2c2c2c;
+  --color-shadow: rgba(0, 0, 0, 0.4);
+  --color-overlay-bg: rgba(10, 10, 10, 0.5);
 }
-
 
 /* --- 2. GLOBAL & LAYOUT STYLES --- */
 body,
@@ -94,6 +85,27 @@ html {
   min-width: 0;
   position: relative;
   overflow: hidden;
+}
+
+#navigator-drawer {
+  width: var(--navigator-width);
+  height: 100%;
+  background-color: var(--color-background);
+  flex-shrink: 0;
+  /* Prevents the navigator from shrinking */
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: 60px var(--spacing-md) var(--spacing-md);
+  position: relative;
+
+  /* The animation is now controlled by margin */
+  margin-left: calc(-1 * var(--navigator-width));
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* This class on the body will slide the drawer into view */
+body.drawer-is-open #navigator-drawer {
+  margin-left: 0;
 }
 
 #main-container {
@@ -407,6 +419,34 @@ body.drawer-is-open .icon-hamburger span:nth-child(3) {
   transform: rotate(45deg) scale(1.1);
 }
 
+
+.app-back-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text);
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.app-back-btn:hover {
+  background-color: var(--color-surface-medium);
+}
+
+.app-back-btn svg {
+  width: 24px;
+  height: 24px;
+  stroke: currentColor;
+  stroke-width: 2;
+  /* <-- This controls the thickness */
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
 
 

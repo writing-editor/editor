@@ -1,399 +1,553 @@
 import { loadHTML } from '../utils/htmlLoader.js';
 
-const SETTINGS_CONFIG = {
-  fonts: [
-    { name: 'Academic Serif (LaTeX)', value: "'Iowan Old Style', 'Palatino Linotype', 'URW Palladio L', Georgia, serif" },
-    { name: 'Modern Sans-Serif', value: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
-    { name: 'Classic Serif (Georgia)', value: 'Georgia, serif' },
-    { name: 'Developer Mono', value: "'SF Mono', 'Consolas', 'Menlo', monospace" }
-  ],
-  aiProviders: [
-    { name: 'Google Gemini', value: 'google' },
-    { name: 'Anthropic Claude', value: 'anthropic' },
-    { name: 'Local LLM (OpenAI compatible)', value: 'local' }
-  ],
-  aiModels: [
-    { name: 'Gemini-2.5-flash-lite (Recommended)', value: 'gemini-2.5-flash-lite', provider: 'google' },
-    { name: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro', provider: 'google' },
-    { name: 'Claude 3 Haiku (Fast)', value: 'claude-3-haiku-20240307', provider: 'anthropic' },
-    { name: 'Claude 3 Sonnet', value: 'claude-3-sonnet-20240229', provider: 'anthropic' }
-  ]
-};
-
-const DEFAULT_SETTINGS = {
-  theme: 'light',
-  fontFamily: SETTINGS_CONFIG.fonts[0].value,
-  fontSize: '18',
-  provider: 'google',
-  apiKey: '',
-  modelName: 'gemini-2.5-flash-lite',
-  llmUrl: '',
-  localModelName: '',
-  autoTag: false,
-};
-
 export class SettingsPalette {
-  static getSettings() {
-    const savedSettings = localStorage.getItem('app-settings');
-    return savedSettings ? { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) } : DEFAULT_SETTINGS;
-  }
-
-  constructor(controller) {
+  constructor(controller, configService, agentService) {
     this.controller = controller;
+    this.configService = configService;
+    this.agentService = agentService;
     this.containerEl = document.getElementById('settings-palette-container');
-    this.activeTab = 'appearance';
-  }
-
-  async renderShell() {
-    this.containerEl.innerHTML = await loadHTML('html-templates/settings-palette.html');
-    this.contentArea = document.getElementById('settings-content');
-  }
-
-  renderPanels() {
-    if (!this.contentArea) return;
-    this.contentArea.innerHTML = `
-      <div class="settings-tab-panel active" data-panel="appearance">${this._renderAppearancePanel()}</div>
-      <div class="settings-tab-panel" data-panel="ai-settings">${this._renderAiPanel()}</div>
-      <div class="settings-tab-panel" data-panel="data-management">${this._renderDataPanel()}</div>
-    `;
-  }
-
-  initialize() {
-    // --- Query all DOM elements once ---
-    this.saveBtn = document.getElementById('settings-save-btn');
-    this.tabBar = this.containerEl.querySelector('.settings-tab-bar');
-
-    // Appearance
-    this.darkModeToggle = document.getElementById('setting-dark-mode');
-    this.fontFamilySelect = document.getElementById('setting-font-family');
-    this.fontSizeInput = document.getElementById('setting-font-size');
-
-    // AI Settings
-    this.providerSelect = document.getElementById('setting-provider');
-    this.apiKeyInput = document.getElementById('setting-api-key');
-    this.modelNameSelect = document.getElementById('setting-model-name');
-    this.llmUrlInput = document.getElementById('setting-llm-url');
-    this.localModelNameInput = document.getElementById('setting-local-model-name');
-    this.autoTagToggle = document.getElementById('setting-autotag');
-    this.managePromptsBtn = document.getElementById('settings-manage-prompts-btn');
-
-    // Data Management
-    this.exportBtn = document.getElementById('settings-export-btn');
-    this.importBtn = document.getElementById('settings-import-btn');
-    this.exportPdfBtn = document.getElementById('settings-export-pdf-btn');
-    this.exportDocSelect = document.getElementById('settings-export-doc-select');
-    this.exportLatexBtn = document.getElementById('settings-export-latex-btn');
-    this.exportDocxBtn = document.getElementById('settings-export-docx-btn');
-    this.manageCloudBtn = document.getElementById('settings-gdrive-manage-btn');
-    this.aiStudioBtn = document.getElementById('settings-ai-studio-btn');
-    this.disconnectBtn = document.getElementById('settings-disconnect-btn');
-
-    this.setupEventListeners();
-    this.applyAllSettings();
-  }
-
-  setupEventListeners() {
-    this.saveBtn.addEventListener('click', () => this.saveAndApply());
-    this.containerEl.addEventListener('click', (e) => { if (e.target === this.containerEl) this.hide(); });
-
-    this.tabBar.addEventListener('click', (e) => {
-      const tabButton = e.target.closest('.settings-tab-btn');
-      if (tabButton) this.setActiveTab(tabButton.dataset.tab);
-    });
-
-    // AI Settings Listeners
-    this.providerSelect.addEventListener('change', () => this._onProviderChange());
-    this.managePromptsBtn.addEventListener('click', () => {
-      this.hide();
-      this.controller.openRightDrawer('prompts');
-    });
-
-    // Data Management Listeners
-    this.exportBtn.addEventListener('click', () => this.controller.exportLocal());
-    this.importBtn.addEventListener('click', () => { this.hide(); this.controller.importLocal(); });
-    this.exportLatexBtn.addEventListener('click', () => { if (this.exportDocSelect.value) this.controller.exportBookAsLatex(this.exportDocSelect.value); });
-    this.exportPdfBtn.addEventListener('click', () => {
-      if (this.exportDocSelect.value) {
-        this.controller.showIndicator('Preparing for print...', { duration: 2000 });
-        this.printView(this.exportDocSelect.value);
-      }
-    });
-    this.exportDocxBtn.addEventListener('click', () => { if (this.exportDocSelect.value) this.controller.exportBookAsDocx(this.exportDocSelect.value); });
-    this.manageCloudBtn.addEventListener('click', () => this.controller.showDataManager());
-    this.aiStudioBtn.addEventListener('click', () => {
-      this.hide();
-      this.controller.showAiStudio();
-    });
-    this.disconnectBtn.addEventListener('click', async () => {
-      this.hide();
-      const isConfirmed = await this.controller.confirm('Confirm Disconnect', 'Are you sure? This will delete all local data and reload the app.');
-      if (isConfirmed) this.controller.uninstall();
-    });
-  }
-
-  setActiveTab(tabName) {
-    this.activeTab = tabName;
-    this.containerEl.querySelectorAll('.settings-tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
-    this.containerEl.querySelectorAll('.settings-tab-panel').forEach(panel => panel.classList.toggle('active', panel.dataset.panel === tabName));
+    this.agentModalWrapper = document.getElementById('agent-editor-modal-wrapper');
+    this.modelModalWrapper = document.getElementById('model-editor-modal-wrapper');
+    this.activeView = 'appearance';
   }
 
   async show() {
-    if (!this.containerEl.hasChildNodes()) await this.renderShell();
-    this.renderPanels();
-    this.initialize();
-    this.loadSettings();
-    this.populateDocumentExportList();
-    this.setActiveTab('appearance');
+    // Load HTML content only if it's not already there
+    if (!this.containerEl.hasChildNodes()) {
+      const html = await loadHTML('html-templates/settings-palette.html');
+      this.containerEl.innerHTML = html;
+
+      // Find elements after they are loaded
+      this.navEl = document.getElementById('settings-nav');
+      this.contentEl = document.getElementById('settings-content');
+
+      // Bind event listeners once
+      document.getElementById('settings-back-btn').addEventListener('click', () => this.hide());
+
+      this.navEl.addEventListener('click', (e) => {
+        const navItem = e.target.closest('.settings-nav-item');
+        if (navItem) this.navigateTo(navItem.dataset.view);
+      });
+
+      // Add escape key listener for closing
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !this.containerEl.classList.contains('hidden')) {
+          this.hide();
+        }
+      });
+    }
     this.containerEl.classList.remove('hidden');
+    this.navigateTo(this.activeView);
   }
 
   hide() {
     this.containerEl.classList.add('hidden');
   }
 
-  populateDocumentExportList() {
-    const books = this.controller.getAvailableBooks();
-    const currentBookFilename = this.controller.getCurrentBookFilename();
-    this.exportDocSelect.innerHTML = '';
-    if (books && books.length > 0) {
-      books.forEach(book => {
-        if (book.filename === 'user-manual') return;
-        const option = document.createElement('option');
-        option.value = book.filename;
-        option.textContent = book.title;
-        if (book.filename === currentBookFilename) option.selected = true;
-        this.exportDocSelect.appendChild(option);
-      });
-      this.exportLatexBtn.disabled = false;
-      this.exportDocxBtn.disabled = false;
-    } else {
-      const option = document.createElement('option');
-      option.textContent = 'No documents to export';
-      option.disabled = true;
-      this.exportDocSelect.appendChild(option);
-      this.exportLatexBtn.disabled = true;
-      this.exportDocxBtn.disabled = true;
+  navigateTo(viewName) {
+    this.activeView = viewName;
+    this.navEl.querySelectorAll('.settings-nav-item').forEach(item => {
+      item.classList.toggle('is-active', item.dataset.view === viewName);
+    });
+    switch (viewName) {
+      case 'agents': this.renderAgentManager(); break;
+      case 'ai-provider': this.renderAiProvider(); break;
+      case 'appearance': this.renderAppearance(); break;
+      case 'export': this.renderExport(); break;
+      case 'data': this.renderData(); break;
     }
   }
 
-  loadSettings() {
-    const settings = SettingsPalette.getSettings();
-    // Appearance
-    this.darkModeToggle.checked = settings.theme === 'dark';
-    this.fontFamilySelect.value = settings.fontFamily;
-    this.fontSizeInput.value = settings.fontSize;
-    // AI
-    this.providerSelect.value = settings.provider;
-    this.apiKeyInput.value = settings.apiKey;
-    this.modelNameSelect.value = settings.modelName;
-    this.llmUrlInput.value = settings.llmUrl;
-    this.localModelNameInput.value = settings.localModelName;
-    this.autoTagToggle.checked = settings.autoTag;
-
-    this._onProviderChange();
+  renderAgentManager() {
+    const agents = this.configService.get('agents', []);
+    this.contentEl.innerHTML = `
+      <div class="settings-section">
+        <ul id="agent-list">
+          ${agents.map(agent => this._getAgentListItemHTML(agent)).join('')}
+        </ul>
+        <button id="add-agent-btn" class="settings-button" style="margin-top: 16px;">+ Add New Agent</button>
+      </div>
+    `;
+    this._bindAgentManagerEvents();
   }
 
-  saveAndApply() {
-    const newSettings = {
-      theme: this.darkModeToggle.checked ? 'dark' : 'light',
-      fontFamily: this.fontFamilySelect.value,
-      fontSize: this.fontSizeInput.value,
-      provider: this.providerSelect.value,
-      apiKey: this.apiKeyInput.value.trim(),
-      modelName: this.providerSelect.value === 'local'
-        ? this.localModelNameInput.value.trim()
-        : this.modelNameSelect.value,
-      localModelName: this.localModelNameInput.value.trim(),
-      llmUrl: this.llmUrlInput.value.trim(),
-      autoTag: this.autoTagToggle.checked,
-    };
-    localStorage.setItem('app-settings', JSON.stringify(newSettings));
 
-    this.applyAllSettings();
-    this.controller.showIndicator('Settings Saved!', { duration: 2000 });
-    this.hide();
+  _getAgentListItemHTML(agent) {
+    const agentIndex = this.configService.get('agents').findIndex(a => a.id === agent.id);
+    const isCore = agent.id.startsWith('core.');
+
+    const nonDeletableCoreAgents = ['core.autotag', 'core.find_notes'];
+    const canDelete = !nonDeletableCoreAgents.includes(agent.id);
+    return `
+      <li class="agent-list-item" data-agent-id="${agent.id}">
+        <div class="agent-info">
+          <strong>${agent.name} ${isCore ? '<span class="core-badge">(Core)</span>' : ''}</strong>
+          <p>${agent.description}</p>
+        </div>
+        <div class="agent-actions">
+          <label class="switch">
+            <input type="checkbox" data-agent-index="${agentIndex}" ${agent.enabled ? 'checked' : ''}>
+            <span class="slider round"></span>
+          </label>
+          <button class="settings-action-btn" data-action="edit-agent" title="Edit Agent">
+            <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+          </button>
+          ${canDelete ? `
+            <button class="settings-action-btn delete-btn" data-action="delete-agent" title="Delete Agent">
+              <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14H7L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </button>
+          ` : ''}
+        </div>
+      </li>
+    `;
   }
 
-  applyAllSettings() {
-    const settings = SettingsPalette.getSettings();
-    this.applyTheme(settings.theme);
-    this.applyEditorFont(settings.fontFamily, settings.fontSize);
-  }
-
-  applyTheme(theme) {
-    document.body.classList.toggle('theme-dark', theme === 'dark');
-  }
-
-  applyEditorFont(fontFamily, fontSize) {
-    document.documentElement.style.setProperty('--editor-font-family', fontFamily);
-    document.documentElement.style.setProperty('--editor-font-size', `${fontSize}px`);
-  }
-
-  async printView(filename) {
-    const originalViewId = this.controller.bookService.currentViewId;
-
-    await this.controller.navigateTo(filename, 'full_book');
-
-    // Wait until the editor DOM actually exists
-    const checkReady = () => new Promise(resolve => {
-      const interval = setInterval(() => {
-        const editorContent = document.querySelector('#editor-pane .ProseMirror');
-        if (editorContent && editorContent.textContent.trim().length > 0) {
-          clearInterval(interval);
-          resolve();
-        }
-      }, 5000);
+  _bindAgentManagerEvents() {
+    this.contentEl.addEventListener('change', async (e) => {
+      if (e.target.type === 'checkbox' && e.target.dataset.agentIndex) {
+        const index = e.target.dataset.agentIndex;
+        await this.configService.setConfig(`agents.${index}.enabled`, e.target.checked);
+        this.controller.showIndicator('Agent status updated.', { duration: 2000 });
+      }
     });
 
-    await checkReady();
+    this.contentEl.addEventListener('click', async (e) => {
+      const button = e.target.closest('button');
+      if (!button) return;
 
-    window.onafterprint = () => {
-      this.controller.navigateTo(filename, originalViewId);
-      window.onafterprint = null;
-    };
-
-    window.print();
+      if (button.id === 'add-agent-btn') {
+        this._openAgentEditor();
+      } else if (button.dataset.action === 'edit-agent') {
+        const agentId = button.closest('.agent-list-item').dataset.agentId;
+        this._openAgentEditor(agentId);
+      } else if (button.dataset.action === 'delete-agent') {
+        const agentId = button.closest('.agent-list-item').dataset.agentId;
+        const confirmed = await this.controller.confirm('Delete Agent?', 'Are you sure you want to delete this agent? This cannot be undone.');
+        if (confirmed) {
+          const agents = this.configService.get('agents');
+          const updatedAgents = agents.filter(a => a.id !== agentId);
+          await this.configService.set('agents', updatedAgents);
+          this.navigateTo('agents');
+        }
+      }
+    });
   }
 
+  async _openAgentEditor(agentId = null) {
+    this.agentModalWrapper.innerHTML = await loadHTML('html-templates/agent-editor-modal.html');
 
-  _onProviderChange() {
-    const provider = this.providerSelect.value;
-    const cloudOptions = document.getElementById('settings-cloud-provider-options');
-    const localOptions = document.getElementById('settings-local-provider-options');
+    const modalContainer = document.getElementById('agent-editor-modal-container');
+    modalContainer.addEventListener('click', (e) => {
+      if (e.target === modalContainer) {
+        this.agentModalWrapper.innerHTML = '';
+      }
+    });
+    // Get all form elements
+    const titleEl = document.getElementById('agent-editor-title');
+    const nameInput = document.getElementById('agent-name');
+    const descInput = document.getElementById('agent-desc');
+    const systemPromptInput = document.getElementById('agent-system-prompt');
+    const userPromptInput = document.getElementById('agent-user-prompt');
+    const aiStudioTrigger = document.getElementById('trigger-ai-studio');
+    const bubbleMenuTrigger = document.getElementById('trigger-bubble-menu');
+    const bubbleMenuOptions = document.getElementById('bubble-menu-options');
+    const bubbleLabelInput = document.getElementById('agent-bubble-label');
+    const bubbleIconInput = document.getElementById('agent-bubble-icon');
+    const outputHandlerSelect = document.getElementById('agent-output-handler');
 
-    if (provider === 'local') {
-      cloudOptions.classList.add('hidden');
-      localOptions.classList.remove('hidden');
-    } else {
-      localOptions.classList.add('hidden');
-      cloudOptions.classList.remove('hidden');
-      document.getElementById('setting-api-key-label').textContent = provider === 'google' ? 'Google Gemini API Key' : 'Anthropic API Key';
-      this.containerEl.querySelectorAll('.provider-option').forEach(option => {
-        option.hidden = !option.classList.contains(`${provider}-option`);
-      });
-      const currentModelIsVisible = !this.modelNameSelect.querySelector(`option[value="${this.modelNameSelect.value}"]`)?.hidden;
-      if (!currentModelIsVisible) {
-        const firstVisibleModel = this.modelNameSelect.querySelector(`.${provider}-option:not([hidden])`);
-        if (firstVisibleModel) this.modelNameSelect.value = firstVisibleModel.value;
+    if (agentId) {
+      const agent = this.agentService.getAgentById(agentId);
+      titleEl.textContent = `Edit ${agent.name}`;
+
+      nameInput.value = agent.name;
+      descInput.value = agent.description;
+      systemPromptInput.value = agent.prompt.system;
+      userPromptInput.value = agent.prompt.user;
+
+      // Populate triggers
+      aiStudioTrigger.checked = !!agent.triggers?.ai_studio;
+      bubbleMenuTrigger.checked = !!agent.triggers?.tiptap_bubble_menu;
+
+      if (bubbleMenuTrigger.checked) {
+        bubbleMenuOptions.classList.remove('hidden');
+        bubbleLabelInput.value = agent.triggers.tiptap_bubble_menu.label || '';
+        bubbleIconInput.value = agent.triggers.tiptap_bubble_menu.icon || '';
+      }
+      if (agent.output && agent.output.handler) {
+        outputHandlerSelect.value = agent.output.handler;
       }
     }
+
+    // Event listener to show/hide bubble menu options
+    bubbleMenuTrigger.addEventListener('change', () => {
+      bubbleMenuOptions.classList.toggle('hidden', !bubbleMenuTrigger.checked);
+    });
+
+    document.getElementById('agent-editor-save-btn').onclick = () => this._handleAgentSave(agentId);
+    document.getElementById('agent-editor-cancel-btn').onclick = () => this.agentModalWrapper.innerHTML = '';
   }
 
-  _renderAiPanel() {
-    const providerOptions = SETTINGS_CONFIG.aiProviders.map(p => `<option value="${p.value}">${p.name}</option>`).join('');
-    const modelOptions = SETTINGS_CONFIG.aiModels.map(m => `
-      <option class="provider-option ${m.provider}-option" value="${m.value}">${m.name}</option>
-  `).join('');
+  async _handleAgentSave(agentId) {
+    const isEditing = !!agentId;
+    const agents = this.configService.get('agents');
+    const agentIndex = isEditing ? agents.findIndex(a => a.id === agentId) : -1;
+    const originalAgent = isEditing ? agents[agentIndex] : {};
 
-    return `
-    <div class="settings-section">
-      <div class="setting-item">
-        <label for="setting-provider">AI Provider</label>
-        <select id="setting-provider">${providerOptions}</select>
-      </div>
-      <div id="settings-cloud-provider-options">
-        <div class="setting-item">
-          <label id="setting-api-key-label" for="setting-api-key">API Key</label>
-          <input type="password" id="setting-api-key" placeholder="Enter your API key here">
-        </div>
-        <div class="setting-item">
-          <label for="setting-model-name">AI Model</label>
-          <select id="setting-model-name">${modelOptions}</select>
-        </div>
-      </div>
-      <div id="settings-local-provider-options" class="hidden">
-        <div class="setting-item">
-          <label for="setting-llm-url">LLM URL (OpenAI-compatible)</label>
-          <input type="text" id="setting-llm-url" placeholder="e.g., http://localhost:1234/v1">
-        </div>
-        <div class="setting-item">
-          <label for="setting-local-model-name">Model Name</label>
-          <input type="text" id="setting-local-model-name" placeholder="e.g., llama3-instruct">
-        </div>
-      </div>
-      <div class="setting-item-full grid-span-all">
-          <label class="setting-label">AI Features</label>
-          <div class="data-actions">
-              <button id="settings-manage-prompts-btn" class="settings-action-btn-pill" title="Manage Prompts">
-                  <div class="icon-spark"><span></span><span></span><span></span></div>
-                  <span>Manage Prompts</span>
-              </button>
-              <div class="setting-item-toggle">
-                  <label for="setting-autotag">Auto-Tagging</label>
-                  <div class="toggle-switch">
-                      <input type="checkbox" id="setting-autotag">
-                      <label class="slider" for="setting-autotag"></label>
-                  </div>
-              </div>
-          </div>
-      </div>
-    </div>
-  `;
+    // Build the new triggers object
+    const newTriggers = {};
+    if (document.getElementById('trigger-ai-studio').checked) {
+      newTriggers.ai_studio = true;
+    }
+    if (document.getElementById('trigger-bubble-menu').checked) {
+      newTriggers.tiptap_bubble_menu = {
+        label: document.getElementById('agent-bubble-label').value.trim(),
+        // Provide a default icon if empty
+        icon: document.getElementById('agent-bubble-icon').value.trim() || `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`
+      };
+    }
+
+    const newAgentData = {
+      ...originalAgent, // Preserve fields like 'executor' from the original
+      id: agentId || `custom.${Date.now()}`,
+      name: document.getElementById('agent-name').value.trim(),
+      description: document.getElementById('agent-desc').value.trim(),
+      enabled: isEditing ? originalAgent.enabled : true,
+      executor: isEditing ? originalAgent.executor : 'simplePrompt',
+      output: {
+        handler: document.getElementById('agent-output-handler').value
+      },
+      triggers: newTriggers,
+      prompt: {
+        system: document.getElementById('agent-system-prompt').value.trim(),
+        user: document.getElementById('agent-user-prompt').value.trim(),
+      }
+    };
+
+    if (isEditing) {
+      agents[agentIndex] = newAgentData;
+    } else {
+      agents.push(newAgentData);
+    }
+
+    await this.configService.set('agents', agents);
+    this.agentModalWrapper.innerHTML = '';
+    this.navigateTo('agents');
+    this.controller.showIndicator('Agent saved!', { duration: 2000 });
   }
 
-  _renderAppearancePanel() {
-    const fontOptions = SETTINGS_CONFIG.fonts.map(font => `<option value="${font.value}">${font.name}</option>`).join('');
+  renderAppearance() {
+    const currentTheme = this.configService.getConfig('ui.theme');
+    const currentFontSize = this.configService.getConfig('ui.editor_font_size');
+    const currentFontFamily = this.configService.getConfig('ui.editor_font_family');
+    const fontOptions = this.configService.get('settings_options.fonts', []);
+    const fontSizeValue = parseInt(currentFontSize, 10);
 
-    return `
-      <div class="settings-section">
-        <div class="setting-item">
-            <div class="setting-item-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                <span>Dark Mode</span>
+    this.contentEl.innerHTML = `
+            <div class="settings-form-group">
+                <label for="theme-selector">Theme</label>
+                <select id="theme-selector" class="settings-select">
+                    <option value="theme-dark" ${currentTheme === 'theme-dark' ? 'selected' : ''}>Modern Slate (Dark)</option>
+                    <option value="theme-light" ${currentTheme === 'theme-light' ? 'selected' : ''}>Modern Slate (Light)</option>
+                </select>
             </div>
-            <div class="setting-item-toggle">
-                <label class="toggle-switch">
-                    <input type="checkbox" id="setting-dark-mode">
-                    <span class="slider"></span>
-                </label>
+             <div class="settings-form-group">
+                <label for="font-family-selector">Editor Font Family</label>
+                <select id="font-family-selector" class="settings-select">
+                    ${fontOptions.map(font => `<option value="${font.value}" ${currentFontFamily === font.value ? 'selected' : ''}>${font.name}</option>`).join('')}
+                </select>
             </div>
-        </div>
-        <div class="setting-item">
-          <label for="setting-font-family">Editor Font</label>
-          <select id="setting-font-family">${fontOptions}</select>
-        </div>
-        <div class="setting-item">
-          <label for="setting-font-size">Editor Font Size (px)</label>
-          <input type="number" id="setting-font-size" min="12" max="24" step="1">
-        </div>
+             <div class="settings-form-group">
+          <label for="font-size-slider">Editor Font Size <span id="font-size-preview">${fontSizeValue}px</span></label>
+          <input type="range" id="font-size-slider" min="12" max="24" step="1" value="${fontSizeValue}">
+      </div>
+        `;
+
+    this.contentEl.querySelector('#theme-selector').addEventListener('change', async (e) => {
+      document.body.className = e.target.value;
+      await this.configService.setConfig('ui.theme', e.target.value);
+    });
+    this.contentEl.querySelector('#font-family-selector').addEventListener('change', async (e) => {
+      document.documentElement.style.setProperty('--editor-font-family', e.target.value);
+      await this.configService.setConfig('ui.editor_font_family', e.target.value);
+    });
+
+    const slider = this.contentEl.querySelector('#font-size-slider');
+    const preview = this.contentEl.querySelector('#font-size-preview');
+
+    slider.addEventListener('input', () => {
+      const newSize = `${slider.value}px`;
+      preview.textContent = newSize;
+      document.documentElement.style.setProperty('--editor-font-size', newSize);
+    });
+
+    slider.addEventListener('change', async () => {
+      const newSize = `${slider.value}px`;
+      await this.configService.setConfig('ui.editor_font_size', newSize);
+    });
+  }
+
+  renderAiProvider() {
+    const userConfig = this.configService.get('user', {});
+    const providers = this.configService.get('settings_options.ai_providers', []);
+    this.contentEl.innerHTML = `
+            <div class="settings-form-group">
+                <label for="ai-provider-selector">AI Provider</label>
+                <select id="ai-provider-selector" class="settings-select">
+                    ${providers.map(p => `<option value="${p.value}" ${userConfig.llm_provider === p.value ? 'selected' : ''}>${p.name}</option>`).join('')}
+                </select>
+            </div>
+
+            <div id="api-key-section" class="settings-form-group">
+                <label for="api-key-input">API Key</label>
+                <input type="password" id="api-key-input" class="settings-input" placeholder="Enter your API key">
+            </div>
+
+            <div id="model-section" class="settings-form-group">
+                <label for="ai-model-selector">Model</label>
+                <select id="ai-model-selector" class="settings-select"></select>
+            </div>
+
+            <div id="local-llm-section">
+                <div class="settings-form-group">
+                    <label for="local-url-input">Ollama URL</label>
+                    <input type="text" id="local-url-input" class="settings-input" value="${userConfig.local_llm_url || ''}">
+                </div>
+                <div class="settings-form-group">
+                    <label for="local-model-input">Model Name (e.g., llama3)</label>
+                    <input type="text" id="local-model-input" class="settings-input" value="${userConfig.local_llm_model_name || ''}">
+                </div>
+            </div>
+        `;
+
+    this.updateAiProviderView();
+    this.setupAiProviderListeners();
+  }
+
+  updateAiProviderView() {
+    const userConfig = this.configService.get('user', {});
+    const provider = userConfig.llm_provider;
+    const allModels = this.configService.get('settings_options.ai_models', []);
+
+    const apiKeySection = this.contentEl.querySelector('#api-key-section');
+    const modelSection = this.contentEl.querySelector('#model-section'); // <-- KEEP this one
+    const localLlmSection = this.contentEl.querySelector('#local-llm-section');
+    const apiKeyInput = this.contentEl.querySelector('#api-key-input');
+    const modelSelector = this.contentEl.querySelector('#ai-model-selector');
+
+    apiKeySection.style.display = (provider === 'gemini' || provider === 'anthropic') ? 'block' : 'none';
+    modelSection.style.display = (provider === 'gemini' || provider === 'anthropic') ? 'block' : 'none';
+    localLlmSection.style.display = (provider === 'local') ? 'block' : 'none';
+
+    if (provider === 'gemini') {
+      apiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
+    }
+    if (provider === 'anthropic') {
+      apiKeyInput.value = localStorage.getItem('anthropic_api_key') || '';
+    }
+
+    const modelsForProvider = allModels.filter(m => m.provider === provider);
+    // Update the <select> dropdown first
+    modelSelector.innerHTML = modelsForProvider.map(m => `<option value="${m.value}" ${userConfig.model_name === m.value ? 'selected' : ''}>${m.name}</option>`).join('');
+
+    // NEW: Render the model list for the current provider
+    const modelListHtml = allModels
+      .filter(m => m.provider === provider)
+      .map(model => `
+        <li class="agent-list-item">
+          <div class="agent-info"><strong>${model.name}</strong><p>${model.value}</p></div>
+          <button class="settings-action-btn delete-btn" data-action="delete-model" data-model-value="${model.value}" title="Delete Model">
+            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14H7L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          </button>
+        </li>
+      `).join('');
+
+    let modelListContainer = modelSection.querySelector('#model-list-container');
+    if (!modelListContainer) {
+      modelListContainer = document.createElement('div');
+      modelListContainer.id = 'model-list-container';
+      modelSection.appendChild(modelListContainer);
+    }
+
+    modelListContainer.innerHTML = `
+      <div class="settings-section" style="margin-top: 24px;">
+        <h4>Available Models for ${provider}</h4>
+        <ul id="model-list" class="agent-list">${modelListHtml}</ul>
+        <button id="add-model-btn" class="settings-button" style="margin-top: 16px;">+ Add New Model</button>
       </div>
     `;
   }
 
-  _renderDataPanel() {
-    return `
-      <div class="settings-section">
-        <div class="setting-item-full">
-          <label class="setting-label">Local Backup</label>
-          <p class="setting-description">Save or restore a complete backup of all documents and notes to a local file.</p>
-          <div class="data-actions">
-            <button id="settings-export-btn" class="settings-action-btn" title="Export to File"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>
-            <button id="settings-import-btn" class="settings-action-btn" title="Import from File"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></button>
-          </div>
-        </div>
-        <div class="setting-item-full">
-          <label class="setting-label">Export Single Document</label>
-          <p class="setting-description">Export a single document to a specific format like LaTeX or DOCX.</p>
-          <div class="data-actions-export">
-            <select id="settings-export-doc-select"></select>
-            <button id="settings-export-docx-btn" class="settings-action-btn" title="Export as .docx"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></button>
-            <button id="settings-export-pdf-btn" class="settings-action-btn" title="Export as PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></button>
-            <button id="settings-export-latex-btn" class="settings-action-btn" title="Export as LaTeX"><span class="export-format-tag">TEX</span></button>
-            
+
+  setupAiProviderListeners() {
+    this.contentEl.querySelector('#ai-provider-selector').addEventListener('change', async (e) => {
+      await this.configService.setConfig('user.llm_provider', e.target.value);
+      this.updateAiProviderView();
+      this.controller.llmOrchestrator.updateConfig();
+    });
+
+    this.contentEl.querySelector('#api-key-input').addEventListener('change', async (e) => {
+      const provider = this.configService.getConfig('user.llm_provider');
+      if (provider === 'gemini') {
+        localStorage.setItem('gemini_api_key', e.target.value);
+      }
+      if (provider === 'anthropic') {
+        localStorage.setItem('anthropic_api_key', e.target.value);
+      }
+      this.controller.llmOrchestrator.updateConfig();
+      this.controller.showIndicator('API Key saved locally.', { duration: 2000 });
+    });
+
+    this.contentEl.querySelector('#ai-model-selector').addEventListener('change', async (e) => {
+      await this.configService.setConfig('user.model_name', e.target.value);
+      this.controller.llmOrchestrator.updateConfig();
+    });
+
+    this.contentEl.querySelector('#local-url-input').addEventListener('change', async (e) => {
+      await this.configService.setConfig('user.local_llm_url', e.target.value);
+      this.controller.llmOrchestrator.updateConfig();
+    });
+
+    this.contentEl.querySelector('#local-model-input').addEventListener('change', async (e) => {
+      await this.configService.setConfig('user.local_llm_model_name', e.target.value);
+      this.controller.llmOrchestrator.updateConfig();
+    });
+
+    this.contentEl.addEventListener('click', async e => {
+      const button = e.target.closest('button');
+      if (!button) return;
+
+      if (button.id === 'add-model-btn') {
+        this._openModelEditor();
+      } else if (button.dataset.action === 'delete-model') {
+        const modelValue = button.dataset.modelValue;
+        const confirmed = await this.controller.confirm('Delete Model?', 'Are you sure you want to remove this model definition?');
+        if (confirmed) {
+          const models = this.configService.get('settings_options.ai_models');
+          const updatedModels = models.filter(m => m.value !== modelValue);
+          await this.configService.setConfig('settings_options.ai_models', updatedModels);
+          this.navigateTo('ai-provider');
+        }
+      }
+    });
+  }
+
+  async _openModelEditor() {
+    this.modelModalWrapper.innerHTML = await loadHTML('html-templates/model-editor-modal.html');
+
+    const modalContainer = document.getElementById('model-editor-modal-container');
+    const modelBox = document.getElementById('model-editor-box');
+
+    modalContainer.addEventListener('click', (e) => {
+      if (e.target === modalContainer) {
+        this.modelModalWrapper.innerHTML = '';
+      }
+    });
+
+    document.getElementById('model-editor-save-btn').onclick = () => this._handleModelSave();
+    document.getElementById('model-display-name').focus();
+  }
+
+  async _handleModelSave() {
+    const provider = this.configService.get('user.llm_provider');
+    const newModel = {
+      name: document.getElementById('model-display-name').value.trim(),
+      value: document.getElementById('model-api-id').value.trim(),
+      provider: provider
+    };
+
+    if (!newModel.name || !newModel.value) {
+      this.controller.showIndicator('Both fields are required.', { isError: true, duration: 3000 });
+      return;
+    }
+
+    const models = this.configService.get('settings_options.ai_models');
+    models.push(newModel);
+    await this.configService.setConfig('settings_options.ai_models', models);
+
+    this.modelModalWrapper.innerHTML = '';
+    this.navigateTo('ai-provider');
+    this.controller.showIndicator('Model added!', { duration: 2000 });
+  }
+
+  renderExport() {
+    const books = this.controller.getAvailableBooks();
+    this.contentEl.innerHTML = `
+            <div class="settings-form-group">
+                <label for="book-export-selector">Select Book to Export</label>
+                <select id="book-export-selector" class="settings-select" ${books.length === 0 ? 'disabled' : ''}>
+                    ${books.length > 0 ? books.map(book => `<option value="${book.filename}">${book.name}</option>`).join('') : '<option>No books available</option>'}
+                </select>
             </div>
-        </div>
-        <div class="setting-item-full">
-          <label class="setting-label">Account & Data</label>
-          <p class="setting-description">Manage cloud storage or perform a full application reset.</p>
-          <div class="data-actions">
-            <button id="settings-gdrive-manage-btn" class="settings-action-btn" title="Manage Cloud Files"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
-            <button id="settings-ai-studio-btn" class="settings-action-btn" title="Open AI Workbench">
-              <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.2 0 .5 0 .7-.1-.5-.8-.7-1.7-.7-2.9 0-3.3 2.7-6 6-6 .9 0 1.8.2 2.5.6 1.1-1.9 1.5-4.1 1.5-6.6C22 6.5 17.5 2 12 2zm4.1 12.3c-.3.1-.6.2-.9.2-2.2 0-4-1.8-4-4s1.8-4 4-4c.3 0 .6 0 .9.1.5-2.2-.2-4.6-2-6.1C8.7 5.6 6 8.6 6 12s2.7 6.4 6.1 7.7c1.8-1.5 2.5-3.9 2-6.1zM17 14v-2h-2v-2h2V8l4 4-4 4z"></path></svg>
-            </button>
-            <button id="settings-disconnect-btn" class="settings-action-btn" title="Disconnect and Clear All Local Data"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14H7L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
-          </div>
-        </div>
-      </div>
-    `;
+            <div class="settings-section">
+                <h4>Export Formats</h4>
+                <p class="settings-section-desc">Choose your desired file type.</p>
+                <div class="settings-button-group">
+                     <button id="export-docx-btn" class="settings-button" ${books.length === 0 ? 'disabled' : ''}>Export as .docx</button>
+                     <button id="export-latex-btn" class="settings-button" ${books.length === 0 ? 'disabled' : ''}>Export as .tex</button>
+                </div>
+            </div>
+        `;
+
+    const selector = this.contentEl.querySelector('#book-export-selector');
+    this.contentEl.querySelector('#export-docx-btn').addEventListener('click', () => {
+      this.hide();
+      this.controller.exportBookAsDocx(selector.value);
+    });
+    this.contentEl.querySelector('#export-latex-btn').addEventListener('click', () => {
+      this.hide();
+      this.controller.exportBookAsLatex(selector.value);
+    });
+  }
+
+  renderData() {
+    this.contentEl.innerHTML = `
+            <div class="settings-section">
+                <h4>Local Data</h4>
+                <p class="settings-section-desc">Export your entire local database to a single file, or import a backup.</p>
+                <div class="settings-button-group">
+                     <button id="export-local-btn" class="settings-button">Export Local Backup</button>
+                     <button id="import-local-btn" class="settings-button">Import from Backup</button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h4>Cloud Data</h4>
+                <p class="settings-section-desc">Manage the application data stored in your Google Drive account.</p>
+                <div class="settings-button-group">
+                     <button id="data-manager-btn" class="settings-button">Manage Cloud Files</button>
+                </div>
+            </div>
+
+            <div class="settings-section danger-zone">
+                <h4>Danger Zone</h4>
+                <p class="settings-section-desc">Permanently delete all local data and disconnect the application.</p>
+                <div class="settings-button-group">
+                     <button id="uninstall-btn" class="settings-button danger">Uninstall Application</button>
+                </div>
+            </div>
+        `;
+
+    this.contentEl.querySelector('#export-local-btn').addEventListener('click', () => {
+      this.hide();
+      this.controller.exportLocal();
+    });
+    this.contentEl.querySelector('#import-local-btn').addEventListener('click', () => {
+      this.hide();
+      this.controller.importLocal();
+    });
+    this.contentEl.querySelector('#data-manager-btn').addEventListener('click', () => {
+      this.hide();
+      this.controller.showDataManager();
+    });
+    this.contentEl.querySelector('#uninstall-btn').addEventListener('click', async () => {
+      const confirmed = await this.controller.confirm(
+        'Are you sure?',
+        'This will delete all local data, including unsynced work, and reset the application. This cannot be undone.'
+      );
+      if (confirmed) {
+        this.hide();
+        this.controller.uninstall();
+      }
+    });
   }
 }

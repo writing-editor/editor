@@ -20,31 +20,25 @@ import { Navigator } from './components/Navigator.js';
 import './components/Navigator.css';
 import { NotebookPane } from './components/NotebookPane.js';
 import './components/NotebookPane.css';
-import { PromptsPane } from './components/PromptsPane.js';
-import './components/PromptsPane.css';
 import './components/RightDrawer.css';
 import { SearchPane } from './components/SearchPane.js';
 import { SettingsPalette } from './components/SettingsPalette.js';
 import './components/SettingsPalette.css';
 import { FindReplace } from './components/FindReplace.js';
 import './components/FindReplace.css';
-import './ui/print.css'
 import './components/SuggestionList.css';
 import { LlmOrchestrator } from './services/LlmOrchestrator.js';
 import { BookService } from './services/BookService.js';
 import { StorageService } from './services/StorageService.js';
-import { AnalystAgent } from './agents/AnalystAgent.js';
-import { RewriteAgent } from './agents/RewriteAgent.js';
-import { FindNotesAgent } from './agents/FindNotesAgent.js';
-import { DevelopmentAgent } from './agents/DevelopmentAgent.js';
 import { SyncService } from './services/SyncService.js';
 import { GoogleSyncService } from './services/GoogleSyncService.js';
 import { SearchService } from './services/SearchService.js';
+import { ExportService } from './services/ExportService.js';
+import { ConfigService } from './services/ConfigService.js';
+import { AgentService } from './services/AgentService.js';
 import { EventBus } from './utils/EventBus.js';
 import { IndicatorManager } from './ui/IndicatorManager.js';
-import { ExportService } from './services/ExportService.js';
 import { uninstallApp } from './utils/uninstall.js';
-import { TagGenerationAgent } from './agents/TagGenerationAgent.js';
 import { TagSyncService } from './services/TagSyncService.js';
 
 let instance = null;
@@ -53,13 +47,14 @@ export class App {
   constructor() {
     if (instance) return instance;
     instance = this;
-    console.log("Initializing App with new Controller pattern...");
+    console.log("Initializing App with new data-driven architecture...");
 
-    // STEP 1: INITIALIZE CORE SERVICES (that don't depend on the controller)
+    // STEP 1: INITIALIZE CORE SERVICES
     this.eventBus = new EventBus();
     this.indicatorManager = new IndicatorManager();
     this.searchService = new SearchService();
     this.storageService = new StorageService();
+    this.configService = new ConfigService(this.storageService, this.eventBus); // NEW
 
 
     // This is the controller for BookService -> UI communication
@@ -77,67 +72,64 @@ export class App {
         });
       }
     };
-    this.bookService = new BookService(bookServiceController, this.storageService);
+    this.bookService = new BookService(bookServiceController, this.storageService, this.configService);
 
-    // STEP 2: CREATE THE CONTROLLER AND DEPENDENT SERVICES
+    // STEP 2: CREATE THE MAIN CONTROLLER & DEPENDENT SERVICES
     const controller = this.createController();
     this.exportService = new ExportService(controller);
     this.storageService.setController(controller);
     this.googleSyncService = new GoogleSyncService(controller);
     this.syncService = new SyncService(this.storageService, controller, this.googleSyncService);
     this.llmOrchestrator = new LlmOrchestrator(controller);
+    controller.llmOrchestrator = this.llmOrchestrator;
+    this.agentService = new AgentService(this.configService, this.llmOrchestrator, controller);
+    controller.agentService = this.agentService;
+    this.tagSyncService = new TagSyncService(controller, this.storageService); // Now fully integrated
 
-    // Agents now receive the main controller for UI interactions
-    this.analystAgent = new AnalystAgent(this.llmOrchestrator, controller);
-    this.rewriteAgent = new RewriteAgent(this.llmOrchestrator, controller);
-    this.findNotesAgent = new FindNotesAgent(this.llmOrchestrator, controller);
-    this.developmentAgent = new DevelopmentAgent(this.llmOrchestrator, controller);
-    this.tagGenerationAgent = new TagGenerationAgent(this.llmOrchestrator, controller);
-    this.tagSyncService = new TagSyncService(controller, this.storageService);
-
-    // ====================================================================
-    //  STEP 3: INITIALIZE UI COMPONENTS
-    // ====================================================================
+    // STEP 3: INITIALIZE UI COMPONENTS
     this.navigator = new Navigator(controller, this.bookService);
     this.editor = new Editor(controller, this.bookService);
     this.findReplace = new FindReplace(controller, this.editor.instance);
-    this.palette = new AiStudio(controller, this.storageService);
+    this.palette = new AiStudio(controller); // No longer needs storage service directly
     this.modalInput = new ModalInput();
     this.assistantPane = new AssistantPane(controller, this.bookService);
     this.notebookPane = new NotebookPane(controller, this.storageService);
-    this.promptsPane = new PromptsPane(controller, this.storageService);
     this.confirmationModal = new ConfirmationModal();
     this.searchPane = new SearchPane(controller);
-    this.settingsPalette = new SettingsPalette(controller);
+    this.settingsPalette = new SettingsPalette(controller, this.configService, this.agentService);
     this.dataManager = new DataManager(controller);
     this.connectivityStatus = new ConnectivityStatus(controller);
     this.mergeConflictModal = new MergeConflictModal();
 
-    // --- UI State Management (remains in App.js) ---
+    // UI State Management
     this.activeRightDrawer = null;
     this.drawers = {
       assistant: document.getElementById('assistant-drawer'),
       notebook: document.getElementById('notebook-drawer'),
       search: document.getElementById('search-drawer'),
-      prompts: document.getElementById('prompts-drawer'),
     };
 
-    // ====================================================================
-    //  STEP 4: SET UP LISTENERS AND KICK OFF THE APP
-    // ====================================================================
+    // STEP 4: KICK OFF THE APP
     this.setupGlobalListeners();
-    this.storageService.open().then(async () => {
-      console.log("Database is ready.");
-      this.checkInitialAuthStatus();
-      const bookFiles = await this.storageService.getAllFilesBySuffix('.book');
-      this.searchService.buildIndex(bookFiles);
-      this.bookService.loadInitialBook();
-      this.notebookPane.initialize();
-      this.promptsPane.initialize();
-      this.eventBus.subscribe('app:online', () => this.reconcileOnline());
-    });
+    this.initializeApp();
   }
 
+  async initializeApp() {
+    await this.storageService.open();
+    console.log("Database is ready.");
+    await this.configService.initialize();
+    console.log("Configuration loaded.");
+    this.applyInitialUiSettings();
+
+    this.llmOrchestrator.updateConfig(); // Ensure orchestrator has latest config
+
+    this.checkInitialAuthStatus();
+    const bookFiles = await this.storageService.getAllFilesBySuffix('.book');
+    this.searchService.buildIndex(bookFiles);
+    this.bookService.loadInitialBook();
+    this.notebookPane.initialize();
+    this.eventBus.subscribe('app:online', () => this.reconcileOnline());
+  }
 
   async checkInitialAuthStatus() {
     const userHasInitiatedSignIn = localStorage.getItem('userHasInitiatedSignIn');
@@ -182,7 +174,7 @@ export class App {
    */
   createController() {
     return {
-      // Indicators & Modals
+      // Indicators & Modals (unchanged)
       showIndicator: (...args) => this.indicatorManager.show(...args),
       hideIndicator: (...args) => this.indicatorManager.hide(...args),
       confirm: (...args) => this.confirmationModal.show(...args),
@@ -194,13 +186,25 @@ export class App {
       replaceEditorText: (...args) => this.editor.replaceText(...args),
       getEditorState: () => this.editor.instance.state,
 
-      // Agent Execution
-      runAnalyst: (payload) => this.analystAgent.run(payload),
-      runRewrite: (payload) => this.rewriteAgent.run(payload),
-      runFindNotes: (payload) => this.findNotesAgent.run(payload),
-      runDeveloper: (payload) => this.developmentAgent.run(payload),
-      runTagger: (payload) => this.tagGenerationAgent.run(payload),
-      runAutoTagging: () => this.tagSyncService.run(),
+      // --- AGENT EXECUTION (REFACTORED) ---
+      runAgent: (agentId, payload) => {
+        return this.agentService.executeAgent(agentId, payload);
+      },
+
+      // --- REFACTORED for new agent system ---
+      runRewrite: async (payload) => {
+        const result = await this.agentService.executeAgent('core.rewrite', payload);
+        if (result) {
+          this.assistantPane.renderRewriteSuggestion({
+            original_text: payload.context.selected_text,
+            suggested_text: result,
+            range: payload.context.range
+          });
+          this.openRightDrawer('assistant');
+        }
+      },
+
+      runAutoTagging: () => this.tagSyncService.run(), // Trigger background tagging
 
       renderRewriteSuggestion: (payload) => this.assistantPane.renderRewriteSuggestion(payload),
       // UI & Navigation
@@ -211,7 +215,7 @@ export class App {
       hideSettingsPalette: () => this.settingsPalette.hide(),
       showDataManager: () => this.dataManager.show(),
 
-      // Data & Sync Services
+      // Data & Sync Services (mostly unchanged)
       addMarginBlock: (...args) => this.bookService.addMarginBlock(...args),
       togglePinMarginBlock: (...args) => this.bookService.togglePinMarginBlock(...args),
       deleteMarginBlock: (...args) => this.bookService.deleteMarginBlock(...args),
@@ -250,11 +254,16 @@ export class App {
       exportBookAsLatex: (filename) => this.exportService.exportBookAsLatex(filename),
       exportBookAsDocx: (filename) => this.exportService.exportBookAsDocx(filename),
       uninstall: () => uninstallApp(this.storageService, this.indicatorManager.show.bind(this.indicatorManager)),
+
+      // Services Access
       getAvailableBooks: () => this.bookService.availableBooks,
       getCurrentBookFilename: () => this.bookService.currentBook?.filename,
       storageService: this.storageService,
       searchService: this.searchService,
       bookService: this.bookService,
+      configService: this.configService,
+
+      // Auth & Sync State 
       signIn: async () => {
         try {
           const user = await this.googleSyncService.signIn();
@@ -297,27 +306,24 @@ export class App {
       publish: (eventName, data) => this.eventBus.publish(eventName, data),
       subscribe: (eventName, callback) => this.eventBus.subscribe(eventName, callback),
 
+      // Legacy slash command handlers to be refactored
       runSummarizeOnText: (text) => {
         const payload = this.getContextPayload();
-        payload.promptKey = 'COMMAND_SUMMARIZE';
-        payload.context.type = 'selection'; // Treat it like a selection
-        payload.context.selected_text = text;
-
-        this.runDeveloperAndShowResult(payload);
-      },
-
-      runFindNotesOnText: (text) => {
-        const payload = this.getContextPayload();
-        payload.promptKey = 'COMMAND_FIND_NOTES';
         payload.context.type = 'selection';
         payload.context.selected_text = text;
-
-        this.runDeveloperAndShowResult(payload);
+        this.runDeveloperAndShowResult('custom.summarize', payload);
       },
-
-      showAiStudio: (commandId, query) => {
-        this.palette.show(commandId, query);
-      }
+      runFindNotesOnText: (text) => {
+        const payload = this.getContextPayload();
+        payload.user_request = text;
+        this.runDeveloperAndShowResult('core.find_notes', payload);
+      },
+      createNewNoteFromAgent: (content, agentName) => {
+        this.notebookPane.createNoteFromText(content, agentName);
+        this.openRightDrawer('notebook');
+        this.controller.showIndicator('New note created in Notebook.', { duration: 3000 });
+      },
+      filterNotesById: (noteIds) => this.notebookPane.filterNotesById(noteIds),
     };
   }
 
@@ -396,6 +402,24 @@ export class App {
     });
   }
 
+  applyInitialUiSettings() {
+    const uiConfig = this.configService.get('ui', {});
+
+    // 1. Apply the theme
+    const theme = uiConfig.theme || 'theme-dark'; // Default to dark theme if not set
+    document.body.className = theme;
+
+    // 2. Apply the editor font family
+    const fontFamily = uiConfig.editor_font_family || 'serif'; // Default to serif
+    document.documentElement.style.setProperty('--editor-font-family', fontFamily);
+
+    // 3. Apply the editor font size
+    const fontSize = uiConfig.editor_font_size || '18px'; // Default to medium
+    document.documentElement.style.setProperty('--editor-font-size', fontSize);
+
+    console.log("Initial UI settings (theme, fonts) have been applied.");
+  }
+
   async navigateTo(filename, viewId) {
     await this.bookService.switchBook(filename);
     await this.bookService.changeView(viewId);
@@ -432,12 +456,15 @@ export class App {
     document.getElementById('notebook-toggle-btn').classList.remove('is-active');
   }
 
-  async runDeveloperAndShowResult(payload) {
-    const ai_response = await this.developmentAgent.run(payload);
+  async runDeveloperAndShowResult(agentId, payload) {
+    const agent = this.agentService.getAgentById(agentId);
+    if (!agent) return;
+
+    const ai_response = await this.agentService.executeAgent(agentId, payload);
     if (ai_response) {
       const blockData = {
         type: 'development',
-        title: "Slash Command Result",
+        title: agent.name,
         id: `dev_${Date.now()}`,
         content: { type: 'markdown', text: ai_response },
         is_open_by_default: true,
@@ -448,28 +475,33 @@ export class App {
   }
 
   getContextPayload() {
-    const selection = this.editor.instance.state.selection;
+    const selection = this.instance.state.selection;
     let context = {};
+    const viewContent = this.instance.getText();
 
     if (!selection.empty) {
       context = {
         type: 'selection',
-        selected_text: this.editor.instance.state.doc.textBetween(selection.from, selection.to),
+        selected_text: this.instance.state.doc.textBetween(selection.from, selection.to),
         range: { from: selection.from, to: selection.to },
-        view_content: this.editor.instance.getText(), // Keep full content available
+        view_content: viewContent,
       };
     } else {
-      context = {
-        type: 'global',
-        view_content: this.editor.instance.getText()
-      };
+      context = { type: 'global', view_content: viewContent };
+    }
+
+    let fullBookContent = 'No book loaded.';
+    if (this.bookService.currentBook) {
+      fullBookContent = this.bookService.getFullBookText();
     }
 
     return {
       context: context,
       current_book_filename: this.bookService.currentBook?.filename,
       current_view_id: this.bookService.currentViewId,
-      book_structure: this.bookService.currentBook?.structure || 'No book loaded.',
+      book_structure: this.bookService.getBookStructureAsText(),
+      full_book_content: fullBookContent
+      // Note: {all_notes} will be added dynamically by the AgentService
     };
   }
 

@@ -6,7 +6,7 @@
   background-color: var(--color-background);
   padding: 4px;
   border-radius: 8px;
-  border: 1px solid var(--color-border);
+  border: none;
   box-shadow: 0 0 0 1px var(--color-border);
   z-index: 10;
 }
@@ -60,8 +60,8 @@
   background-color: var(--color-background-soft);
   padding: 0.3rem;
   border-radius: var(--border-radius-large);
-  border: 1px solid var(--color-border);
-  box-shadow: 0 0 0 1px var(--color-border);
+  border: none;
+  box-shadow: var(--color-shadow);
   opacity: 0;
   visibility: hidden;
   transform: scale(0.95) translateX(10px);

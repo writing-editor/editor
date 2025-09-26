@@ -74,7 +74,7 @@ export class SyncService {
       return;
     }
 
-    if (fileId === 'user-manual.book' || fileId === 'pinned.txt') return;
+    if (fileId === 'user-manual.book') return;
 
     console.log(`Scheduling sync for "${fileId}", action: ${action}`);
 
@@ -86,6 +86,7 @@ export class SyncService {
     }
     this.debouncedSyncers.get(fileId)(action);
   }
+
   async reconcileFile(fileId, action = "sync") {
     if (!this.syncQueue.has(fileId)) {
       this.syncQueue.set(fileId, Promise.resolve());
@@ -239,13 +240,13 @@ export class SyncService {
 
   async _handleConflict(fileId, localContent, remoteContent, remoteTime) {
     this.controller.showIndicator(`Conflict detected for ${fileId}. Please resolve.`, { duration: 5000 });
-    
+
     const choice = await this.controller.showMergeConflict({
       fileId,
       localContent: localContent,
       remoteContent: remoteContent,
     });
-    
+
     if (choice === "local") {
       const contentToSave = localContent;
       const newTime = await this.googleSyncService.uploadFile(fileId, contentToSave);
@@ -261,7 +262,7 @@ export class SyncService {
     try {
       const allFiles = await this.storageService.getAllFiles();
       for (const file of allFiles) {
-        if (!['user-manual.book', 'initial_setup_complete', 'pinned.txt'].includes(file.id)) {
+        if (!['user-manual.book', 'initial_setup_complete'].includes(file.id)) {
           await this.reconcileFile(file.id, 'reconcile');
         }
       }
@@ -446,7 +447,7 @@ export class SyncService {
       const allFileIds = new Set([...cloudFilesMap.keys(), ...localFilesMap.keys()]);
 
       for (const fileId of allFileIds) {
-        if (['user-manual.book', 'initial_setup_complete', 'pinned.txt', 'tombstones.json'].includes(fileId)) continue;
+        if (['user-manual.book', 'initial_setup_complete', 'tombstones.json'].includes(fileId)) continue;
         await this.reconcileFile(fileId, 'sync');
       }
 

@@ -1,5 +1,3 @@
-// --- NEW FILE: src/components/FindReplace.js ---
-
 import { Decoration, DecorationSet } from 'prosemirror-view';
 import { Plugin, PluginKey } from 'prosemirror-state';
 
@@ -63,7 +61,7 @@ export class FindReplace {
                 },
             },
         });
-        
+
         // This is a bit of a hack, but necessary to append a new plugin to the editor's state
         // after it has already been initialized.
         const currentPlugins = this.editor.state.plugins;
@@ -71,7 +69,7 @@ export class FindReplace {
         const newState = this.editor.state.reconfigure({ plugins: newPlugins });
         this.editor.view.updateState(newState);
     }
-    
+
     show() {
         this.container.classList.remove('hidden');
         this.findInput.focus();
@@ -95,12 +93,23 @@ export class FindReplace {
             return;
         }
 
-        const docText = this.editor.state.doc.textContent;
+        const doc = this.editor.state.doc;
         const regex = new RegExp(query, 'gi');
-        let match;
-        while ((match = regex.exec(docText)) !== null) {
-            this.matches.push({ from: match.index + 1, to: match.index + 1 + query.length });
-        }
+        doc.descendants((node, pos) => {
+            // Only search within text nodes
+            if (!node.isText) {
+                return true; // Continue descending
+            }
+
+            // Find all matches of the regex within this text node's content
+            let match;
+            while ((match = regex.exec(node.text)) !== null) {
+                const from = pos + match.index;
+                const to = from + match[0].length;
+                this.matches.push({ from, to });
+            }
+            return true;
+        });
 
         if (this.matches.length > 0) {
             this.currentIndex = 0;
@@ -132,12 +141,12 @@ export class FindReplace {
 
         const { from, to } = this.matches[this.currentIndex];
         const replacement = this.replaceInput.value;
-        
+
         this.editor.chain().focus()
             .setTextSelection({ from, to })
             .insertContent(replacement)
             .run();
-        
+
         // After replacing, re-run the find to update matches
         this.find();
     }
@@ -152,7 +161,7 @@ export class FindReplace {
             const { from, to } = this.matches[i];
             tr.replaceWith(from, to, replacement);
         }
-        
+
         this.editor.view.dispatch(tr);
         this.find(); // Clear decorations
     }
@@ -164,11 +173,11 @@ export class FindReplace {
         });
 
         const decorationSet = DecorationSet.create(this.editor.state.doc, decorations);
-        
+
         const tr = this.editor.state.tr.setMeta(findPluginKey, { decorations: decorationSet });
         this.editor.view.dispatch(tr);
     }
-    
+
     clearDecorations() {
         const tr = this.editor.state.tr.setMeta(findPluginKey, { decorations: DecorationSet.empty });
         this.editor.view.dispatch(tr);
@@ -180,7 +189,7 @@ export class FindReplace {
             this.editor.commands.scrollIntoView();
         }
     }
-    
+
     updateMatchesCount() {
         const total = this.matches.length;
         const current = total > 0 ? this.currentIndex + 1 : 0;

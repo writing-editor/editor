@@ -176,7 +176,7 @@ export class Navigator {
 
       html += `
         <div class="nav-library-item">
-          <span class="nav-item-text" data-action="switch-book" data-filename="${doc.filename}">
+          <span class="nav-item-text nav-link" data-action="switch-book" data-filename="${doc.filename}">
             ${doc.title}
           </span>
           <div class="nav-item-actions">
@@ -204,20 +204,28 @@ export class Navigator {
   renderContentsView(book) {
     const bookTitle = book?.title || 'Untitled';
     const chapters = book?.structure?.chapters || [];
-    let html = `<div class="nav-back-to-library" data-action="show-library" title="Back to Library">&larr;</div>`;
-    html += `<div class="book-title-container"><div class="nav-item nav-action"><h2 data-view-id="${book.id}" data-action="edit-book-title">${bookTitle}</h2></div></div>`;
+
+    // The HTML construction is correct...
+    let html = `
+      <button class="app-back-btn nav-back-btn" data-action="show-library" title="Back to Library">
+        <svg viewBox="0 0 24 24"><path d="M19 12H5m7 7-7-7 7-7"/></svg>
+      </button>
+    `;
+    html += `<div class="book-title-container"><h2 class="nav-link" data-view-id="${book.id}" data-action="edit-book-title">${bookTitle}</h2></div>`;
 
     chapters.forEach(chapter => {
       html += `
-        <details class="nav-chapter-group" open>
-          <summary class="nav-chapter-summary">
-            <span class="nav-chapter-text" data-view-id="${chapter.id}">${chapter.title || 'Untitled Chapter'}</span>
-            <span class="nav-new-section-btn" data-action="new-section" data-chapter-id="${chapter.id}" title="New Section">+</span>
-          </summary>
-          <div class="nav-section-container">
-            ${(chapter.sections || []).map(s => `<div class="nav-item nav-section" data-view-id="${s.id}">${s.title}</div>`).join('')}
-          </div>
-        </details>`;
+          <details class="nav-chapter-group" open>
+            <summary class="nav-chapter-summary">
+              <!-- Add the 'nav-link' class here -->
+              <span class="nav-chapter-text nav-link" data-view-id="${chapter.id}">${chapter.title || 'Untitled Chapter'}</span>
+              <span class="nav-new-section-btn" data-action="new-section" data-chapter-id="${chapter.id}" title="New Section">+</span>
+            </summary>
+            <div class="nav-section-container">
+              <!-- Add the 'nav-link' class here -->
+              ${(chapter.sections || []).map(s => `<div class="nav-item nav-section nav-link" data-view-id="${s.id}">${s.title}</div>`).join('')}
+            </div>
+          </details>`;
     });
 
     html += `<hr class="nav-divider"><div class="nav-item nav-action" data-action="new-chapter">+ New Chapter</div>`;

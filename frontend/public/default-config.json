@@ -1,0 +1,340 @@
+{
+    "version": 2.5,
+    "user": {
+        "llm_provider": "gemini",
+        "model_name": "gemini-2.5-flash-lite",
+        "pinned_book": "user-manual",
+        "api_keys": {
+            "gemini_key": "",
+            "anthropic_key": ""
+        },
+        "local_llm_url": "http://localhost:11434",
+        "local_llm_model_name": "phi3:3.8b"
+    },
+    "ui": {
+        "theme": "light-dark",
+        "editor_font_size": "18px",
+        "editor_font_family": "'Iowan Old Style', 'Palatino Linotype', 'URW Palladio L', Georgia, serif"
+    },
+    "llm_endpoints": {
+        "gemini": "https://generativelanguage.googleapis.com/v1beta/models/",
+        "anthropic": "https://api.anthropic.com/v1/messages"
+    },
+    "settings_options": {
+        "fonts": [
+            {
+                "name": "Academic Serif (LaTeX)",
+                "value": "'Iowan Old Style', 'Palatino Linotype', 'URW Palladio L', Georgia, serif"
+            },
+            {
+                "name": "Modern Sans-Serif",
+                "value": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+            },
+            {
+                "name": "Classic Serif (Georgia)",
+                "value": "Georgia, serif"
+            },
+            {
+                "name": "Developer Mono",
+                "value": "'SF Mono', 'Consolas', 'Menlo', monospace"
+            }
+        ],
+        "ai_providers": [
+            {
+                "name": "Google Gemini",
+                "value": "gemini"
+            },
+            {
+                "name": "Anthropic Claude",
+                "value": "anthropic"
+            },
+            {
+                "name": "Local LLM (Ollama)",
+                "value": "local"
+            }
+        ],
+        "ai_models": [
+            {
+                "name": "Gemini-2.5-flash-lite (Recommended)",
+                "value": "gemini-2.5-flash-lite",
+                "provider": "gemini"
+            },
+            {
+                "name": "Gemini 2.5 Pro",
+                "value": "gemini-2.5-pro",
+                "provider": "gemini"
+            },
+            {
+                "name": "Claude 3 Haiku (Fast)",
+                "value": "claude-3-haiku-20240307",
+                "provider": "anthropic"
+            },
+            {
+                "name": "Claude 3 Sonnet",
+                "value": "claude-3-sonnet-20240229",
+                "provider": "anthropic"
+            }
+        ]
+    },
+    "agents": [
+        {
+            "id": "core.rewrite",
+            "name": "Proofread & Rewrite",
+            "description": "Corrects grammar, spelling, and improves the clarity of the selected text.",
+            "enabled": true,
+            "executor": "simplePrompt",
+            "output": {
+                "handler": "replaceSelection"
+            },
+            "triggers": {
+                "tiptap_bubble_menu": {
+                    "icon": "<svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m18 5-3-3-7 7 3 3 7-7z'></path><path d='m2 21 3-3 7-7-3-3-7 7 3 3z'></path></svg>",
+                    "label": "Rewrite"
+                }
+            },
+            "prompt": {
+                "system": "You are an expert editor. Your task is to proofread and rewrite the provided text. Correct any spelling mistakes, grammatical errors, and awkward phrasing. Improve clarity and flow, but do not alter the original meaning or tone unless it is clearly necessary for readability. Respond only with the improved text.",
+                "user": "Rewrite the following text:\n\n---\n{selected_text}\n---"
+            }
+        },
+        {
+            "id": "core.analyze",
+            "name": "Analyze Selection",
+            "description": "Provides a critique and suggestions for the selected text.",
+            "enabled": true,
+            "executor": "simplePrompt",
+            "output": {
+                "handler": "assistantPane"
+            },
+            "triggers": {
+                "tiptap_bubble_menu": {
+                    "icon": "<svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21.21 15.89A10 10 0 1 1 8 2.83'></path><path d='M22 12A10 10 0 0 0 12 2v10z'></path></svg>",
+                    "label": "Analyze"
+                }
+            },
+            "prompt": {
+                "system": "You are a writing coach. The user has selected a piece of text for you to analyze. Provide a concise, constructive critique. Focus on clarity, impact, and style. Use markdown for formatting your feedback.",
+                "user": "Please analyze this text:\n\n---\n{selected_text}\n---"
+            }
+        },
+        {
+            "id": "core.find_notes",
+            "name": "Find Related Notes",
+            "description": "Searches your notebook for ideas related to your query.",
+            "enabled": true,
+            "executor": "jsonResponse",
+            "output": {
+                "handler": "filterNotes"
+            },
+            "triggers": {
+                "ai_studio": true
+            },
+            "prompt": {
+                "system": "You are a research assistant. Analyze the user's query and the provided list of notes. Your goal is to identify which notes are most conceptually relevant to the query. Respond ONLY with a valid JSON object in the format: { \"relevant_note_ids\": [\"note-id-1\", \"note-id-2\", ...] }.",
+                "user": "Query: \"{user_request}\"\n\nAll Notes:\n{notes_json_string}"
+            }
+        },
+        {
+            "id": "core.autotag",
+            "name": "Automatic Note Tagger",
+            "description": "Scans untagged notes in the background and suggests conceptual tags.",
+            "enabled": false,
+            "executor": "jsonResponse",
+            "output": {
+                "handler": null
+            }, 
+            "triggers": {},
+            "prompt": {
+                "system": "You are an AI assistant that analyzes notes and suggests conceptual tags. Review the provided notes. For each note, generate an array of 2-4 relevant, high-level conceptual tags. Respond ONLY with a valid JSON object in the format: { \"notes_with_tags\": [ { \"id\": \"note-id\", \"tags\": [\"tag1\", \"tag2\"] } ] }.",
+                "user": "Analyze and tag these notes:\n{notes_json_string}"
+            }
+        },
+        {
+            "id": "custom.brainstorm",
+            "name": "Brainstorm Ideas",
+            "description": "Generate a list of ideas based on a topic and save it as a new note.",
+            "enabled": true,
+            "executor": "simplePrompt",
+            "output": {
+                "handler": "newNote"
+            },
+            "triggers": {
+                "ai_studio": true
+            },
+            "prompt": {
+                "system": "You are a creative brainstorming assistant. The user will provide a topic. Generate a structured list of related ideas, concepts, and potential avenues for exploration. Format the output using Markdown.",
+                "user": "Brainstorm ideas for the following topic: {user_request}"
+            }
+        },
+        {
+            "id": "custom.request",
+            "name": "Custom Request",
+            "description": "An open-ended prompt for any complex task, using the current text as context.",
+            "enabled": true,
+            "executor": "simplePrompt",
+            "output": {
+                "handler": "assistantPane"
+            },
+            "triggers": {
+                "ai_studio": true
+            },
+            "prompt": {
+                "system": "You are a versatile AI writing assistant. The user will provide a specific request related to the provided context. Fulfill the request to the best of your ability, using markdown for clear formatting.",
+                "user": "Context:\n---\n{context_text}\n---\n\nUser Request: {user_request}"
+            }
+        },
+        {
+            "id": "custom.summarize",
+            "name": "Summarize",
+            "description": "Condense the current text into a concise summary.",
+            "enabled": true,
+            "executor": "simplePrompt",
+            "output": {
+                "handler": "assistantPane"
+            },
+            "triggers": {
+                "ai_studio": true
+            },
+            "prompt": {
+                "system": "You are a skilled editor. Summarize the key points of the following text in a clear and concise manner. Use markdown for formatting.",
+                "user": "Please summarize:\n\n---\n{context_text}\n---"
+            }
+        },
+        {
+            "id": "custom.change_tone",
+            "name": "Change Tone",
+            "description": "Rewrite the selection with a different style.",
+            "enabled": true,
+            "executor": "simplePrompt",
+            "output": {
+                "handler": "assistantPane"
+            },
+            "triggers": {
+                "ai_studio": true
+            },
+            "prompt": {
+                "system": "You are an expert in writing style and tone. Your task is to rewrite the provided text to match the tone specified by the user. Adhere to the new tone while preserving the original meaning.",
+                "user": "Rewrite the following text with a '{user_request}' tone:\n\n---\n{selected_text}\n---"
+            }
+        },
+        {
+            "id": "custom.generate_titles",
+            "name": "Suggest Titles",
+            "description": "Generate 5 alternative titles for the current section.",
+            "enabled": true,
+            "executor": "simplePrompt",
+            "output": {
+                "handler": "assistantPane"
+            },
+            "triggers": {
+                "ai_studio": true
+            },
+            "prompt": {
+                "system": "You are a creative writer specializing in crafting compelling titles. Generate a list of 5 alternative titles for the provided text. The titles should be varied in style (e.g., direct, intriguing, metaphorical). Format the output as a markdown list.",
+                "user": "Generate 5 titles for this text:\n\n---\n{view_content}\n---"
+            }
+        },
+        {
+            "id": "custom.generate_outline",
+            "name": "Generate Outline",
+            "description": "Create a hierarchical outline for the current view.",
+            "enabled": true,
+            "executor": "simplePrompt",
+            "output": {
+                "handler": "assistantPane"
+            },
+            "triggers": {
+                "ai_studio": true
+            },
+            "prompt": {
+                "system": "You are a skilled analyst. Your task is to create a clear, hierarchical outline of the provided text. Use nested markdown lists to represent the structure of the document's main points and sub-points.",
+                "user": "Create an outline for this text:\n\n---\n{view_content}\n---"
+            }
+        },
+        {
+            "id": "custom.continuity_check",
+            "name": "Continuity Check",
+            "description": "Identify inconsistencies or contradictions in the text.",
+            "enabled": true,
+            "executor": "simplePrompt",
+            "output": {
+                "handler": "assistantPane"
+            },
+            "triggers": {
+                "ai_studio": true
+            },
+            "prompt": {
+                "system": "You are a meticulous editor with a keen eye for detail. Your task is to review the provided text for continuity errors, contradictions, or inconsistencies. If you find any, describe them clearly using a markdown list. If no issues are found, state that.",
+                "user": "Check for continuity errors in this text:\n\n---\n{selected_text}\n---"
+            }
+        },
+        {
+            "id": "custom.fact_check",
+            "name": "Fact-Check Reminders",
+            "description": "Flag statements that may need citations or verification.",
+            "enabled": true,
+            "executor": "simplePrompt",
+            "output": {
+                "handler": "assistantPane"
+            },
+            "triggers": {
+                "ai_studio": true
+            },
+            "prompt": {
+                "system": "You are a research assistant. Your task is to read the provided text and identify any statements that are presented as facts and may require a citation or external verification. Do not verify the facts yourself. Instead, list the specific claims that should be double-checked. Use a markdown list.",
+                "user": "Identify statements that need fact-checking in this text:\n\n---\n{selected_text}\n---"
+            }
+        },
+        {
+            "id": "custom.reader_feedback",
+            "name": "Reader Feedback",
+            "description": "Get impressions from a simulated first-time reader.",
+            "enabled": true,
+            "executor": "simplePrompt",
+            "output": {
+                "handler": "assistantPane"
+            },
+            "triggers": {
+                "ai_studio": true
+            },
+            "prompt": {
+                "system": "You are simulating a first-time reader. Read the provided text and offer your initial impressions. Comment on what is clear, what is confusing, what questions you have, and how the text makes you feel. Present your feedback in a structured way using markdown.",
+                "user": "Provide first-time reader feedback on this text:\n\n---\n{selected_text}\n---"
+            }
+        },
+        {
+            "id": "custom.structure_map",
+            "name": "Structure Map",
+            "description": "Generate a neutral outline of arguments or events.",
+            "enabled": true,
+            "executor": "simplePrompt",
+            "output": {
+                "handler": "assistantPane"
+            },
+            "triggers": {
+                "ai_studio": true
+            },
+            "prompt": {
+                "system": "You are a logical analyst. Your task is to create a neutral, high-level map of the arguments, events, or key topics in the provided text. Do not interpret or critique, simply outline the structure of the information. Use a nested markdown list.",
+                "user": "Create a structure map of this text:\n\n---\n{view_content}\n---"
+            }
+        },
+        {
+            "id": "custom.clarity_check",
+            "name": "Clarity Check",
+            "description": "Highlight sentences that may be confusing or overly complex.",
+            "enabled": true,
+            "executor": "simplePrompt",
+            "output": {
+                "handler": "assistantPane"
+            },
+            "triggers": {
+                "ai_studio": true
+            },
+            "prompt": {
+                "system": "You are an editor focused on readability. Your task is to identify and highlight sentences or phrases in the provided text that are ambiguous, overly complex, or potentially confusing to the reader. For each identified issue, briefly explain why it might be unclear. Use markdown quotes to show the confusing text.",
+                "user": "Check this text for clarity and highlight confusing sentences:\n\n---\n{selected_text}\n---"
+            }
+        }
+    ]
+}
