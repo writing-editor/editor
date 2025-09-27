@@ -295,6 +295,7 @@ export class NotebookPane {
     async deleteNote(noteId) {
         const indicatorId = this.controller.showIndicator('Deleting Note...');
         try {
+            await this.storageService.addTombstone(noteId);
             await this.storageService.deleteFile(`${noteId}.note`);
             this.controller.showIndicator('Note Deleted', { duration: 2000 });
             if (this.editingNoteId === noteId) {
@@ -389,16 +390,16 @@ export class NotebookPane {
     }
 
     filterNotesById(noteIds) {
-      if (!noteIds || noteIds.length === 0) {
-          this.noteSearchResults = [];
-      } else {
-          const idSet = new Set(noteIds);
-          this.noteSearchResults = this.allNotes.filter(note => idSet.has(note.id));
-      }
-      
-      this.searchQuery = "AI Search Results"; // Give a visual cue
-      this.isAiSearchComplete = true; // Mark it as an AI search
-      this.activeFilterTags.clear(); // Clear other filters
-      this.renderUI();
-  }
+        if (!noteIds || noteIds.length === 0) {
+            this.noteSearchResults = [];
+        } else {
+            const idSet = new Set(noteIds);
+            this.noteSearchResults = this.allNotes.filter(note => idSet.has(note.id));
+        }
+
+        this.searchQuery = "AI Search Results"; // Give a visual cue
+        this.isAiSearchComplete = true; // Mark it as an AI search
+        this.activeFilterTags.clear(); // Clear other filters
+        this.renderUI();
+    }
 }

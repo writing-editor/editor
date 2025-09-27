@@ -13,7 +13,7 @@ export class JsonResponseExecutor extends BaseExecutor {
             return JSON.parse(responseText);
         } catch (error) {
             console.error("Failed to parse LLM JSON response:", error);
-            this.controller.showIndicator("AI response was not valid.", { isError: true });
+            this.controller.showIndicator("AI response was not valid.", { isError: true, duration: 4000 });
             return null;
         } finally {
             this.controller.hideIndicator(indicatorId);

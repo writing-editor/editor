@@ -299,9 +299,12 @@ export class BookService {
     }
 
     const newBookContent = {
-      metadata: { title: title },
+      metadata: {
+        title: title,
+        id: crypto.randomUUID()
+      },
       chapters: [{
-        id: crypto.randomUUID(),
+        id: `ch_${crypto.randomUUID()}`,
         title: "Chapter 1",
         content_json: { type: "doc", content: [] },
         sections: []
@@ -340,6 +343,11 @@ export class BookService {
   }
 
   async deleteBook(filename) {
+    const bookRecord = await this.storageService.getFile(`${filename}.book`);
+    if (bookRecord && bookRecord.content.metadata.id) {
+      const uniqueId = bookRecord.content.metadata.id;
+      await this.storageService.addTombstone(uniqueId);
+    }
     await this.storageService.deleteFile(`${filename}.book`);
     await this.storageService.deleteFile(`${filename}.metadata.json`);
     const pinned = this.configService.get('user.pinned_book');
@@ -358,7 +366,7 @@ export class BookService {
     if (!chapter) return;
 
     const newSection = {
-      id: crypto.randomUUID(),
+      id: `sec_${crypto.randomUUID()}`,
       title: title,
       content_json: { type: "doc", content: [] }
     };

@@ -1,7 +1,3 @@
-/**
- * A wrapper for IndexedDB to provide a simple, async, key-value file storage system.
- * This service is the single source of truth for all persistent data stored in the browser.
- */
 export class StorageService {
   constructor(dbName = 'EditorAppDB', version = 4) {
     this.dbName = dbName;
@@ -120,8 +116,6 @@ export class StorageService {
     return new Promise(async (resolve, reject) => {
       if (!this.db) return reject("Database not open.");
 
-      await this.addTombstone(id);
-
       const transaction = this.db.transaction(['files'], 'readwrite');
       const store = transaction.objectStore('files');
       const request = store.delete(id);
@@ -186,12 +180,15 @@ export class StorageService {
   }
 
   async addTombstone(fileId) {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       if (!this.db) return reject("Database not open.");
       const transaction = this.db.transaction(['tombstones'], 'readwrite');
       const store = transaction.objectStore('tombstones');
       const request = store.put({ fileId, deletedAt: Date.now() });
-      request.onsuccess = () => resolve();
+      request.onsuccess = () => {
+        this.controller.publish('database:changed', { fileId: 'tombstones.json', action: 'saved' });
+        resolve()
+      };
       request.onerror = () => reject(request.error);
     });
   }

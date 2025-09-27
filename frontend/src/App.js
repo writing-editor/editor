@@ -112,6 +112,34 @@ export class App {
     // STEP 4: KICK OFF THE APP
     this.setupGlobalListeners();
     this.initializeApp();
+
+    if (window.electronAPI?.isElectron) {
+      window.electronAPI.onGoogleSignInToken(async (tokens) => {
+        console.log("Received tokens from Electron main process.");
+        if (window.gapi && window.gapi.client) {
+          window.gapi.client.setToken(tokens);
+
+          await this.handleSuccessfulSignIn();
+        } else {
+          console.error("GAPI client not available to set token.");
+        }
+      });
+    }
+  }
+
+  async handleSuccessfulSignIn() {
+    const user = await this.googleSyncService.getUserProfile();
+    if (user && user.name) {
+      this.connectivityStatus.setState('signed-in', { name: user.name, picture: user.picture });
+      this.indicatorManager.show(`Signed in as ${user.name}`, { duration: 3000 });
+    } else {
+      this.connectivityStatus.setState('signed-in', 'User');
+      this.indicatorManager.show(`Signed in successfully`, { duration: 3000 });
+    }
+    localStorage.setItem('userHasInitiatedSignIn', 'true');
+    await this.syncService.performInitialSync();
+    await this.bookService.loadInitialBook();
+    await this.rebuildSearchIndex();
   }
 
   async initializeApp() {
@@ -120,10 +148,10 @@ export class App {
     await this.configService.initialize();
     console.log("Configuration loaded.");
     this.applyInitialUiSettings();
+    this.llmOrchestrator.updateConfig();
 
-    this.llmOrchestrator.updateConfig(); // Ensure orchestrator has latest config
+    await this.checkInitialAuthStatus();
 
-    this.checkInitialAuthStatus();
     const bookFiles = await this.storageService.getAllFilesBySuffix('.book');
     this.searchService.buildIndex(bookFiles);
     this.bookService.loadInitialBook();
@@ -132,46 +160,43 @@ export class App {
   }
 
   async checkInitialAuthStatus() {
-    const userHasInitiatedSignIn = localStorage.getItem('userHasInitiatedSignIn');
-    if (!userHasInitiatedSignIn) {
-      console.log("User has not initiated sign-in before. Skipping silent auth.");
-      if (navigator.onLine) {
+    if (window.electronAPI?.isElectron) {
+      const initialTokens = await window.electronAPI.getInitialToken();
+
+      if (initialTokens) {
+        console.log("Found initial tokens from Electron store.");
+
+        if (window.gapi && window.gapi.client) {
+          window.gapi.client.setToken(initialTokens);
+          await this.handleSuccessfulSignIn();
+        }
+      } else {
+        console.log("No stored tokens in Electron. User is signed out.");
         this.connectivityStatus.setState('signed-out');
       }
-      return;
-    }
 
-    await this.googleSyncService.initialize();
-    const isSignedIn = await this.googleSyncService.trySilentAuth();
-    if (isSignedIn) {
-      const user = await this.googleSyncService.getUserProfile();
-      if (user && user.name) {
-        this.connectivityStatus.setState('signed-in', {
-          name: user.name,
-          picture: user.picture
-        });
-      } else {
-        this.connectivityStatus.setState('signed-in', 'User');
-      }
-
-      if (navigator.onLine) {
-        await this.syncService.performInitialSync();
-      } else {
-        console.log("Skipping initial sync: Application is offline.");
-      }
-      await this.bookService.loadInitialBook();
-      await this.rebuildSearchIndex();
     } else {
-      if (navigator.onLine) {
-        this.connectivityStatus.setState('signed-out');
+      const userHasInitiatedSignIn = localStorage.getItem('userHasInitiatedSignIn');
+      if (!userHasInitiatedSignIn) {
+        console.log("User has not initiated sign-in before. Skipping silent auth.");
+        if (navigator.onLine) {
+          this.connectivityStatus.setState('signed-out');
+        }
+        return;
+      }
+
+      await this.googleSyncService.initialize();
+      const isSignedIn = await this.googleSyncService.trySilentAuth();
+      if (isSignedIn) {
+        await this.handleSuccessfulSignIn();
+      } else {
+        if (navigator.onLine) {
+          this.connectivityStatus.setState('signed-out');
+        }
       }
     }
   }
 
-  /**
-   * Creates a controller object to pass to components. This is the public API
-   * for components to interact with the rest of the application, promoting decoupling.
-   */
   createController() {
     return {
       // Indicators & Modals (unchanged)
@@ -266,33 +291,33 @@ export class App {
       // Auth & Sync State 
       signIn: async () => {
         try {
-          const user = await this.googleSyncService.signIn();
-          if (user) {
-            if (user.name) {
-              this.connectivityStatus.setState('signed-in', {
-                name: user.name,
-                picture: user.picture
-              });
-              this.indicatorManager.show(`Signed in as ${user.name}`, { duration: 3000 });
-            } else {
-              this.connectivityStatus.setState('signed-in', 'User');
-              this.indicatorManager.show(`Signed in successfully`, { duration: 3000 });
+          if (window.electronAPI?.isElectron) {
+            const indicatorId = this.indicatorManager.show('Opening browser for sign-in...');
+            try {
+              await window.electronAPI.signInWithGoogle();
+            } finally {
+              this.indicatorManager.hide(indicatorId);
             }
-            localStorage.setItem('userHasInitiatedSignIn', 'true');
-            await this.syncService.performInitialSync();
-            await this.bookService.loadInitialBook();
-            await this.rebuildSearchIndex();
+          } else {
+            await this.googleSyncService.signIn();
+            await this.handleSuccessfulSignIn();
           }
         } catch (error) {
-          console.error("Sign-in failed:", error);
-          this.indicatorManager.show('Sign-in failed. See console for details.', { isError: true, duration: 5000 });
+          console.error("Sign-in process failed:", error);
+          this.indicatorManager.show('Sign-in failed. Check console.', { isError: true, duration: 5000 });
         }
       },
+
       signOut: async () => {
-        await this.googleSyncService.signOut();
+        if (window.electronAPI?.isElectron) {
+          await window.electronAPI.signOut();
+        } else {
+          await this.googleSyncService.signOut();
+        }
         localStorage.removeItem('userHasInitiatedSignIn');
         this.connectivityStatus.setState('signed-out');
         this.indicatorManager.show('You have been signed out.', { duration: 3000 });
+        setTimeout(() => window.location.reload(), 1000);
       },
       checkSignInStatus: () => this.googleSyncService.checkSignInStatus(),
 
@@ -327,8 +352,6 @@ export class App {
     };
   }
 
-
-  // --- UI-SPECIFIC LOGIC ---
   setupGlobalListeners() {
     document.body.addEventListener('click', (e) => {
       const navToggleBtn = document.getElementById('navigator-toggle-btn');

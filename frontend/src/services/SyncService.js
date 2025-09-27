@@ -1,32 +1,27 @@
 import { debounce } from '../utils/debounce.js';
 import { diff_match_patch } from 'diff-match-patch';
 
-/**
- * Manages data synchronization with local files and cloud providers.
- */
 export class SyncService {
   constructor(storageService, controller, googleSyncService) {
     this.storageService = storageService;
     this.controller = controller;
     this.googleSyncService = googleSyncService;
     this.dmp = new diff_match_patch();
-    this.syncQueue = new Map(); // For queuing sync requests per file
+    this.syncQueue = new Map();
 
+    this.idToFilenameMap = new Map();
     this.debouncedSyncers = new Map();
     this.SYNC_DEBOUNCE_DELAY = 5000;
     this.controller.subscribe('database:changed', (payload) => this.scheduleSync(payload));
 
-    // --- NEW: Start a periodic check for cloud deletions ---
     this.tombstoneCheckInterval = null;
     this.startTombstoneChecker();
   }
 
-  // --- NEW: Method to start the periodic checker ---
   startTombstoneChecker() {
     if (this.tombstoneCheckInterval) {
       clearInterval(this.tombstoneCheckInterval);
     }
-    // Check for deletions every 60 seconds
     this.tombstoneCheckInterval = setInterval(async () => {
       if (navigator.onLine && await this.googleSyncService.checkSignInStatus()) {
         await this._processCloudTombstones();
@@ -34,7 +29,6 @@ export class SyncService {
     }, 60000);
   }
 
-  // --- NEW: Isolated logic to process cloud tombstones ---
   async _processCloudTombstones() {
     console.log("[Sync] Periodically checking for cloud deletions...");
     const tombstoneMeta = await this.googleSyncService.getFileMetadata('tombstones.json');
@@ -45,25 +39,28 @@ export class SyncService {
         cloudTombstones = typeof downloadResult.content === 'string' ? JSON.parse(downloadResult.content) : downloadResult.content;
       } catch (e) {
         console.warn("Could not parse cloud tombstones.json during periodic check.");
-        return; // Exit if the file is corrupt
+        return;
       }
 
       let refreshNeeded = false;
-      for (const fileId in cloudTombstones) {
-        const localFile = await this.storageService.getFile(fileId);
-        if (localFile) {
-          console.log(`[Sync] Found cloud tombstone for local file "${fileId}". Deleting locally.`);
-          await this.storageService.deleteFile(fileId);
-          if (fileId.endsWith('.note')) {
-            refreshNeeded = true; // Mark that the notebook pane needs a refresh
+      for (const uniqueId in cloudTombstones) {
+        const filenameToDelete = this.idToFilenameMap.get(uniqueId);
+        if (filenameToDelete) {
+          console.log(`[Sync] Found cloud tombstone for ID "${uniqueId}". Deleting local file "${filenameToDelete}".`);
+          await this.storageService.deleteFile(filenameToDelete);
+          this.idToFilenameMap.delete(uniqueId);
+
+          if (filenameToDelete.endsWith('.note')) {
+            refreshNeeded = true;
           }
         }
       }
 
       if (refreshNeeded) {
-        // This event will be picked up by the NotebookPane
         this.controller.publish('notebook:needs-refresh', {});
       }
+    } else {
+      console.log("[Sync] No cloud tombstones file found. Nothing to process.");
     }
   }
 
@@ -74,7 +71,7 @@ export class SyncService {
       return;
     }
 
-    if (fileId === 'user-manual.book') return;
+    if (fileId === 'user-manual.book' || fileId === 'initial_setup_complete') return;
 
     console.log(`Scheduling sync for "${fileId}", action: ${action}`);
 
@@ -96,14 +93,12 @@ export class SyncService {
       await this._reconcileFileInternal(fileId, action);
     };
 
-    // Chain the new task onto the end of the promise chain for this fileId
-    const newPromise = this.syncQueue.get(fileId).then(task, task); // Ensure it runs even if previous fails
+    const newPromise = this.syncQueue.get(fileId).then(task, task);
     this.syncQueue.set(fileId, newPromise);
     return newPromise;
   }
 
   async _reconcileFileInternal(fileId, action) {
-    // --- Helpers ---
     function stableStringify(obj) {
       if (obj === null || typeof obj !== "object") {
         return JSON.stringify(obj);
@@ -117,7 +112,6 @@ export class SyncService {
 
     function normalize(content) {
       if (typeof content === "string") {
-        // Standardize line endings and remove leading/trailing whitespace
         return content.replace(/\r\n/g, "\n").trim();
       }
       if (content && typeof content === "object") {
@@ -136,23 +130,27 @@ export class SyncService {
     const modifiedKey = `cloud_modified_${fileId}`;
 
     try {
-      if (action === "deleted") {
-        console.log(`[Sync] Deleting ${fileId} from cloud and updating tombstone.`);
+      if (fileId === 'tombstones.json') {
+        console.log(`[Sync] Local tombstones have changed. Syncing to cloud.`);
+        const localTombstones = await this.storageService.getAllTombstones();
+        const localTombstoneMap = localTombstones.reduce((acc, ts) => {
+          acc[ts.fileId] = ts.deletedAt;
+          return acc;
+        }, {});
+
         const tombstoneMeta = await this.googleSyncService.getFileMetadata('tombstones.json');
-        let tombstones = {};
+        let cloudTombstones = {};
         if (tombstoneMeta) {
           const downloadResult = await this.googleSyncService.downloadFileContent(tombstoneMeta.id);
           try {
-            tombstones = typeof downloadResult.content === 'string' ? JSON.parse(downloadResult.content) : downloadResult.content;
+            cloudTombstones = typeof downloadResult.content === 'string' ? JSON.parse(downloadResult.content) : downloadResult.content;
           } catch (e) {
             console.warn("Could not parse cloud tombstones.json, starting fresh.");
-            tombstones = {};
+            cloudTombstones = {};
           }
         }
-        tombstones[fileId] = new Date().toISOString();
-        await this.googleSyncService.uploadFile('tombstones.json', tombstones);
-        await this.googleSyncService.deleteFileByName(fileId);
-        localStorage.removeItem(modifiedKey);
+        const mergedTombstones = { ...cloudTombstones, ...localTombstoneMap };
+        await this.googleSyncService.uploadFile('tombstones.json', mergedTombstones);
         return;
       }
 
@@ -383,7 +381,6 @@ export class SyncService {
   async deleteCloudFileById(fileId) {
     const indicatorId = this.controller.showIndicator('Deleting cloud file...');
     try {
-      // await this.googleSyncService.authorize(); // This line is removed
       await this.googleSyncService.deleteFileById(fileId);
       this.controller.showIndicator('File deleted from cloud.', { duration: 3000 });
       return true;
@@ -398,7 +395,6 @@ export class SyncService {
 
   async getCloudFileList() {
     try {
-      // await this.googleSyncService.authorize(); // This line is removed
       return await this.googleSyncService.listFiles();
     } catch (error) {
       console.error("Failed to get cloud file list:", error);
@@ -410,12 +406,11 @@ export class SyncService {
   async deleteAllCloudFiles() {
     const indicatorId = this.controller.showIndicator('Deleting cloud data...');
     try {
-      // await this.googleSyncService.authorize(); // This line is removed
       await this.googleSyncService.deleteAllFilesAndFolder();
       this.controller.showIndicator('All cloud data deleted successfully.', { duration: 4000 });
     } catch (error) {
       console.error("Failed to delete all cloud files:", error);
-      this.controller.showIndicator('Deletion failed. See console.', { isError: true });
+      this.controller.showIndicator('Deletion failed. See console.', { isError: true, duration: 4000 });
     } finally {
       this.controller.hideIndicator(indicatorId);
     }
@@ -429,21 +424,27 @@ export class SyncService {
     const indicatorId = this.controller.showIndicator('Syncing with Google Drive...');
 
     try {
-      // --- MODIFIED: Use the new centralized method ---
+      console.log("[Sync] Building local ID-to-filename map...");
+      this.idToFilenameMap.clear();
+      const allLocalFiles = await this.storageService.getAllFiles();
+      for (const file of allLocalFiles) {
+        if (file.id.endsWith('.book') && file.content?.metadata?.id) {
+          this.idToFilenameMap.set(file.content.metadata.id, file.id);
+        } else if (file.id.endsWith('.note') && file.content?.id) {
+          this.idToFilenameMap.set(file.content.id, file.id);
+        }
+      }
+      console.log(`[Sync] Map built with ${this.idToFilenameMap.size} entries.`);
+
       await this._processCloudTombstones();
 
-      const localTombstones = await this.storageService.getAllTombstones();
-      for (const tombstone of localTombstones) {
-        console.log(`Sync: Processing local tombstone for "${tombstone.fileId}"`);
-        await this.reconcileFile(tombstone.fileId, 'deleted');
-        await this.storageService.removeTombstone(tombstone.fileId);
-      }
+      await this.reconcileFile('tombstones.json');
 
       const cloudFiles = await this.googleSyncService.listFiles();
-      const localFiles = await this.storageService.getAllFiles();
+      const currentLocalFiles = await this.storageService.getAllFiles();
 
       const cloudFilesMap = new Map(cloudFiles.map(f => [f.name, f]));
-      const localFilesMap = new Map(localFiles.map(f => [f.id, f]));
+      const localFilesMap = new Map(currentLocalFiles.map(f => [f.id, f]));
       const allFileIds = new Set([...cloudFilesMap.keys(), ...localFilesMap.keys()]);
 
       for (const fileId of allFileIds) {

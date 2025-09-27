@@ -127,7 +127,7 @@ export class AiStudio {
 
     if (ai_response) {
       if (this.selectedCommand.id === 'core.find_notes' && ai_response.relevant_note_ids) {
-        this.controller.showIndicator(`${ai_response.relevant_note_ids.length} related notes found.`);
+        this.controller.showIndicator(`${ai_response.relevant_note_ids.length} related notes found.`, { duration: 3000 });
         return;
       }
       const blockData = {
