@@ -12,7 +12,7 @@
         "local_llm_model_name": "phi3:3.8b"
     },
     "ui": {
-        "theme": "light-dark",
+        "theme": "theme-light",
         "editor_font_size": "18px",
         "editor_font_family": "'Iowan Old Style', 'Palatino Linotype', 'URW Palladio L', Georgia, serif"
     },
@@ -142,7 +142,7 @@
             "executor": "jsonResponse",
             "output": {
                 "handler": null
-            }, 
+            },
             "triggers": {},
             "prompt": {
                 "system": "You are an AI assistant that analyzes notes and suggests conceptual tags. Review the provided notes. For each note, generate an array of 2-4 relevant, high-level conceptual tags. Respond ONLY with a valid JSON object in the format: { \"notes_with_tags\": [ { \"id\": \"note-id\", \"tags\": [\"tag1\", \"tag2\"] } ] }.",

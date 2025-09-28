@@ -475,7 +475,7 @@ export class SettingsPalette {
             <div class="settings-form-group">
                 <label for="book-export-selector">Select Book to Export</label>
                 <select id="book-export-selector" class="settings-select" ${books.length === 0 ? 'disabled' : ''}>
-                    ${books.length > 0 ? books.map(book => `<option value="${book.filename}">${book.name}</option>`).join('') : '<option>No books available</option>'}
+                    ${books.length > 0 ? books.map(book => `<option value="${book.filename}">${book.title}</option>`).join('') : '<option>No books available</option>'}
                 </select>
             </div>
             <div class="settings-section">
