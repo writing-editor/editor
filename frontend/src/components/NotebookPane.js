@@ -295,14 +295,19 @@ export class NotebookPane {
     async deleteNote(noteId) {
         const indicatorId = this.controller.showIndicator('Deleting Note...');
         try {
-            await this.storageService.addTombstone(noteId);
-            await this.storageService.deleteFile(`${noteId}.note`);
+            const filename = `${noteId}.note`;
+            await this.storageService.addTombstone(noteId, filename);
+            await this.storageService.deleteFile(filename);
+
             this.controller.showIndicator('Note Deleted', { duration: 2000 });
+
             if (this.editingNoteId === noteId) {
                 this.editingNoteId = null;
                 this.isEditorVisible = false;
             }
             await this.fetchAllNotes();
+        } catch (error) {
+            console.error("Failed to delete note locally:", error);
         } finally {
             this.controller.hideIndicator(indicatorId);
         }

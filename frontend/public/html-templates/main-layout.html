@@ -70,8 +70,13 @@
     <div id="data-manager-modal-container" class="hidden"></div>
     <div id="merge-conflict-modal-container" class="hidden">
         <div id="merge-conflict-box">
-            <h3 id="merge-conflict-title">Resolve Sync Conflict</h3>
-            <p id="merge-conflict-message"></p>
+            <!-- Header (Scrolls away) -->
+            <div class="conflict-header">
+                <h3 id="merge-conflict-title">Resolve Sync Conflict</h3>
+                <p id="merge-conflict-message"></p>
+            </div>
+
+            <!-- Main Content -->
             <div id="merge-conflict-content">
                 <div class="conflict-pane">
                     <h4>Your Local Version</h4>
@@ -79,14 +84,18 @@
                 </div>
                 <div class="conflict-pane">
                     <h4>Cloud Version</h4>
-                    <!-- REVISED: Changed from <pre> to <div> to support HTML diff -->
                     <div class="conflict-text-display" id="conflict-remote-text"></div>
                 </div>
             </div>
-            <div id="merge-conflict-actions">
-                <!-- REVISED: Button order is swapped for better UX -->
-                <button id="conflict-btn-keep-local">Keep My Version</button>
-                <button id="conflict-btn-use-remote">Use Cloud Version</button>
+
+            <!-- Footer (Scrolls away) -->
+            <div class="conflict-footer">
+                <div class="conflict-pane-actions">
+                    <button id="conflict-btn-keep-local">Keep My Version</button>
+                </div>
+                <div class="conflict-pane-actions">
+                    <button id="conflict-btn-use-remote">Use Cloud Version</button>
+                </div>
             </div>
         </div>
     </div>

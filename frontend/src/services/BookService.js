@@ -180,6 +180,7 @@ export class BookService {
     this.metadata = {};
 
     this.saveMetadata = debounce(this._saveMetadata.bind(this), 2000);
+    this.appController.subscribe('database:changed', (payload) => this.handleDbChange(payload));
   }
 
   // --- Public State Accessor ---
@@ -288,7 +289,6 @@ export class BookService {
   }
 
   // --- DATA MANIPULATION (All rewritten to be simpler) ---
-
   async createNewBook(title) {
     let filename = title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, '');
     const existingBooks = await this.storageService.getAllFilesBySuffix('.book');
@@ -346,13 +346,22 @@ export class BookService {
     const bookRecord = await this.storageService.getFile(`${filename}.book`);
     if (bookRecord && bookRecord.content.metadata.id) {
       const uniqueId = bookRecord.content.metadata.id;
-      await this.storageService.addTombstone(uniqueId);
+      await this.storageService.addTombstone(uniqueId, `${filename}.book`);
     }
     await this.storageService.deleteFile(`${filename}.book`);
     await this.storageService.deleteFile(`${filename}.metadata.json`);
     const pinned = this.configService.get('user.pinned_book');
     if (pinned === filename) {
       await this.configService.setConfig('user.pinned_book', null);
+    }
+    const isSignedIn = await this.appController.checkSignInStatus();
+    if (isSignedIn) {
+      try {
+        await this.appController.googleSyncService.deleteFileByName(`${filename}.book`);
+        await this.appController.googleSyncService.deleteFileByName(`${filename}.metadata.json`);
+      } catch (error) {
+        console.warn(`Cloud deletion for ${filename} failed, but tombstone will sync anyway.`, error);
+      }
     }
   }
 
@@ -962,6 +971,32 @@ export class BookService {
       await this.storageService.saveFile(`${this.currentBook.filename}.metadata.json`, this.metadata);
     } finally {
       this.appController.hideIndicator(indicatorId);
+    }
+  }
+
+  async handleDbChange(payload) {
+    if (payload.fileId.endsWith('.book')) {
+      console.log(`BookService detected a change to ${payload.fileId}, refreshing state.`);
+
+      const wasLibraryViewVisible = this.navigatorView === 'library';
+
+      const bookFiles = await this.storageService.getAllFilesBySuffix('.book');
+      this.availableBooks = bookFiles
+        .map(file => ({
+          filename: file.id.replace('.book', ''),
+          title: file.content?.metadata?.title || 'Untitled',
+        }))
+        .filter(book => book.title !== 'Untitled');
+
+      if (wasLibraryViewVisible) {
+        this.appController.renderNavigator(this.getStateForNavigator());
+      }
+
+      const currentBookStillExists = this.currentBook && this.availableBooks.some(b => b.filename === this.currentBook.filename);
+      if (this.currentBook && !currentBookStillExists) {
+        console.log(`Current book "${this.currentBook.filename}" was deleted by sync. Loading initial book.`);
+        await this.loadInitialBook();
+      }
     }
   }
 }

@@ -65,6 +65,7 @@ export class App {
       renderAssistantPane: (blocks) => this.assistantPane.render(blocks),
       showIndicator: (...args) => this.indicatorManager.show(...args),
       hideIndicator: (...args) => this.indicatorManager.hide(...args),
+      subscribe: (eventName, callback) => this.eventBus.subscribe(eventName, callback),
       setAgentButtonsDisabled: (isDisabled) => {
         ['assistant-toggle-btn', 'notebook-toggle-btn'].forEach(id => {
           const btn = document.getElementById(id);
@@ -74,7 +75,6 @@ export class App {
     };
     this.bookService = new BookService(bookServiceController, this.storageService, this.configService);
 
-    // STEP 2: CREATE THE MAIN CONTROLLER & DEPENDENT SERVICES
     const controller = this.createController();
     this.exportService = new ExportService(controller);
     this.storageService.setController(controller);
@@ -84,7 +84,8 @@ export class App {
     controller.llmOrchestrator = this.llmOrchestrator;
     this.agentService = new AgentService(this.configService, this.llmOrchestrator, controller);
     controller.agentService = this.agentService;
-    this.tagSyncService = new TagSyncService(controller, this.storageService); // Now fully integrated
+    controller.googleSyncService = this.googleSyncService;
+    this.tagSyncService = new TagSyncService(controller, this.storageService);
 
     // STEP 3: INITIALIZE UI COMPONENTS
     this.navigator = new Navigator(controller, this.bookService);
@@ -287,6 +288,7 @@ export class App {
       searchService: this.searchService,
       bookService: this.bookService,
       configService: this.configService,
+      googleSyncService: this.googleSyncService,
 
       // Auth & Sync State 
       signIn: async () => {

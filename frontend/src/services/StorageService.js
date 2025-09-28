@@ -179,15 +179,16 @@ export class StorageService {
     });
   }
 
-  async addTombstone(fileId) {
+  async addTombstone(fileId, filename) {
     return new Promise(async (resolve, reject) => {
       if (!this.db) return reject("Database not open.");
       const transaction = this.db.transaction(['tombstones'], 'readwrite');
       const store = transaction.objectStore('tombstones');
-      const request = store.put({ fileId, deletedAt: Date.now() });
+      const request = store.put({ fileId, filename, deletedAt: Date.now() });
       request.onsuccess = () => {
+        this.controller.publish('tombstone:added', { filename });
         this.controller.publish('database:changed', { fileId: 'tombstones.json', action: 'saved' });
-        resolve()
+        resolve();
       };
       request.onerror = () => reject(request.error);
     });

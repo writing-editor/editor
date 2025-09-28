@@ -9,10 +9,12 @@ export class SyncService {
     this.dmp = new diff_match_patch();
     this.syncQueue = new Map();
 
+    this.activeTombstones = new Set();
     this.idToFilenameMap = new Map();
     this.debouncedSyncers = new Map();
     this.SYNC_DEBOUNCE_DELAY = 5000;
     this.controller.subscribe('database:changed', (payload) => this.scheduleSync(payload));
+    this.controller.subscribe('tombstone:added', (payload) => this.handleTombstoneAdded(payload));
 
     this.tombstoneCheckInterval = null;
     this.startTombstoneChecker();
@@ -26,44 +28,66 @@ export class SyncService {
       if (navigator.onLine && await this.googleSyncService.checkSignInStatus()) {
         await this._processCloudTombstones();
       }
-    }, 600000);
+    }, 360000);
   }
 
   async _processCloudTombstones() {
-    console.log("[Sync] Periodically checking for cloud deletions...");
+    console.log("[Sync] Reconciling remote deletions...");
     const tombstoneMeta = await this.googleSyncService.getFileMetadata('tombstones.json');
-    if (tombstoneMeta) {
-      const downloadResult = await this.googleSyncService.downloadFileContent(tombstoneMeta.id);
-      let cloudTombstones = {};
-      try {
-        cloudTombstones = typeof downloadResult.content === 'string' ? JSON.parse(downloadResult.content) : downloadResult.content;
-      } catch (e) {
-        console.warn("Could not parse cloud tombstones.json during periodic check.");
-        return;
-      }
+    if (!tombstoneMeta) {
+      return;
+    }
 
-      let refreshNeeded = false;
-      for (const uniqueId in cloudTombstones) {
-        const filenameToDelete = this.idToFilenameMap.get(uniqueId);
+    const downloadResult = await this.googleSyncService.downloadFileContent(tombstoneMeta.id);
+    let cloudTombstoneMap = {};
+    try {
+      cloudTombstoneMap = typeof downloadResult.content === 'string' ? JSON.parse(downloadResult.content) : downloadResult.content;
+    } catch (e) {
+      console.warn("Could not parse cloud tombstones.json during periodic check.");
+      return;
+    }
+
+    const localTombstones = await this.storageService.getAllTombstones();
+    const localTombstoneIds = new Set(localTombstones.map(ts => ts.fileId));
+
+    let refreshNotebook = false;
+    const newTombstonesToAcknowledge = [];
+
+    for (const uniqueId in cloudTombstoneMap) {
+      if (!localTombstoneIds.has(uniqueId)) {
+        const tombstoneInfo = cloudTombstoneMap[uniqueId];
+        const filenameToDelete = tombstoneInfo.filename;
+
         if (filenameToDelete) {
-          console.log(`[Sync] Found cloud tombstone for ID "${uniqueId}". Deleting local file "${filenameToDelete}".`);
+          console.log(`[Sync] New remote deletion detected for "${filenameToDelete}". Deleting locally.`);
           await this.storageService.deleteFile(filenameToDelete);
-          this.idToFilenameMap.delete(uniqueId);
+          newTombstonesToAcknowledge.push({ fileId: uniqueId, filename: filenameToDelete, deletedAt: tombstoneInfo.deletedAt });
 
           if (filenameToDelete.endsWith('.note')) {
-            refreshNeeded = true;
+            refreshNotebook = true;
           }
         }
       }
+    }
 
-      if (refreshNeeded) {
-        this.controller.publish('notebook:needs-refresh', {});
+    if (newTombstonesToAcknowledge.length > 0) {
+      for (const tombstone of newTombstonesToAcknowledge) {
+        await this.storageService.addTombstone(tombstone.fileId, tombstone.filename);
       }
-    } else {
-      console.log("[Sync] No cloud tombstones file found. Nothing to process.");
+      console.log(`[Sync] Acknowledged and processed ${newTombstonesToAcknowledge.length} new remote deletions.`);
+    }
+
+    if (refreshNotebook) {
+      this.controller.publish('notebook:needs-refresh', {});
     }
   }
 
+  handleTombstoneAdded(payload) {
+    if (payload.filename) {
+      console.log(`[Sync] Acknowledged new tombstone for "${payload.filename}".`);
+      this.activeTombstones.add(payload.filename);
+    }
+  }
 
   scheduleSync({ fileId, action }) {
     if (!navigator.onLine) {
@@ -120,6 +144,17 @@ export class SyncService {
       return String(content ?? "");
     }
 
+    if (this.activeTombstones.has(fileId)) {
+      console.log(`[Sync] Skipping reconcile for "${fileId}" due to active tombstone.`);
+      try {
+        await this.googleSyncService.deleteFileByName(fileId);
+        console.log(`[Sync] Confirmed cloud deletion for "${fileId}".`);
+      } catch (e) {
+        // This is okay, it might have already been deleted.
+      }
+      return;
+    }
+
     const isSignedIn = await this.googleSyncService.checkSignInStatus();
     if (!isSignedIn) {
       console.log(`[Sync] Skipped ${fileId}: user not signed in.`);
@@ -134,7 +169,7 @@ export class SyncService {
         console.log(`[Sync] Local tombstones have changed. Syncing to cloud.`);
         const localTombstones = await this.storageService.getAllTombstones();
         const localTombstoneMap = localTombstones.reduce((acc, ts) => {
-          acc[ts.fileId] = ts.deletedAt;
+          acc[ts.fileId] = { deletedAt: ts.deletedAt, filename: ts.filename };
           return acc;
         }, {});
 
@@ -424,6 +459,9 @@ export class SyncService {
     const indicatorId = this.controller.showIndicator('Syncing with Google Drive...');
 
     try {
+      const localTombstones = await this.storageService.getAllTombstones();
+      this.activeTombstones = new Set(localTombstones.map(ts => ts.filename));
+      console.log(`[Sync] Loaded ${this.activeTombstones.size} active tombstones.`);
       console.log("[Sync] Building local ID-to-filename map...");
       this.idToFilenameMap.clear();
       const allLocalFiles = await this.storageService.getAllFiles();
