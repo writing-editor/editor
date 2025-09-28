@@ -6,9 +6,8 @@ export class JsonResponseExecutor extends BaseExecutor {
         const userPrompt = this._preparePrompt(manifest.prompt.user, payload);
         const final_prompt = `${systemPrompt}\n\n${userPrompt}`;
 
-        const indicatorId = this.controller.showIndicator('AI is searching...');
+        const indicatorId = this.controller.showIndicator(`Running ${manifest.name}...`);
         try {
-            // Request JSON output from the LLM
             const responseText = await this.llmOrchestrator.execute(final_prompt, true);
             return JSON.parse(responseText);
         } catch (error) {

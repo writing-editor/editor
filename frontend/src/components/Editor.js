@@ -144,6 +144,7 @@ export class Editor {
     });
 
     this.controller.subscribe('config:updated', () => this.updateAndRenderBubbleMenu());
+    this.updateAndRenderBubbleMenu(); 
 
     this.scrollPane.addEventListener('scroll', this.handleScroll.bind(this));
 
@@ -184,29 +185,6 @@ export class Editor {
     this.toolbar.innerHTML = standardButtons + divider + agentButtons;
   }
 
-  async runGenericAgent(agentId, payload) {
-    const agent = this.controller.agentService.getAgentById(agentId);
-    if (!agent) return;
-
-    const result = await this.controller.runAgent(agentId, payload);
-    if (result) {
-      const blockData = {
-        type: 'development', // Use a generic block type
-        title: agent.name,
-        id: `agent_${Date.now()}`,
-        content: { type: 'markdown', text: result },
-        is_open_by_default: true,
-      };
-      this.controller.addMarginBlock(payload.current_view_id, blockData);
-      this.controller.openRightDrawer('assistant');
-    }
-  }
-  // --- START OF NEW/REWRITTEN METHODS ---
-
-  /**
-   * Analyzes the document, builds a map of all sections (headings),
-   * and generates the clickable tooltip index for navigation.
-   */
   buildSectionMapAndIndex() {
     if (!this.instance) return;
 
@@ -257,9 +235,6 @@ export class Editor {
     this.handleScroll();
   }
 
-  /**
-   * Handles all scroll-related UI updates based on the dual-mode logic.
-   */
   handleScroll() {
     const { scrollTop, scrollHeight, clientHeight } = this.scrollPane;
     const isScrollable = scrollHeight > clientHeight;
@@ -368,15 +343,6 @@ export class Editor {
   createToolbarElement() {
     const el = document.createElement('div');
     el.className = 'editor-toolbar';
-    el.innerHTML = `
-      <button class="toolbar-btn" data-action="bold" title="Bold (Ctrl+B)"><svg viewBox="0 0 24 24"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg></button>
-      <button class="toolbar-btn" data-action="italic" title="Italic (Ctrl+I)"><svg viewBox="0 0 24 24"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg></button>
-      <button class="toolbar-btn" data-action="link" title="Add Link"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.71"></path></svg></button>
-      <button class="toolbar-btn" data-action="footnote" title="Add Footnote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10M7 11h10M7 15h4m5.18-11.82a1.5 1.5 0 0 0-2.12 0l-5.5 5.5a1.5 1.5 0 0 0 0 2.12l5.5 5.5a1.5 1.5 0 0 0 2.12 0l5.5-5.5a1.5 1.5 0 0 0 0-2.12z"/></svg></button>
-      <div class="toolbar-divider"></div>
-      <button class="toolbar-btn" data-action="analyze" title="Analyze Selection"><svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.2 0 .5 0 .7-.1-.5-.8-.7-1.7-.7-2.9 0-3.3 2.7-6 6-6 .9 0 1.8.2 2.5.6 1.1-1.9 1.5-4.1 1.5-6.6C22 6.5 17.5 2 12 2zm4.1 12.3c-.3.1-.6.2-.9.2-2.2 0-4-1.8-4-4s1.8-4 4-4c.3 0 .6 0 .9.1.5-2.2-.2-4.6-2-6.1C8.7 5.6 6 8.6 6 12s2.7 6.4 6.1 7.7c1.8-1.5 2.5-3.9 2-6.1zM17 14v-2h-2v-2h2V8l4 4-4 4z"></path></svg></button>
-      <button class="toolbar-btn" data-action="rewrite" title="Rewrite Selection"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path><path d="m15 5 3 3"></path></svg></button>
-    `;
     document.body.appendChild(el);
     return el;
   }
@@ -424,7 +390,7 @@ export class Editor {
       if (!btn) return;
 
       const action = btn.dataset.action;
-      const agentId = btn.dataset.agentId; // Check for agent ID
+      const agentId = btn.dataset.agentId;
       const chain = this.instance.chain().focus();
 
       // --- Handle Standard Actions ---
@@ -449,11 +415,7 @@ export class Editor {
       // --- Handle Agent Actions ---
       else if (agentId) {
         const payload = this.controller.getContext();
-        if (agentId === 'core.rewrite') {
-          this.controller.runRewrite(payload);
-        } else {
-          this.runGenericAgent(agentId, payload);
-        }
+        this.controller.runAgent(agentId, payload);
       }
     });
   }

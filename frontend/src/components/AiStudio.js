@@ -122,24 +122,7 @@ export class AiStudio {
     if (this.selectedContext === 'view') payload.context.type = 'global';
 
     this.hide();
-    const agent = this.controller.agentService.getAgentById(this.selectedCommand.id);
-    const ai_response = await this.controller.runAgent(this.selectedCommand.id, payload);
-
-    if (ai_response) {
-      if (this.selectedCommand.id === 'core.find_notes' && ai_response.relevant_note_ids) {
-        this.controller.showIndicator(`${ai_response.relevant_note_ids.length} related notes found.`, { duration: 3000 });
-        return;
-      }
-      const blockData = {
-        type: 'development',
-        title: agent.name,
-        id: `dev_${Date.now()}`,
-        content: { type: 'markdown', text: ai_response },
-        is_open_by_default: true,
-      };
-      this.controller.addMarginBlock(payload.current_view_id, blockData);
-      this.controller.openRightDrawer('assistant');
-    }
+    this.controller.runAgent(this.selectedCommand.id, payload);
   }
 
   render() {

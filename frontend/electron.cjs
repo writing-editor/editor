@@ -35,6 +35,10 @@ async function signInWithGoogle() {
     const server = http.createServer(async (req, res) => {
       try {
         const query = url.parse(req.url, true).query;
+        if (!query.code && !query.error) {
+          res.end('Request ignored. You can close this tab.');
+          return;
+        }
         if (query.error) {
           throw new Error(`Google responded with an error: ${query.error}`);
         }

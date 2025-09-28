@@ -331,18 +331,6 @@ export class App {
       publish: (eventName, data) => this.eventBus.publish(eventName, data),
       subscribe: (eventName, callback) => this.eventBus.subscribe(eventName, callback),
 
-      // Legacy slash command handlers to be refactored
-      runSummarizeOnText: (text) => {
-        const payload = this.getContextPayload();
-        payload.context.type = 'selection';
-        payload.context.selected_text = text;
-        this.runDeveloperAndShowResult('custom.summarize', payload);
-      },
-      runFindNotesOnText: (text) => {
-        const payload = this.getContextPayload();
-        payload.user_request = text;
-        this.runDeveloperAndShowResult('core.find_notes', payload);
-      },
       createNewNoteFromAgent: (content, agentName) => {
         this.notebookPane.createNoteFromText(content, agentName);
         this.openRightDrawer('notebook');
@@ -477,24 +465,6 @@ export class App {
     this.activeRightDrawer = null;
     document.getElementById('assistant-toggle-btn').classList.remove('is-active');
     document.getElementById('notebook-toggle-btn').classList.remove('is-active');
-  }
-
-  async runDeveloperAndShowResult(agentId, payload) {
-    const agent = this.agentService.getAgentById(agentId);
-    if (!agent) return;
-
-    const ai_response = await this.agentService.executeAgent(agentId, payload);
-    if (ai_response) {
-      const blockData = {
-        type: 'development',
-        title: agent.name,
-        id: `dev_${Date.now()}`,
-        content: { type: 'markdown', text: ai_response },
-        is_open_by_default: true,
-      };
-      this.bookService.addMarginBlock(payload.current_view_id, blockData);
-      this.openRightDrawer('assistant');
-    }
   }
 
   getContextPayload() {

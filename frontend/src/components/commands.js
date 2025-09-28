@@ -1,21 +1,24 @@
-const getPreviousNodeText = (editor) => {
-    const { state } = editor;
-    const { $from } = state.selection;
-    // nodeBefore can be null or a text node, we want the block node before that
-    const blockNode = $from.node($from.depth - 1);
-    return blockNode ? blockNode.textContent : '';
-};
-
 export const getCommands = (controller) => ([
-  // --- Basic Blocks ---
+  // --- AI Command ---
   {
-    title: 'Heading 2',
-    aliases: ['h2', 'heading2', 'title'],
+    title: 'AI Command Palette',
+    aliases: ['ai', 'ask', 'run'],
+    description: 'Open the AI Command Palette to run any agent.',
+    action: () => {
+      // This action simply opens the AI Studio, which is exactly what we want.
+      controller.showAiStudio();
+    }
+  },
+
+  // --- Basic Blocks (These are useful and can remain) ---
+  {
+    title: 'Chapter',
+    aliases: ['h2', 'chapter', 'title'],
     action: (editor) => editor.chain().focus().setNode('heading', { level: 2 }).run()
   },
   {
-    title: 'Heading 3',
-    aliases: ['h3', 'heading3', 'subtitle'],
+    title: 'Section',
+    aliases: ['h3', 'section', 'subtitle'],
     action: (editor) => editor.chain().focus().setNode('heading', { level: 3 }).run()
   },
   {
@@ -37,38 +40,5 @@ export const getCommands = (controller) => ([
     title: 'Divider',
     aliases: ['di', 'hr', 'rule'],
     action: (editor) => editor.chain().focus().setHorizontalRule().run()
-  },
-
-  // --- AI Commands ---
-  {
-    title: 'Summarize',
-    aliases: ['summ'],
-    description: 'Summarize the paragraph above.',
-    action: (editor) => {
-        const text = getPreviousNodeText(editor);
-        if (text) {
-            controller.runSummarizeOnText(text);
-        }
-    }
-  },
-  {
-    title: 'Find Related Notes',
-    aliases: ['find', 'notes', 'related'],
-    description: 'Search your notebook for related ideas.',
-    action: (editor) => {
-        const text = getPreviousNodeText(editor);
-        if (text) {
-            controller.runFindNotesOnText(text);
-        }
-    }
-  },
-  {
-    title: 'Ask AI',
-    aliases: ['custom', 'request'],
-    description: 'Open the AI Command Palette.',
-    action: (editor, _, query) => {
-      // This command will be handled specially to pass the query
-      controller.showAiStudio('custom_request', query);
-    }
   }
 ]);

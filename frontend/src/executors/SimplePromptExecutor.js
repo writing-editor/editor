@@ -6,7 +6,7 @@ export class SimplePromptExecutor extends BaseExecutor {
         const userPrompt = this._preparePrompt(manifest.prompt.user, payload);
         const final_prompt = `${systemPrompt}\n\n${userPrompt}`;
 
-        const indicatorId = this.controller.showIndicator('AI is working...');
+        const indicatorId = this.controller.showIndicator(`Running ${manifest.name}...`);
         try {
             return await this.llmOrchestrator.execute(final_prompt, false);
         } finally {

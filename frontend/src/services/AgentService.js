@@ -5,6 +5,7 @@ import { JsonResponseExecutor } from '../executors/JsonResponseExecutor.js';
 export class AgentService {
     constructor(configService, llmOrchestrator, controller) {
         this.configService = configService;
+        this.controller = controller;
         this.executors = {
             simplePrompt: new SimplePromptExecutor(llmOrchestrator, controller),
             jsonResponse: new JsonResponseExecutor(llmOrchestrator, controller)
@@ -25,13 +26,13 @@ export class AgentService {
         const manifest = this.getAgentById(agentId);
         if (!manifest) {
             console.error(`Agent with ID "${agentId}" not found.`);
-            return null;
+            return;
         }
 
         const executor = this.executors[manifest.executor];
         if (!executor) {
             console.error(`Executor "${manifest.executor}" for agent "${agentId}" not found.`);
-            return null;
+            return;
         }
         if (manifest.prompt.user.includes('{all_notes}')) {
             const noteFiles = await this.controller.storageService.getAllFilesBySuffix('.note');
@@ -63,7 +64,7 @@ export class AgentService {
                 case 'assistantPane':
                 default:
                     const blockData = {
-                        type: 'development',
+                        type: 'agent_response',
                         title: manifest.name,
                         id: `dev_${Date.now()}`,
                         content: { type: 'markdown', text: ai_response },

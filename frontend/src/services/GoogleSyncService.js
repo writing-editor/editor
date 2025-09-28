@@ -6,6 +6,7 @@ export class GoogleSyncService {
     this.gis = null;
     this.initializationPromise = null;
     this.tokenResolver = null;
+    this.tokenRejecter = null;
 
     this.API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
     this.CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -29,19 +30,17 @@ export class GoogleSyncService {
         this.tokenClient = this.gis.initTokenClient({
           client_id: this.CLIENT_ID,
           scope: this.SCOPES,
-          // --- FIX: A single, robust callback for all token responses ---
+          prompt: '',
           callback: (tokenResponse) => {
             if (tokenResponse && tokenResponse.access_token) {
-              // This is the crucial step that was missing.
-              // Explicitly set the token for the gapi client.
               this.gapi.client.setToken(tokenResponse);
-              if (this.tokenResolver) this.tokenResolver.resolve(tokenResponse);
+              if (this.tokenResolver) this.tokenResolver(true);
             } else {
-              // Handle errors or empty responses
-              const error = new Error(tokenResponse?.error_description || 'Sign-in failed or was cancelled.');
-              if (this.tokenResolver) this.tokenResolver.reject(error);
+              const error = new Error(tokenResponse?.error_description || 'Silent sign-in failed.');
+              if (this.tokenRejecter) this.tokenRejecter(error);
             }
             this.tokenResolver = null;
+            this.tokenRejecter = null;
           },
         });
         console.log("Google Sync Service Initialized.");
@@ -77,26 +76,23 @@ export class GoogleSyncService {
   }
 
   async trySilentAuth() {
-    const token = gapi.client.getToken();
-    if (token) {
-      return true;
-    }
+    return new Promise((resolve, reject) => {
+      const token = gapi.client.getToken();
+      if (token) {
+        console.log("Silent auth successful (token already exists).");
+        return resolve(true);
+      }
 
-    return new Promise((resolve) => {
-      this.tokenClient.callback = (resp) => {
-        if (resp && resp.access_token) {
-          resolve(true);
-        } else {
-          resolve(false);
-        }
-      };
-      this.tokenClient.requestAccessToken({
-        prompt: "",
-      });
+      console.log("Attempting silent token request...");
+      this.tokenResolver = resolve;
+      this.tokenRejecter = reject;
+
+      this.tokenClient.requestAccessToken({ prompt: '' });
+    }).catch(error => {
+      console.warn("Silent auth failed:", error.message);
+      return false;
     });
   }
-
-
 
   async signIn() {
     return new Promise((resolve, reject) => {
@@ -121,27 +117,27 @@ export class GoogleSyncService {
   }
 
   async getUserProfile() {
-  const token = gapi.client.getToken();
-  if (!token) return null;
+    const token = gapi.client.getToken();
+    if (!token) return null;
 
-  try {
-    const resp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-      headers: {
-        Authorization: `Bearer ${token.access_token}`,
-      },
-    });
+    try {
+      const resp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: {
+          Authorization: `Bearer ${token.access_token}`,
+        },
+      });
 
-    if (!resp.ok) {
-      console.error("Failed to fetch profile", await resp.text());
+      if (!resp.ok) {
+        console.error("Failed to fetch profile", await resp.text());
+        return null;
+      }
+
+      return await resp.json(); // contains name, picture, email
+    } catch (err) {
+      console.error("Failed to fetch user profile", err);
       return null;
     }
-
-    return await resp.json(); // contains name, picture, email
-  } catch (err) {
-    console.error("Failed to fetch user profile", err);
-    return null;
   }
-}
 
 
   async signOut() {
