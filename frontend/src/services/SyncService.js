@@ -26,7 +26,7 @@ export class SyncService {
       if (navigator.onLine && await this.googleSyncService.checkSignInStatus()) {
         await this._processCloudTombstones();
       }
-    }, 60000);
+    }, 600000);
   }
 
   async _processCloudTombstones() {
