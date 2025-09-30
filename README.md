@@ -18,7 +18,7 @@ Built as both a **Progressive Web App (PWA)** for seamless offline browser use a
 ## ✨ Key Features
 
 ### ✍️ Core Writing Experience
-*   **Structured Documents:** Organize your work into Books, Chapters, and Sections with an intuitive navigator.
+*   **📚 Interactive Document Outline:** Organize your work into Books, Chapters, and Sections. The Navigator pane provides a live, clickable table of contents—just like a PDF reader—allowing you to see your document's structure at a glance and navigate complex projects effortlessly.
 *   **Distraction-Free Editor:** A clean, minimalist writing pane powered by Tiptap, with a bubble menu for essential formatting and Markdown-like slash commands.
 *   **Contextual Scrollbar:** A unique scrollbar that shows your document's structure and allows for quick navigation between sections.
 
