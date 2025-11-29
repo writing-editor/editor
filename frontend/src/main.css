@@ -6,6 +6,11 @@
   --right-drawer-width: 40%;
   --editor-pane-shrunk-width: 60%;
   --spacing-md: 16px;
+
+  @media (max-width: 768px) {
+    --right-drawer-width: 85%;
+    --editor-pane-shrunk-width: 15%;
+  }
   --spacing-lg: 24px;
   --blur-backdrop: blur(5px);
   --color-highlight-bg: rgb(255, 248, 200);
