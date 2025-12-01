@@ -21,7 +21,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17' # Required for recent Android builds
+          java-version: '21' # Required for recent Android builds
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
