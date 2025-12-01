@@ -1,0 +1,65 @@
+name: Build Android APK
+on:
+  workflow_dispatch: # Allows you to manually trigger the build from GitHub UI
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**' # Only build when frontend code changes
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17' # Required for recent Android builds
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+        working-directory: ./frontend
+
+      - name: Build Web Assets
+        run: npm run build
+        working-directory: ./frontend
+        env:
+          # If you have secrets, map them here. 
+          # Otherwise, the app uses the .env values committed or empty.
+          VITE_GOOGLE_API_KEY: ${{ secrets.VITE_GOOGLE_API_KEY }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+
+      - name: Add Android Platform & Sync
+        working-directory: ./frontend
+        run: |
+          # We install the android platform if not present in package.json (though it is in yours)
+          npm install @capacitor/android
+          # We initialize the android folder from scratch since you don't have it locally
+          npx cap add android
+          npx cap sync android
+
+      - name: Build APK (Debug)
+        working-directory: ./frontend/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: editor-app-debug
+          path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
