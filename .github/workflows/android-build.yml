@@ -35,11 +35,9 @@ jobs:
         working-directory: ./frontend
 
       - name: Build Web Assets
-        run: npm run build
+        run: npm run build -- --base=./
         working-directory: ./frontend
         env:
-          # If you have secrets, map them here. 
-          # Otherwise, the app uses the .env values committed or empty.
           VITE_GOOGLE_API_KEY: ${{ secrets.VITE_GOOGLE_API_KEY }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
 
